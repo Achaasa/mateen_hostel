@@ -4,7 +4,7 @@ import * as visitorController from "../controller/visitorController"; // Assumin
 const visitorRouter = Router();
 
 // Add a new visitor
-visitorRouter.post("/", visitorController.addVisitorController);
+visitorRouter.post("/add", visitorController.addVisitorController);
 
 // Get all visitors
 visitorRouter.get("/", visitorController.getAllVisitorsController);
@@ -13,7 +13,7 @@ visitorRouter.get("/", visitorController.getAllVisitorsController);
 visitorRouter.get("/:id", visitorController.getVisitorByIdController);
 
 // Update a visitor's details
-visitorRouter.put("/:id", visitorController.updateVisitorController);
+visitorRouter.put("/update/:id", visitorController.updateVisitorController);
 
 // Delete a visitor
 visitorRouter.delete("/:id", visitorController.deleteVisitorController);

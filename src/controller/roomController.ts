@@ -67,7 +67,7 @@ export const updateRoomController = async (req: Request, res: Response) => {
   const amenitiesIds: string[] = req.body.amenitiesIds; // List of amenities IDs to associate with the room
 
   try {
-    const updatedRoom = await roomHelper.updateRoom(id, roomData, amenitiesIds);
+    const updatedRoom = await roomHelper.updateRoom(id, roomData);
 
     res.status(HttpStatus.OK).json({
       message: "Room updated successfully",
@@ -100,7 +100,10 @@ export const deleteRoomController = async (req: Request, res: Response) => {
 };
 
 // Get Available Rooms
-export const getAvailableRoomsController = async (req: Request, res: Response) => {
+export const getAvailableRoomsController = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const availableRooms = await roomHelper.getAvailableRooms();
 
@@ -112,6 +115,51 @@ export const getAvailableRoomsController = async (req: Request, res: Response) =
     const err = error as HttpException;
     res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
       message: err.message || "Error fetching available rooms",
+    });
+  }
+};
+
+export const addAmenitiesToRoomController = async (
+  req: Request,
+  res: Response
+) => {
+  const { id } = req.params;
+  const amenitiesIds: string[] = req.body.amenitiesIds;
+
+  try {
+    const updatedRoom = await roomHelper.addAmenitiesToRoom(id, amenitiesIds);
+    res.status(HttpStatus.OK).json({
+      message: "Amenities added successfully",
+      data: updatedRoom,
+    });
+  } catch (error) {
+    const err = error as HttpException;
+    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
+      message: err.message || "Error adding amenities to room",
+    });
+  }
+};
+
+export const removeAmenitiesFromRoomController = async (
+  req: Request,
+  res: Response
+) => {
+  const { id } = req.params;
+  const amenitiesIds: string[] = req.body.amenitiesIds;
+
+  try {
+    const updatedRoom = await roomHelper.removeAmenitiesFromRoom(
+      id,
+      amenitiesIds
+    );
+    res.status(HttpStatus.OK).json({
+      message: "Amenities removed successfully",
+      data: updatedRoom,
+    });
+  } catch (error) {
+    const err = error as HttpException;
+    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
+      message: err.message || "Error removing amenities from room",
     });
   }
 };

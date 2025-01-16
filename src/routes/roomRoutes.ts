@@ -10,10 +10,10 @@ roomRouter.get("/", roomController.getAllRoomsController);
 roomRouter.get("/:id", roomController.getRoomByIdController);
 
 // Create a new room
-roomRouter.post("/", roomController.addRoomController);
+roomRouter.post("/add", roomController.addRoomController);
 
 // Update an existing room
-roomRouter.put("/:id", roomController.updateRoomController);
+roomRouter.put("/update/:id", roomController.updateRoomController);
 
 // Delete a room
 roomRouter.delete("/:id", roomController.deleteRoomController);
@@ -21,4 +21,9 @@ roomRouter.delete("/:id", roomController.deleteRoomController);
 // Get available rooms
 roomRouter.get("/available", roomController.getAvailableRoomsController);
 
+roomRouter.post("/:id/add", roomController.addAmenitiesToRoomController);
+roomRouter.post(
+  "/:id/remove",
+  roomController.removeAmenitiesFromRoomController
+);
 export default roomRouter;
