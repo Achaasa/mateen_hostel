@@ -7,7 +7,7 @@ const amenitiesRoute = Router();
 // Add an amenity (POST request)
 amenitiesRoute.post(
   "/add",
-  validatePayload("amenity"), // Optional: Assuming you have a validation schema for adding amenities
+  validatePayload("Amenities"), // Optional: Assuming you have a validation schema for adding amenities
   amenitiesController.addAmenityController
 );
 
@@ -19,8 +19,8 @@ amenitiesRoute.get("/:id", amenitiesController.getAmenityByIdController);
 
 // Update an amenity by ID (PUT request)
 amenitiesRoute.put(
-  "/:id",
-  validatePayload("updateAmenity"), // Optional: Assuming you have a validation schema for updating amenities
+  "/update/:id",
+  validatePayload("Amenities"), // Optional: Assuming you have a validation schema for updating amenities
   amenitiesController.updateAmenityController
 );
 

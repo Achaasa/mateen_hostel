@@ -26,6 +26,8 @@ model Hostel {
   ghCard      String
   Rooms       Room[]
   Staffs      Staff[]
+  createAt DateTime @default(now())
+  updateAt DateTime @updatedAt
 }
 
 model Room {
@@ -43,6 +45,8 @@ model Room {
   description String
   type        RoomType
   status      RoomStatus
+  createAt DateTime @default(now())
+  updateAt DateTime @updatedAt
 }
 
 model Staff {
@@ -74,7 +78,8 @@ model Amenities {
   name      String
   price     Float
   rooms     Room[]   @relation("RoomAmenities")
-  updatedAt DateTime @updatedAt
+  createAt DateTime @default(now())
+  updateAt DateTime @updatedAt
 }
 
 model Resident {
@@ -94,8 +99,8 @@ model Resident {
   Visitor      Visitor[]
   gender       Gender
   roomAssigned Boolean   @default(false)
-  updatedAt    DateTime  @updatedAt
-
+  createAt DateTime @default(now())
+  updateAt DateTime @updatedAt
   //tracking payments 
   amountPaid     Float  @default(0)// Total amount paid so far
   balanceOwed    Float // Remaining balance, calculated in logic
@@ -134,7 +139,8 @@ model User {
   password    String
   phoneNumber String
   role        UserRole
-  updatedAt   DateTime @updatedAt
+  createAt DateTime @default(now())
+  updateAt DateTime @updatedAt
 }
 
 enum StaffRole {
