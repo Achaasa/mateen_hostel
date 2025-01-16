@@ -1,0 +1,196 @@
+import prisma from "../utils/prisma";
+import HttpException from "../utils/http-error";
+import { HttpStatus } from "../utils/http-status";
+import { Visitor, VisitorStatus } from "@prisma/client";
+import { ErrorResponse } from "../utils/types";
+import { visitorSchema, updateVisitorSchema } from "../zodSchema/visitorSchema";  // Assuming you have Zod schemas for validation
+
+// Add a Visitor
+
+export const addVisitor = async (visitorData: Visitor) => {
+  try {
+    // Validate the visitor data using the schema
+    const validateVisitor = visitorSchema.safeParse(visitorData);
+    if (!validateVisitor.success) {
+      const errors = validateVisitor.error.issues.map(
+        ({ message, path }) => `${path}: ${message}`
+      );
+      throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
+    }
+
+    // Check if the visitor already exists by email or phone (or another unique identifier)
+    const existingVisitor = await prisma.visitor.findFirst({
+      where: {
+        OR: [
+          { email: visitorData.email },
+          { phone: visitorData.phone }
+        ],
+      },
+    });
+
+    // If visitor exists, create a new entry with the same details (new visit)
+    const visitorToCreate = existingVisitor
+      ? { 
+          ...visitorData,
+          status: VisitorStatus.ACTIVE, // new visit, status should be ACTIVE
+          timeIn: new Date(), // Set the timeIn to now
+          residentId: existingVisitor.residentId, // Retain the relation with the resident
+        }
+      : visitorData; // If the visitor does not exist, create a new one with all details
+
+    // Create or reuse the visitor (if a repeat visitor)
+    const createdVisitor = await prisma.visitor.create({
+      data: visitorToCreate,
+    });
+
+    return createdVisitor;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error adding visitor"
+    );
+  }
+};
+
+// Get All Visitors
+export const getAllVisitors = async (): Promise<Visitor[]> => {
+  try {
+    const visitors = await prisma.visitor.findMany();
+    return visitors;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error fetching visitors"
+    );
+  }
+};
+
+// Get Visitor by ID
+export const getVisitorById = async (visitorId: string): Promise<Visitor> => {
+  try {
+    const visitor = await prisma.visitor.findUnique({
+      where: { id: visitorId },
+    });
+
+    if (!visitor) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Visitor not found");
+    }
+
+    return visitor;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error fetching visitor"
+    );
+  }
+};
+
+// Update a Visitor
+export const updateVisitor = async (
+  visitorId: string,
+  visitorData: { name: string; email: string; phone: string }
+): Promise<Visitor> => {
+  try {
+    // Validate the visitor data using the schema
+    const validateVisitor = updateVisitorSchema.safeParse(visitorData);
+    if (!validateVisitor.success) {
+      const errors = validateVisitor.error.issues.map(
+        ({ message, path }) => `${path}: ${message}`
+      );
+      throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
+    }
+
+    // Check if the visitor exists in the database
+    const findVisitor = await prisma.visitor.findUnique({
+      where: { id: visitorId },
+    });
+    if (!findVisitor) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Visitor not found");
+    }
+
+    // Update the visitor details
+    const updatedVisitor = await prisma.visitor.update({
+      where: { id: visitorId },
+      data: visitorData,
+    });
+
+    return updatedVisitor;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error updating visitor"
+    );
+  }
+};
+
+// Delete a Visitor
+export const deleteVisitor = async (visitorId: string): Promise<{ message: string }> => {
+  try {
+    const visitor = await prisma.visitor.findUnique({
+      where: { id: visitorId },
+    });
+
+    if (!visitor) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Visitor not found");
+    }
+
+    // Delete the visitor from the database
+    await prisma.visitor.delete({
+      where: { id: visitorId },
+    });
+
+    return { message: "Visitor deleted successfully" };
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error deleting visitor"
+    );
+  }
+};
+
+
+
+export const checkoutVisitor = async (visitorId: string) => {
+  try {
+    // Find the visitor by ID
+    const visitor = await prisma.visitor.findUnique({
+      where: { id: visitorId },
+      include: {
+        resident: true, // Assuming you want to include the resident details as well
+      },
+    });
+
+    // If visitor doesn't exist, throw an error
+    if (!visitor) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Visitor not found");
+    }
+
+    // If the visitor is already checked out, throw an error
+    if (visitor.status === VisitorStatus.CHECKED_OUT) {
+      throw new HttpException(HttpStatus.BAD_REQUEST, "Visitor is already checked out");
+    }
+
+    // Update the visitor's status to checked out
+    const updatedVisitor = await prisma.visitor.update({
+      where: { id: visitorId },
+      data: {
+        status: VisitorStatus.CHECKED_OUT,
+        timeOut: new Date(), // Set the timeOut as the current date and time
+      },
+    });
+
+    // Return the updated visitor information
+    return updatedVisitor;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error during checkout"
+    );
+  }
+};

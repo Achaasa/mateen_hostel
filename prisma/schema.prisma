@@ -1,0 +1,210 @@
+generator erd {
+  provider = "prisma-erd-generator"
+  // The directory where the ERD will be generated
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Hostel {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  address     String
+  location    String
+  manager     String
+  email       String  @unique
+  phone       String
+  imageKey    String
+  imageUrl    String
+  ghCard      String
+  Rooms       Room[]
+  Staffs      Staff[]
+}
+
+model Room {
+  id     String @id @default(uuid())
+  number Int
+  block  String
+  floor  String
+  maxCap Int
+
+  hostel      Hostel      @relation(fields: [hostelId], references: [id])
+  hostelId    String
+  Amenities   Amenities[] @relation("RoomAmenities")
+  Resident    Resident[]
+  price       Float
+  description String
+  type        RoomType
+  status      RoomStatus
+}
+
+model Staff {
+  id                String        @id @default(uuid())
+  name              String
+  role              StaffRole
+  hostel            Hostel        @relation(fields: [hostelId], references: [id])
+  hostelId          String
+  firstName         String
+  middleName        String?
+  lastName          String
+  dateOfBirth       DateTime
+  nationality       String
+  gender            Gender
+  religion          String
+  maritalStatus     MaritalStatus
+  ghanaCardNumber   String
+  phoneNumber       String
+  email             String        @unique
+  residence         String
+  qualification     String
+  block             String
+  dateOfAppointment DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model Amenities {
+  id        String   @id @default(uuid())
+  name      String
+  price     Float
+  rooms     Room[]   @relation("RoomAmenities")
+  updatedAt DateTime @updatedAt
+}
+
+model Resident {
+  id                    String @id @default(uuid())
+  name                  String
+  studentId             String
+  course                String
+  phone                 String
+  email                 String @unique
+  emergencyContactName  String
+  emergencyContactPhone String
+  relationship          String //relationship with emergency contact
+
+  room         Room      @relation(fields: [roomId], references: [id])
+  roomId       String
+  payments     Payment[]
+  Visitor      Visitor[]
+  gender       Gender
+  roomAssigned Boolean   @default(false)
+  updatedAt    DateTime  @updatedAt
+
+  //tracking payments 
+  amountPaid     Float  @default(0)// Total amount paid so far
+  balanceOwed    Float // Remaining balance, calculated in logic
+}
+
+model Payment {
+  id         String        @id @default(uuid())
+  amount     Float
+  date       DateTime      @default(now())
+  resident   Resident      @relation(fields: [residentId], references: [id])
+  residentId String
+  status     String
+  roomId     String?
+  reference  String @unique // Paystack payment reference
+  method     String
+  updatedAt  DateTime      @updatedAt
+}
+
+model Visitor {
+  id         String        @id @default(uuid())
+  name       String
+  email      String
+  phone      String
+  resident   Resident      @relation(fields: [residentId], references: [id])
+  residentId String
+  timeIn     DateTime      @default(now())
+  timeOut    DateTime?
+  status     VisitorStatus
+  updatedAt  DateTime      @updatedAt
+}
+
+model User {
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  password    String
+  phoneNumber String
+  role        UserRole
+  updatedAt   DateTime @updatedAt
+}
+
+enum StaffRole {
+  HOSTEL_ADMIN
+  ROOM_ADMIN
+  RESIDENT
+  VISITOR
+}
+
+enum UserRole {
+  ADMIN
+  STAFF
+}
+
+enum VisitorStatus {
+  ACTIVE
+  CHECKED_OUT
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum Location {
+  KUMASI
+  ACCRA
+  SUNYANI
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+}
+
+enum RoomType {
+  SINGLE
+  DOUBLE
+  SUITE
+  QUAD
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum paymentMethod {
+  CASH
+  CARD
+  BANK
+  MOMO
+  USSD
+  QR_CODE
+  VISA
+  MASTER_CARD
+  ONLINE
+}
+
+enum StaffStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+}
