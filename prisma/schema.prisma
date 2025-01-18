@@ -26,8 +26,8 @@ model Hostel {
   ghCard      String
   Rooms       Room[]
   Staffs      Staff[]
-  createAt DateTime @default(now())
-  updateAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Room {
@@ -45,8 +45,8 @@ model Room {
   description String
   type        RoomType
   status      RoomStatus
-  createAt DateTime @default(now())
-  updateAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Staff {
@@ -78,8 +78,8 @@ model Amenities {
   name      String
   price     Float
   rooms     Room[]   @relation("RoomAmenities")
-  createAt DateTime @default(now())
-  updateAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Resident {
@@ -99,11 +99,11 @@ model Resident {
   Visitor      Visitor[]
   gender       Gender
   roomAssigned Boolean   @default(false)
-  createAt DateTime @default(now())
-  updateAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   //tracking payments 
   amountPaid     Float  @default(0)// Total amount paid so far
-  balanceOwed    Float // Remaining balance, calculated in logic
+  balanceOwed    Float? // Remaining balance, calculated in logic
 }
 
 model Payment {
@@ -112,10 +112,10 @@ model Payment {
   date       DateTime      @default(now())
   resident   Resident      @relation(fields: [residentId], references: [id])
   residentId String
-  status     String
+  status     String?
   roomId     String?
   reference  String @unique // Paystack payment reference
-  method     String
+  method     String?
   updatedAt  DateTime      @updatedAt
 }
 
@@ -139,8 +139,8 @@ model User {
   password    String
   phoneNumber String
   role        UserRole
-  createAt DateTime @default(now())
-  updateAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum StaffRole {

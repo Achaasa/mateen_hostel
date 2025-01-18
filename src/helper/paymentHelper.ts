@@ -18,14 +18,17 @@ export const initializePayment = async (
     const resident = await prisma.resident.findUnique({
       where: { id: residentId },
     });
+    console.log({
+      room: `${roomId}, resident: ${residentId} payment:${initialPayment}`,
+    });
 
-    if (!room || !resident) {
-      throw new HttpException(
-        HttpStatus.NOT_FOUND,
-        "Room or resident not found."
-      );
+    if (!room) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
     }
 
+    if (!resident) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "resident not found.");
+    }
     const roomPrice = room.price;
 
     if (initialPayment < roomPrice * 0.7) {
@@ -52,7 +55,11 @@ export const initializePayment = async (
         method: paymentResponse.data.payment_method,
       },
     });
-
+    console.log(
+      `${paymentResponse.data.payment_method}`,
+      `${paymentResponse.data.status}`,
+      `${paymentResponse.data.reference}`
+    );
     return paymentResponse.data.authorization_url;
   } catch (error) {
     const err = error as ErrorResponse;
@@ -84,13 +91,22 @@ export const confirmPayment = async (reference: string) => {
         "Payment record not found."
       );
     }
-
+    const { roomId } = paymentRecord;
+    if (!roomId) {
+      throw new Error("Room ID is not in the payment record");
+    }
+    const room = await prisma.room.findUnique({ where: { id: roomId } });
+    if (!room) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
+    }
+    const debt = room.price - paymentRecord.amount;
     const resident = await prisma.resident.update({
       where: { id: paymentRecord.residentId },
       data: {
         roomAssigned: true,
 
         amountPaid: paymentRecord.amount,
+        balanceOwed: debt,// update balance owed
       },
     });
 
@@ -108,4 +124,3 @@ export const confirmPayment = async (reference: string) => {
     );
   }
 };
-
