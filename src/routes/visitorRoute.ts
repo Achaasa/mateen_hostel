@@ -19,8 +19,8 @@ visitorRouter.put("/update/:id", visitorController.updateVisitorController);
 visitorRouter.delete("/:id", visitorController.deleteVisitorController);
 
 // Checkout a visitor
-visitorRouter.post(
-  "/:id/checkout",
+visitorRouter.put(
+  "/checkout/:id",
   visitorController.checkoutVisitorController
 );
 

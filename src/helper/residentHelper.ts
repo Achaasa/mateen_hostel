@@ -78,6 +78,9 @@ export const getResidentById = async (residentId: string) => {
       where: { id: residentId },
       include: { room: true },
     });
+    if(!resident){
+      throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
+    }
     return resident as Resident;
   } catch (error) {
     const err = error as ErrorResponse;
@@ -94,6 +97,9 @@ export const getResidentByEmail = async (email: string) => {
       where: { email },
       include: { room: true },
     });
+    if(!resident){
+      throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
+    }
     return resident as Resident;
   } catch (error) {
     const err = error as ErrorResponse;
@@ -109,7 +115,7 @@ export const updateResident = async (
   residentData: Resident
 ) => {
   try {
-    const validateResident = residentSchema.safeParse(residentData);
+    const validateResident = updateResidentSchema.safeParse(residentData);
     if (!validateResident.success) {
       const errors = validateResident.error.issues.map(
         ({ message, path }) => `${path}: ${message}`
@@ -123,11 +129,12 @@ export const updateResident = async (
     if (!resident) {
       throw new HttpException(HttpStatus.NOT_FOUND, "resident not found");
     }
-
+    const { balanceOwed, amountPaid, ...restOfresident } = residentData;
     const updatedResident = await prisma.resident.update({
       where: { id: residentId },
-      data: { ...residentData },
+      data: { ...restOfresident },
     });
+    return updatedResident as Resident;
   } catch (error) {
     const err = error as ErrorResponse;
     throw new HttpException(
@@ -160,9 +167,9 @@ export const getDebtors = async () => {
     const debtors = await prisma.resident.findMany({
       where: { balanceOwed: { gt: 0 } },
     });
-
     return debtors as Resident[];
   } catch (error) {
+    console.error('Error fetching debtors:', error);
     const err = error as ErrorResponse;
     throw new HttpException(
       err.status || HttpStatus.INTERNAL_SERVER_ERROR,

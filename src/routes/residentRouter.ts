@@ -1,25 +1,42 @@
 import { Router } from "express";
-import * as residentController from "../controller/residentController"; // Assuming your controller file is named residentController
+import {
+  getAllResidentsController,
+  getAlldebtors,
+  getResidentByEmailController,
+  getResidentByIdController,
+  updateResidentController,
+  registerResidentController,
+  deleteResidentController
+} from "../controller/residentController"; // Assuming your controller file is named residentController
 
 const residentRouter = Router();
 
-// Register a new resident
-residentRouter.post("/register", residentController.registerResidentController);
+// Define your specific routes first
+residentRouter.get("/debtors", getAlldebtors);
 
-// Get all residents
-residentRouter.get("/", residentController.getAllResidentsController);
 
-// Get a resident by ID
-residentRouter.get("/:id", residentController.getResidentByIdController);
+residentRouter.post("/register", registerResidentController);
 
-// Get a resident by email
-residentRouter.get("/:email", residentController.getResidentByEmailController);
+residentRouter.get("/", getAllResidentsController);
 
-// Update a resident's details
-residentRouter.put("/:id", residentController.updateResidentController);
 
-// Delete a resident
-residentRouter.delete("/:id", residentController.deleteResidentController);
-residentRouter.get("/debtors", residentController.debtors);
+ residentRouter.get("/:id", getResidentByIdController);
+
+
+ residentRouter.get("/email/:email", getResidentByEmailController);
+
+
+ residentRouter.put("/update/:id", updateResidentController);
+
+
+residentRouter.delete("/:id", deleteResidentController);
+
+// Catch-all route at the end
+residentRouter.get("*", (req, res) => {
+  console.log("Catch-all route hit!"); // Logs if this route is hit
+  res.status(404).json({
+    message: "Route not found",
+  });
+});
 
 export default residentRouter;
