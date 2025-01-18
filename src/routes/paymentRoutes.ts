@@ -8,7 +8,7 @@ import {
 
 const paymentRouter = Router();
 
-paymentRouter.post("/register/payment", initiatePayment);
-paymentRouter.get("/payment/confirm", handlePaymentConfirmation);
+paymentRouter.post("/init/", initiatePayment);
+paymentRouter.get("/confirm", handlePaymentConfirmation);
 
 export default paymentRouter;

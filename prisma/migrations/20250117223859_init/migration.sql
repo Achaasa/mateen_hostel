@@ -11,7 +11,25 @@ CREATE TYPE "VisitorStatus" AS ENUM ('ACTIVE', 'CHECKED_OUT');
 CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'CONFIRMED', 'CANCELLED');
 
 -- CreateEnum
-CREATE TYPE "location" AS ENUM ('KUMASI', 'ACCRA', 'SUNYANI');
+CREATE TYPE "Location" AS ENUM ('KUMASI', 'ACCRA', 'SUNYANI');
+
+-- CreateEnum
+CREATE TYPE "RoomStatus" AS ENUM ('AVAILABLE', 'OCCUPIED', 'MAINTENANCE');
+
+-- CreateEnum
+CREATE TYPE "RoomType" AS ENUM ('SINGLE', 'DOUBLE', 'SUITE', 'QUAD');
+
+-- CreateEnum
+CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "paymentMethod" AS ENUM ('CASH', 'CARD', 'BANK', 'MOMO', 'USSD', 'QR_CODE', 'VISA', 'MASTER_CARD', 'ONLINE');
+
+-- CreateEnum
+CREATE TYPE "StaffStatus" AS ENUM ('ACTIVE', 'INACTIVE');
+
+-- CreateEnum
+CREATE TYPE "MaritalStatus" AS ENUM ('SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED');
 
 -- CreateTable
 CREATE TABLE "Hostel" (
@@ -25,6 +43,9 @@ CREATE TABLE "Hostel" (
     "phone" TEXT NOT NULL,
     "imageKey" TEXT NOT NULL,
     "imageUrl" TEXT NOT NULL,
+    "ghCard" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Hostel_pkey" PRIMARY KEY ("id")
 );
@@ -33,8 +54,16 @@ CREATE TABLE "Hostel" (
 CREATE TABLE "Room" (
     "id" TEXT NOT NULL,
     "number" INTEGER NOT NULL,
-    "type" TEXT NOT NULL,
+    "block" TEXT NOT NULL,
+    "floor" TEXT NOT NULL,
+    "maxCap" INTEGER NOT NULL,
     "hostelId" TEXT NOT NULL,
+    "price" DOUBLE PRECISION NOT NULL,
+    "description" TEXT NOT NULL,
+    "type" "RoomType" NOT NULL,
+    "status" "RoomStatus" NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Room_pkey" PRIMARY KEY ("id")
 );
@@ -43,8 +72,24 @@ CREATE TABLE "Room" (
 CREATE TABLE "Staff" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "role" TEXT NOT NULL,
+    "role" "StaffRole" NOT NULL,
     "hostelId" TEXT NOT NULL,
+    "firstName" TEXT NOT NULL,
+    "middleName" TEXT,
+    "lastName" TEXT NOT NULL,
+    "dateOfBirth" TIMESTAMP(3) NOT NULL,
+    "nationality" TEXT NOT NULL,
+    "gender" "Gender" NOT NULL,
+    "religion" TEXT NOT NULL,
+    "maritalStatus" "MaritalStatus" NOT NULL,
+    "ghanaCardNumber" TEXT NOT NULL,
+    "phoneNumber" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "residence" TEXT NOT NULL,
+    "qualification" TEXT NOT NULL,
+    "block" TEXT NOT NULL,
+    "dateOfAppointment" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Staff_pkey" PRIMARY KEY ("id")
 );
@@ -53,6 +98,9 @@ CREATE TABLE "Staff" (
 CREATE TABLE "Amenities" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "price" DOUBLE PRECISION NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Amenities_pkey" PRIMARY KEY ("id")
 );
@@ -61,9 +109,20 @@ CREATE TABLE "Amenities" (
 CREATE TABLE "Resident" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "course" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
     "email" TEXT NOT NULL,
+    "emergencyContactName" TEXT NOT NULL,
+    "emergencyContactPhone" TEXT NOT NULL,
+    "relationship" TEXT NOT NULL,
     "roomId" TEXT NOT NULL,
+    "gender" "Gender" NOT NULL,
+    "roomAssigned" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "amountPaid" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "balanceOwed" DOUBLE PRECISION,
 
     CONSTRAINT "Resident_pkey" PRIMARY KEY ("id")
 );
@@ -72,10 +131,13 @@ CREATE TABLE "Resident" (
 CREATE TABLE "Payment" (
     "id" TEXT NOT NULL,
     "amount" DOUBLE PRECISION NOT NULL,
-    "date" TIMESTAMP(3) NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "residentId" TEXT NOT NULL,
-    "status" "PaymentStatus" NOT NULL,
+    "status" TEXT NOT NULL,
     "roomId" TEXT,
+    "reference" TEXT NOT NULL,
+    "method" TEXT NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
 );
@@ -90,6 +152,7 @@ CREATE TABLE "Visitor" (
     "timeIn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "timeOut" TIMESTAMP(3),
     "status" "VisitorStatus" NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Visitor_pkey" PRIMARY KEY ("id")
 );
@@ -102,6 +165,8 @@ CREATE TABLE "User" (
     "password" TEXT NOT NULL,
     "phoneNumber" TEXT NOT NULL,
     "role" "UserRole" NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -109,13 +174,26 @@ CREATE TABLE "User" (
 -- CreateTable
 CREATE TABLE "_RoomAmenities" (
     "A" TEXT NOT NULL,
-    "B" TEXT NOT NULL,
-
-    CONSTRAINT "_RoomAmenities_AB_pkey" PRIMARY KEY ("A","B")
+    "B" TEXT NOT NULL
 );
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Hostel_email_key" ON "Hostel"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Staff_email_key" ON "Staff"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Resident_email_key" ON "Resident"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Payment_reference_key" ON "Payment"("reference");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "_RoomAmenities_AB_unique" ON "_RoomAmenities"("A", "B");
 
 -- CreateIndex
 CREATE INDEX "_RoomAmenities_B_index" ON "_RoomAmenities"("B");
