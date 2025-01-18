@@ -58,7 +58,7 @@ export const getResidentByIdController = async (
   try {
     const resident = await residentHelper.getResidentById(id);
     res.status(HttpStatus.OK).json({
-      message: "Resident fetched successfully",
+      message: "Resident fetched successfully ID",
       data: resident,
     });
   } catch (error) {
@@ -79,7 +79,7 @@ export const getResidentByEmailController = async (
   try {
     const resident = await residentHelper.getResidentByEmail(email);
     res.status(HttpStatus.OK).json({
-      message: "Resident fetched successfully",
+      message: "Resident fetched successfully email",
       data: resident,
     });
   } catch (error) {
@@ -129,9 +129,13 @@ export const deleteResidentController = async (req: Request, res: Response) => {
   }
 };
 
-export const debtors = async (req: Request, res: Response) => {
+export const getAlldebtors = async (req: Request, res: Response) => {
   try {
     const debtors = await residentHelper.getDebtors();
+    if (debtors.length === 0) {
+      console.log("No debtors found with balance owed greater than 0");
+    }
+
     res
       .status(HttpStatus.OK)
       .json({ message: "debtors fetched successfully", data: debtors });
