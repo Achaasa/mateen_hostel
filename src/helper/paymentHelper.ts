@@ -50,7 +50,7 @@ export const initializePayment = async (
         amount: initialPayment,
         residentId,
         roomId,
-        status: paymentResponse.data.status,
+        status: "PENDING",
         reference: paymentResponse.data.reference,
         method: paymentResponse.data.payment_method,
       },
@@ -108,7 +108,10 @@ export const confirmPayment = async (reference: string) => {
 
     await prisma.payment.update({
       where: { id: paymentRecord.id },
-      data: { status: "CONFIRMED", method: verificationResponse.data.channel },
+      data: {
+        status: verificationResponse.data.status,
+        method: verificationResponse.data.channel,
+      },
     });
 
     return resident;
@@ -141,14 +144,24 @@ export const initializeTopUpPayment = async (
     }
 
     if (!resident) {
-      throw new HttpException(HttpStatus.NOT_FOUND, "resident not found.");
+      throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
     }
-    const roomPrice = room.price;
+
+    const { roomPrice } = resident;
+
+    if (!roomPrice) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Room price not set for the resident."
+      );
+    }
+
     const debtbal = roomPrice - resident.amountPaid;
+
     if (initialPayment > debtbal) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        "Amount you want to pay must be less than or equal to what you owe"
+        "Amount you want to pay must be less than or equal to what you owe."
       );
     }
 
@@ -164,9 +177,9 @@ export const initializeTopUpPayment = async (
         amount: initialPayment,
         residentId,
         roomId,
-        status: paymentResponse.data.status,
+        status: "PENDING",
         reference: paymentResponse.data.reference,
-        method: paymentResponse.data.payment_method,
+        method: paymentResponse.data.channel, // Adjust method to use 'channel'
       },
     });
 
@@ -201,29 +214,42 @@ export const TopUpPayment = async (reference: string) => {
         "Payment record not found."
       );
     }
+
     const { roomId } = paymentRecord;
     if (!roomId) {
       throw new Error("Room ID is not in the payment record");
     }
+
     const room = await prisma.room.findUnique({ where: { id: roomId } });
     if (!room) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
     }
+
     const findResident = await prisma.resident.findUnique({
       where: { id: paymentRecord.residentId },
     });
     if (!findResident) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
     }
-    const total = findResident.amountPaid + paymentRecord.amount;
-    const debt = room.price - paymentRecord.amount;
+    if (findResident.roomPrice === null) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Room price is missing for this resident."
+      );
+    }
+    // Use the resident's original room price for calculations
+    const roomPrice = findResident.roomPrice;
+    const totalPaid = findResident.amountPaid + paymentRecord.amount;
+
+    // Calculate the remaining debt based on the original room price
+    const debt = roomPrice - totalPaid;
+
     const resident = await prisma.resident.update({
       where: { id: paymentRecord.residentId },
       data: {
         roomAssigned: true,
-
-        amountPaid: total,
-        balanceOwed: debt, // update balance owed
+        amountPaid: totalPaid, // Update the total amount paid
+        balanceOwed: debt > 0 ? debt : 0, // Ensure balance owed doesn't go below 0
       },
     });
 
@@ -237,7 +263,7 @@ export const TopUpPayment = async (reference: string) => {
     const err = error as ErrorResponse;
     throw new HttpException(
       err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error confirming payment  "
+      err.message || "Error confirming payment"
     );
   }
 };

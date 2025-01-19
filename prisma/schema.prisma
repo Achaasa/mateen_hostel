@@ -13,21 +13,21 @@ datasource db {
 }
 
 model Hostel {
-  id          String  @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
   description String?
   address     String
   location    String
   manager     String
-  email       String  @unique
+  email       String   @unique
   phone       String
   imageKey    String
   imageUrl    String
   ghCard      String
   Rooms       Room[]
   Staffs      Staff[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Room {
@@ -45,8 +45,10 @@ model Room {
   description String
   type        RoomType
   status      RoomStatus
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  imageUrl    String
+  imageKey    String
 }
 
 model Staff {
@@ -71,6 +73,8 @@ model Staff {
   block             String
   dateOfAppointment DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+  passportUrl       String
+  passportKey       String
 }
 
 model Amenities {
@@ -99,24 +103,25 @@ model Resident {
   Visitor      Visitor[]
   gender       Gender
   roomAssigned Boolean   @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   //tracking payments 
-  amountPaid     Float  @default(0)// Total amount paid so far
-  balanceOwed    Float? // Remaining balance, calculated in logic
+  amountPaid   Float     @default(0) // Total amount paid so far
+  balanceOwed  Float? // Remaining balance, calculated in logic
+  roomPrice    Float?
 }
 
 model Payment {
-  id         String        @id @default(uuid())
+  id         String   @id @default(uuid())
   amount     Float
-  date       DateTime      @default(now())
-  resident   Resident      @relation(fields: [residentId], references: [id])
+  date       DateTime @default(now())
+  resident   Resident @relation(fields: [residentId], references: [id])
   residentId String
   status     String?
   roomId     String?
-  reference  String @unique // Paystack payment reference
+  reference  String   @unique // Paystack payment reference
   method     String?
-  updatedAt  DateTime      @updatedAt
+  updatedAt  DateTime @updatedAt
 }
 
 model Visitor {
@@ -139,8 +144,8 @@ model User {
   password    String
   phoneNumber String
   role        UserRole
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 enum StaffRole {

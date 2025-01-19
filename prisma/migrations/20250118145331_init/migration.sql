@@ -64,6 +64,8 @@ CREATE TABLE "Room" (
     "status" "RoomStatus" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "imageUrl" TEXT NOT NULL,
+    "imageKey" TEXT NOT NULL,
 
     CONSTRAINT "Room_pkey" PRIMARY KEY ("id")
 );
@@ -90,6 +92,8 @@ CREATE TABLE "Staff" (
     "block" TEXT NOT NULL,
     "dateOfAppointment" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "passportUrl" TEXT NOT NULL,
+    "passportKey" TEXT NOT NULL,
 
     CONSTRAINT "Staff_pkey" PRIMARY KEY ("id")
 );
@@ -123,6 +127,7 @@ CREATE TABLE "Resident" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "amountPaid" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "balanceOwed" DOUBLE PRECISION,
+    "roomPrice" DOUBLE PRECISION,
 
     CONSTRAINT "Resident_pkey" PRIMARY KEY ("id")
 );
@@ -133,10 +138,10 @@ CREATE TABLE "Payment" (
     "amount" DOUBLE PRECISION NOT NULL,
     "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "residentId" TEXT NOT NULL,
-    "status" TEXT NOT NULL,
+    "status" TEXT,
     "roomId" TEXT,
     "reference" TEXT NOT NULL,
-    "method" TEXT NOT NULL,
+    "method" TEXT,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
