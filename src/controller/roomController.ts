@@ -3,14 +3,33 @@ import * as roomHelper from "../helper/roomHelper"; // Assuming you have your ro
 import { HttpStatus } from "../utils/http-status";
 import HttpException from "../utils/http-error";
 import { Room } from "@prisma/client";
+import cloudinary from "../utils/cloudinary";
 
 // Add a Room
 export const addRoomController = async (req: Request, res: Response) => {
   const roomData: Room = req.body; // Assuming you are sending the room data in the request body
   const amenitiesIds: string[] = req.body.amenitiesIds; // List of amenities IDs associated with the room
+  const photo = req.file ? req.file.path : undefined;
+  const picture = {
+    imageUrl: "",
+    imageKey: "",
+  };
 
+  if (photo) {
+    const uploaded = await cloudinary.uploader.upload(photo, {
+      folder: "room/",
+    });
+    if (uploaded) {
+      picture.imageUrl = uploaded.secure_url;
+      picture.imageKey = uploaded.public_id;
+    }
+  }
   try {
-    const newRoom = await roomHelper.createRoom(roomData, amenitiesIds);
+    const newRoom = await roomHelper.createRoom(
+      roomData,
+      picture,
+      amenitiesIds
+    );
 
     res.status(HttpStatus.CREATED).json({
       message: "Room created successfully",
@@ -65,9 +84,24 @@ export const updateRoomController = async (req: Request, res: Response) => {
   const { id } = req.params; // Room ID from the URL parameters
   const roomData: Partial<Room> = req.body; // Room data to update
   const amenitiesIds: string[] = req.body.amenitiesIds; // List of amenities IDs to associate with the room
+  const photo = req.file ? req.file.path : undefined;
+
+  const picture = {
+    imageUrl: "",
+    imageKey: "",
+  };
 
   try {
-    const updatedRoom = await roomHelper.updateRoom(id, roomData);
+    if (photo) {
+      const uploaded = await cloudinary.uploader.upload(photo, {
+        folder: "room/",
+      });
+      if (uploaded) {
+        picture.imageUrl = uploaded.secure_url;
+        picture.imageKey = uploaded.public_id;
+      }
+    }
+    const updatedRoom = await roomHelper.updateRoom(id, roomData, picture);
 
     res.status(HttpStatus.OK).json({
       message: "Room updated successfully",

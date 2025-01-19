@@ -45,7 +45,7 @@ export const register = async (residentData: Resident) => {
       );
     }
     const newResident = await prisma.resident.create({
-      data: { ...residentData },
+      data: { ...residentData, roomPrice: existingRoom.price },
     });
     return newResident as Resident;
   } catch (error) {
@@ -78,7 +78,7 @@ export const getResidentById = async (residentId: string) => {
       where: { id: residentId },
       include: { room: true },
     });
-    if(!resident){
+    if (!resident) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
     }
     return resident as Resident;
@@ -97,7 +97,7 @@ export const getResidentByEmail = async (email: string) => {
       where: { email },
       include: { room: true },
     });
-    if(!resident){
+    if (!resident) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
     }
     return resident as Resident;
@@ -169,7 +169,7 @@ export const getDebtors = async () => {
     });
     return debtors as Resident[];
   } catch (error) {
-    console.error('Error fetching debtors:', error);
+    console.error("Error fetching debtors:", error);
     const err = error as ErrorResponse;
     throw new HttpException(
       err.status || HttpStatus.INTERNAL_SERVER_ERROR,

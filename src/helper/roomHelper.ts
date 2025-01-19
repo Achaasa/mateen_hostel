@@ -3,6 +3,7 @@ import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
 import { Room, Amenities } from "@prisma/client";
 import { ErrorResponse } from "../utils/types";
+import cloudinary from "../utils/cloudinary";
 
 export const getAllRooms = async () => {
   try {
@@ -21,28 +22,41 @@ export const getAllRooms = async () => {
   }
 };
 
-export const updateRoom = async (
-    roomId: string,
-    roomData: Partial<Room>
-  ) => {
-    try {
-      const updatedRoom = await prisma.room.update({
-        where: { id: roomId },
-        data: {
-          ...roomData,
-        },
-      });
-  
-      return updatedRoom;
-    } catch (error) {
-      const err = error as ErrorResponse;
-      throw new HttpException(
-        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        err.message || "Error updating room"
-      );
+export const updateRoom = async (roomId: string, roomData: Partial<Room>,picture?: { imageUrl: string; imageKey: string }) => {
+  try {
+    const room= await prisma.room.findUnique({where:{id:roomId}})
+    if(!room){
+      throw new HttpException(HttpStatus.NOT_FOUND, "Room not found")
     }
-  };
-  
+    let updatedRoomData = { ...roomData }; 
+    if (picture && picture.imageUrl && picture.imageKey) {
+      if (room.imageKey) {
+        // Remove old image from cloud storage
+        await cloudinary.uploader.destroy(room.imageKey);
+      }
+      // Update the room data with new image details
+      updatedRoomData = {
+        ...updatedRoomData,
+        imageUrl: picture.imageUrl,
+        imageKey: picture.imageKey,
+      };
+    }
+    const updatedRoom = await prisma.room.update({
+      where: { id: roomId },
+      data: 
+        updatedRoomData
+      
+    });
+
+    return updatedRoom;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error updating room"
+    );
+  }
+};
 
 export const deleteRoom = async (roomId: string) => {
   try {
@@ -92,7 +106,7 @@ export const getRoomById = async (roomId: string) => {
   }
 };
 
-export const createRoom = async (roomData: Room, amenitiesIds?: string[]) => {
+export const createRoom = async (roomData: Room,picture: { imageUrl: string; imageKey: string }, amenitiesIds?: string[],) => {
   try {
     // Calculate total price if amenities are provided
     let totalPrice = roomData.price;
@@ -135,6 +149,8 @@ export const createRoom = async (roomData: Room, amenitiesIds?: string[]) => {
         description: roomData.description,
         type: roomData.type,
         status: roomData.status,
+        imageKey: picture.imageKey,
+        imageUrl: picture.imageUrl,
         Amenities: amenitiesIds?.length
           ? {
               connect: amenitiesIds.map((id) => ({ id })),
@@ -175,72 +191,96 @@ export const getAvailableRooms = async () => {
   }
 };
 
+export const addAmenitiesToRoom = async (
+  roomId: string,
+  amenitiesIds: string[]
+) => {
+  try {
+    // Check if the room exists
+    const room = await prisma.room.findUnique({
+      where: { id: roomId },
+      include: { Amenities: true }, // Include current amenities of the room
+    });
 
-
-export const addAmenitiesToRoom = async (roomId:string,amenitiesIds:string[]) => {
-  
-  
-    try {
-      // Check if the room exists
-      const room = await prisma.room.findUnique({
-        where: { id: roomId },
-        include: { Amenities: true },  // Include current amenities of the room
-      });
-  
-      if (!room) {
+    if (!room) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Room not found");
-        
-      }
-  
-      // Connect amenities to the room
-      const updatedRoom = await prisma.room.update({
-        where: { id: roomId },
-        data: {
-          Amenities: {
-            connect: amenitiesIds.map((id: string) => ({ id })),
-          },
+    }
+
+    // Fetch amenities to be added
+    const amenitiesToAdd = await prisma.amenities.findMany({
+      where: { id: { in: amenitiesIds } },
+    });
+
+    // Calculate the total price of the amenities to be added
+    const totalAmenitiesPrice = amenitiesToAdd.reduce(
+      (total, amenity) => total + amenity.price,
+      0
+    );
+
+    // Update the room price and connect the new amenities
+    const updatedRoom = await prisma.room.update({
+      where: { id: roomId },
+      data: {
+        price: room.price + totalAmenitiesPrice,
+        Amenities: {
+          connect: amenitiesIds.map((id: string) => ({ id })),
         },
-      });
-  
-    return updatedRoom as Room;
-    } catch (error) {
-        const err = error as ErrorResponse;
-        throw new HttpException(
-          err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-          err.message || "Error adding amenities"
-        );
-      }
-    };
+      },
+    });
 
+    return updatedRoom;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error adding amenities"
+    );
+  }
+};
 
-    export const removeAmenitiesFromRoom = async (roomId:string,amenitiesIds:string[]) => {
-      
-        try {
-          // Check if the room exists
-          const room = await prisma.room.findUnique({
-            where: { id: roomId },
-            include: { Amenities: true },  // Include current amenities of the room
-          });
-      
-          if (!room) {
-            throw new HttpException(HttpStatus.NOT_FOUND, "Room not found");
-          }
-      
-          // Disconnect amenities from the room
-          const updatedRoom = await prisma.room.update({
-            where: { id: roomId },
-            data: {
-              Amenities: {
-                disconnect: amenitiesIds.map((id: string) => ({ id })),
-              },
-            },
-          });
-          return updatedRoom as Room;
-        } catch (error) {
-            const err = error as ErrorResponse;
-            throw new HttpException(
-              err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-              err.message || "Error removing amenities"
-            );
-          }
-        };
+export const removeAmenitiesFromRoom = async (
+  roomId: string,
+  amenitiesIds: string[]
+) => {
+  try {
+    // Check if the room exists
+    const room = await prisma.room.findUnique({
+      where: { id: roomId },
+      include: { Amenities: true }, // Include current amenities of the room
+    });
+
+    if (!room) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Room not found");
+    }
+
+    // Fetch amenities to be removed
+    const amenitiesToRemove = await prisma.amenities.findMany({
+      where: { id: { in: amenitiesIds } },
+    });
+
+    // Calculate the total price of the amenities to be removed
+    const totalAmenitiesPrice = amenitiesToRemove.reduce(
+      (total, amenity) => total + amenity.price,
+      0
+    );
+
+    // Update the room price and disconnect the amenities
+    const updatedRoom = await prisma.room.update({
+      where: { id: roomId },
+      data: {
+        price: room.price - totalAmenitiesPrice,
+        Amenities: {
+          disconnect: amenitiesIds.map((id: string) => ({ id })),
+        },
+      },
+    });
+
+    return updatedRoom;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error removing amenities"
+    );
+  }
+};
