@@ -7,7 +7,7 @@ import { HttpStatus } from "./http-status";
 // Define the payload to handle both students and tutors
 export interface UserPayload {
   id: string;
-  role: 'ADMIN' | 'STAFF';
+  role: 'ADMIN' | 'SUPER_ADMIN';
   
 }
 
@@ -29,24 +29,29 @@ export const authenticateJWT = (
   const authHeader = req.header("Authorization");
   const token = authHeader?.split(" ")[1];
 
-  if (token) {
-    jwt.verify(token, process.env.JWT_SECRET as string, (err, decoded) => {
-      if (err) {
-        return next(
-          new HttpException(HttpStatus.FORBIDDEN, "Invalid token")
-        );
-      }
-      // Attach the user to the request based on role
-      if (decoded && (decoded as UserPayload).role === "ADMIN") {
-        req.user = decoded as UserPayload;
-      } else if (decoded && (decoded as UserPayload).role === "STAFF") {
-        req.user = decoded as UserPayload;
-      }
-      next();
-    });
-  } else {
-    next(new HttpException(HttpStatus.FORBIDDEN, "No token found"));
+  if (!token) {
+    return next(new HttpException(HttpStatus.FORBIDDEN, "No token found"));
   }
+
+  jwt.verify(token, process.env.JWT_SECRET as string, (err, decoded) => {
+    if (err) {
+      return next(new HttpException(HttpStatus.FORBIDDEN, "Invalid token"));
+    }
+
+    if (decoded) {
+      const user = decoded as UserPayload;
+
+      // Add user to the request object
+      req.user = user;
+
+      // Optionally, add role-specific checks
+      if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+        return next(new HttpException(HttpStatus.FORBIDDEN, "Invalid role"));
+      }
+    }
+
+    next();  // Proceed to the next middleware or route handler
+  });
 };
 
 
