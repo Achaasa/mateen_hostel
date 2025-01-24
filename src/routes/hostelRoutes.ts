@@ -2,6 +2,7 @@ import { Router } from "express";
 import * as hostelController from "../controller/hostelController"; // Adjust the path as necessary
 import { validatePayload } from "../middleware/validate-payload"; // Assuming you have validation middleware
 import upload from "../utils/multer";
+import { verifyAndCreateHostelUser } from "../controller/userController";
 
 const hostelRoute = Router();
 
@@ -27,5 +28,10 @@ hostelRoute.put(
 
 // Delete a hostel by ID (DELETE request)
 hostelRoute.delete("/:id", hostelController.deleteHostelController);
+hostelRoute.post(
+  "/verify/:hostelId",
+
+  verifyAndCreateHostelUser
+);
 
 export default hostelRoute;

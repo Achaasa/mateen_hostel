@@ -86,7 +86,10 @@ export const deleteHostel = async (hostelId: string) => {
     if (!findHostel) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
     }
-    await cloudinary.uploader.destroy(findHostel.imageKey);
+    
+    if(findHostel.imageKey){
+      await cloudinary.uploader.destroy(findHostel.imageKey);  // Delete the existing image from cloudinary
+    }
     await prisma.hostel.delete({ where: { id: hostelId } });
   } catch (error) {
     const err = error as ErrorResponse;

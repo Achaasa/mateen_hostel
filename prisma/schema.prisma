@@ -28,6 +28,9 @@ model Hostel {
   Staffs      Staff[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  isVerifeid Boolean @default(false)
+  delFlag Boolean @default(false)
+
 }
 
 model Room {
@@ -37,7 +40,7 @@ model Room {
   floor  String
   maxCap Int
 
-  hostel      Hostel      @relation(fields: [hostelId], references: [id])
+  hostel      Hostel      @relation(fields: [hostelId], references: [id],onDelete: Cascade,onUpdate: Cascade)
   hostelId    String
   Amenities   Amenities[] @relation("RoomAmenities")
   Resident    Resident[]
@@ -49,13 +52,15 @@ model Room {
   updatedAt   DateTime    @updatedAt
   imageUrl    String
   imageKey    String
+  delFlag Boolean @default(false)
+
 }
 
 model Staff {
   id                String        @id @default(uuid())
   name              String
   role              StaffRole
-  hostel            Hostel        @relation(fields: [hostelId], references: [id])
+  hostel            Hostel        @relation(fields: [hostelId], references: [id],onDelete: Cascade,onUpdate: Cascade)
   hostelId          String
   firstName         String
   middleName        String?
@@ -75,6 +80,8 @@ model Staff {
   updatedAt         DateTime      @updatedAt
   passportUrl       String
   passportKey       String
+  delFlag Boolean @default(false)
+
 }
 
 model Amenities {
@@ -84,6 +91,8 @@ model Amenities {
   rooms     Room[]   @relation("RoomAmenities")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+
 }
 
 model Resident {
@@ -97,7 +106,7 @@ model Resident {
   emergencyContactPhone String
   relationship          String //relationship with emergency contact
 
-  room         Room      @relation(fields: [roomId], references: [id])
+  room         Room      @relation(fields: [roomId], references: [id],onDelete: Cascade,onUpdate: Cascade)
   roomId       String
   payments     Payment[]
   Visitor      Visitor[]
@@ -109,6 +118,8 @@ model Resident {
   amountPaid   Float     @default(0) // Total amount paid so far
   balanceOwed  Float? // Remaining balance, calculated in logic
   roomPrice    Float?
+  delFlag Boolean @default(false)
+
 }
 
 model Payment {
@@ -122,6 +133,8 @@ model Payment {
   reference  String   @unique // Paystack payment reference
   method     String?
   updatedAt  DateTime @updatedAt
+  delFlag Boolean @default(false)
+
 }
 
 model Visitor {
@@ -129,7 +142,7 @@ model Visitor {
   name       String
   email      String
   phone      String
-  resident   Resident      @relation(fields: [residentId], references: [id])
+  resident   Resident      @relation(fields: [residentId], references: [id],onDelete: Cascade,onUpdate: Cascade)
   residentId String
   timeIn     DateTime      @default(now())
   timeOut    DateTime?
@@ -146,6 +159,9 @@ model User {
   role        UserRole
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  imageUrl String
+  imageKey String
+  delFlag Boolean @default(false)
 }
 
 enum StaffRole {
@@ -157,7 +173,7 @@ enum StaffRole {
 
 enum UserRole {
   ADMIN
-  STAFF
+  SUPER_ADMIN
 }
 
 enum VisitorStatus {
