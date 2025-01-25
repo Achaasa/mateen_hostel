@@ -1,0 +1,257 @@
+[
+  {
+    "modelName": "erd",
+    "fields": [
+      "provider",
+      "Unnamed Field"
+    ]
+  },
+  {
+    "modelName": "client",
+    "fields": [
+      "provider"
+    ]
+  },
+  {
+    "modelName": "db",
+    "fields": [
+      "provider",
+      "url"
+    ]
+  },
+  {
+    "modelName": "Hostel",
+    "fields": [
+      "id",
+      "name",
+      "description",
+      "address",
+      "location",
+      "manager",
+      "email",
+      "phone",
+      "imageKey",
+      "imageUrl",
+      "ghCard",
+      "createdAt",
+      "updatedAt",
+      "isVerifeid"
+    ]
+  },
+  {
+    "modelName": "Room",
+    "fields": [
+      "id",
+      "number",
+      "block",
+      "floor",
+      "maxCap",
+      "hostelId",
+      "price",
+      "description",
+      "type",
+      "status",
+      "createdAt",
+      "updatedAt",
+      "imageUrl",
+      "imageKey"
+    ]
+  },
+  {
+    "modelName": "Staff",
+    "fields": [
+      "id",
+      "name",
+      "role",
+      "hostelId",
+      "firstName",
+      "middleName",
+      "lastName",
+      "dateOfBirth",
+      "nationality",
+      "gender",
+      "religion",
+      "maritalStatus",
+      "ghanaCardNumber",
+      "phoneNumber",
+      "email",
+      "residence",
+      "qualification",
+      "block",
+      "dateOfAppointment",
+      "updatedAt",
+      "passportUrl",
+      "passportKey"
+    ]
+  },
+  {
+    "modelName": "Amenities",
+    "fields": [
+      "id",
+      "name",
+      "price",
+      "createdAt",
+      "updatedAt"
+    ]
+  },
+  {
+    "modelName": "Resident",
+    "fields": [
+      "id",
+      "name",
+      "studentId",
+      "course",
+      "phone",
+      "email",
+      "emergencyContactName",
+      "emergencyContactPhone",
+      "relationship",
+      "roomId",
+      "gender",
+      "roomAssigned",
+      "createdAt",
+      "updatedAt",
+      "Unnamed Field",
+      "amountPaid",
+      "balanceOwed",
+      "roomPrice"
+    ]
+  },
+  {
+    "modelName": "Payment",
+    "fields": [
+      "id",
+      "amount",
+      "date",
+      "residentId",
+      "status",
+      "roomId",
+      "reference",
+      "method",
+      "updatedAt"
+    ]
+  },
+  {
+    "modelName": "Visitor",
+    "fields": [
+      "id",
+      "name",
+      "email",
+      "phone",
+      "residentId",
+      "timeIn",
+      "timeOut",
+      "status",
+      "updatedAt"
+    ]
+  },
+  {
+    "modelName": "User",
+    "fields": [
+      "id",
+      "name",
+      "email",
+      "password",
+      "phoneNumber",
+      "role",
+      "createdAt",
+      "updatedAt",
+      "imageUrl",
+      "imageKey"
+    ]
+  },
+  {
+    "modelName": "StaffRole",
+    "fields": [
+      "HOSTEL_ADMIN",
+      "ROOM_ADMIN",
+      "RESIDENT",
+      "VISITOR"
+    ]
+  },
+  {
+    "modelName": "UserRole",
+    "fields": [
+      "ADMIN",
+      "SUPER_ADMIN"
+    ]
+  },
+  {
+    "modelName": "VisitorStatus",
+    "fields": [
+      "ACTIVE",
+      "CHECKED_OUT"
+    ]
+  },
+  {
+    "modelName": "PaymentStatus",
+    "fields": [
+      "PENDING",
+      "CONFIRMED",
+      "CANCELLED"
+    ]
+  },
+  {
+    "modelName": "Location",
+    "fields": [
+      "KUMASI",
+      "ACCRA",
+      "SUNYANI"
+    ]
+  },
+  {
+    "modelName": "RoomStatus",
+    "fields": [
+      "AVAILABLE",
+      "OCCUPIED",
+      "MAINTENANCE"
+    ]
+  },
+  {
+    "modelName": "RoomType",
+    "fields": [
+      "SINGLE",
+      "DOUBLE",
+      "SUITE",
+      "QUAD"
+    ]
+  },
+  {
+    "modelName": "Gender",
+    "fields": [
+      "MALE",
+      "FEMALE",
+      "OTHER"
+    ]
+  },
+  {
+    "modelName": "paymentMethod",
+    "fields": [
+      "CASH",
+      "CARD",
+      "BANK",
+      "MOMO",
+      "USSD",
+      "QR_CODE",
+      "VISA",
+      "MASTER_CARD",
+      "ONLINE"
+    ]
+  },
+  {
+    "modelName": "StaffStatus",
+    "fields": [
+      "ACTIVE",
+      "INACTIVE"
+    ]
+  },
+  {
+    "modelName": "MaritalStatus",
+    "fields": [
+      "SINGLE",
+      "MARRIED",
+      "DIVORCED",
+      "WIDOWED"
+    ]
+  }
+]
