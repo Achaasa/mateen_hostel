@@ -7,16 +7,16 @@ const visitorRouter = Router();
 visitorRouter.post("/add", visitorController.addVisitorController);
 
 // Get all visitors
-visitorRouter.get("/", visitorController.getAllVisitorsController);
+visitorRouter.get("/get", visitorController.getAllVisitorsController);
 
 // Get a visitor by ID
-visitorRouter.get("/:id", visitorController.getVisitorByIdController);
+visitorRouter.get("/get/:id", visitorController.getVisitorByIdController);
 
 // Update a visitor's details
 visitorRouter.put("/update/:id", visitorController.updateVisitorController);
 
 // Delete a visitor
-visitorRouter.delete("/:id", visitorController.deleteVisitorController);
+visitorRouter.delete("/delete/:id", visitorController.deleteVisitorController);
 
 // Checkout a visitor
 visitorRouter.put(

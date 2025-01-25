@@ -11,6 +11,9 @@ import { generateOtp, sendOtpEmail } from "../utils/otpSender";
 import { compare } from "../utils/bcrypt";
 import { setInvalidToken, signToken, UserPayload } from "../utils/jsonwebtoken";
 import { jwtDecode } from "jwt-decode";
+import jwt from "jsonwebtoken";
+import fs from "fs";
+import path from "path";
 
 // User registration function
 export const signUpUser = async (
@@ -213,7 +216,9 @@ export const userLogIn = async (
   try {
     const { email, password } = req.body;
     const authHeader = req.header("Authorization");
-    const token = authHeader?.split(" ")[1]; // Extract token from Authorization header
+    console.log("Authorization header:", authHeader);
+    const token = authHeader?.split(" ")[1]?.trim();
+    // Extract token from Authorization header
 
     if (token) {
       try {
@@ -228,7 +233,7 @@ export const userLogIn = async (
             // Token is valid, send successful response
             res.status(HttpStatus.OK).json({
               message: "success logging in",
-              tutorId: user.id,
+              userId: user.id,
               token,
             });
           } else {
@@ -262,13 +267,14 @@ export const userLogIn = async (
     }
 
     // Generate a new JWT token for the user
-    const sign = signToken({ id: user.id, role: user.role });
+    console.log("Login - User ID:", user.id);
+    const newToken = signToken({ id: user.id, role: user.role });
 
     // Successful login, return the user ID and new token
     res.status(HttpStatus.OK).json({
       userId: user.id,
       message: "login successful",
-      sign,
+      token: newToken,
     });
   } catch (error) {
     const err = error as ErrorResponse;
@@ -280,8 +286,6 @@ export const userLogIn = async (
     );
   }
 };
-
-// Verify OTP for login
 
 // Get user profile
 export const getUserProfile = async (
@@ -296,7 +300,8 @@ export const getUserProfile = async (
     const decoded = jwtDecode(token) as UserPayload;
     const user = await userHelper.getUserById(decoded?.id);
     if (user) {
-      res.status(HttpStatus.OK).json({ user });
+      const {password,...restofUser}=user
+      res.status(HttpStatus.OK).json({ restofUser });
     } else {
       res.status(HttpStatus.NOT_FOUND).json({ message: "User not found" });
     }
@@ -304,6 +309,7 @@ export const getUserProfile = async (
     res.status(HttpStatus.FORBIDDEN).json({ message: "No token found" });
   }
 };
+
 
 // User logout function
 export const logout = async (

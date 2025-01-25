@@ -65,6 +65,10 @@ export const getUsers = async () => {
 export const getUserById = async (id: string) => {
   try {
     const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "User not found.");
+    }
+    
     return user;
   } catch (error) {
     const err = error as ErrorResponse;

@@ -6,6 +6,7 @@ import amenitiesRoute from "./amenitiesRoute";
 import paymentRouter from "./paymentRoutes";
 import residentRouter from "./residentRouter";
 import StaffRouter from "./staffRoutes";
+import userRouter from "./userRoutes";
 
 const mainRouter = Router();
 
@@ -16,4 +17,5 @@ mainRouter.use("/amenities", amenitiesRoute);
 mainRouter.use("/payments",paymentRouter)
 mainRouter.use("/residents",residentRouter)
 mainRouter.use("/staffs",StaffRouter)
+mainRouter.use("/users",userRouter)
 export default mainRouter;

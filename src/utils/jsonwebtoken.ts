@@ -1,25 +1,22 @@
 import { Request, Response, NextFunction } from "express";
-import jwt  from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import HttpException from "./http-error";
 import { HttpStatus } from "./http-status";
-
+import { UserRole } from "@prisma/client";
 
 // Define the payload to handle both students and tutors
 export interface UserPayload {
   id: string;
-  role: 'ADMIN' | 'SUPER_ADMIN';
-  
+  role: UserRole;
 }
 
 declare global {
   namespace Express {
     interface Request {
-      user:UserPayload;   
+      user: UserPayload;
     }
   }
 }
-
-
 
 export const authenticateJWT = (
   req: Request,
@@ -40,22 +37,15 @@ export const authenticateJWT = (
 
     if (decoded) {
       const user = decoded as UserPayload;
-
       // Add user to the request object
       req.user = user;
-
-      // Optionally, add role-specific checks
-      if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
-        return next(new HttpException(HttpStatus.FORBIDDEN, "Invalid role"));
-      }
     }
 
-    next();  // Proceed to the next middleware or route handler
+    next(); // Proceed to the next middleware or route handler
   });
 };
 
-
-// Function to sign a JWT token with the student payload
+// Function to sign a JWT token with the user payload
 export const signToken = (payload: UserPayload): string => {
   if (!process.env.JWT_SECRET || !process.env.JWT_EXPIRES_IN) {
     throw new HttpException(
@@ -67,10 +57,6 @@ export const signToken = (payload: UserPayload): string => {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 };
-
-
-
-
 
 // Function to create a short-lived invalid token
 export const setInvalidToken = (): string => {
@@ -85,11 +71,10 @@ export const setInvalidToken = (): string => {
   });
 };
 
-
 export const authorizeRole = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const user = req.user 
-    
+    const user = req.user;
+
     if (!user || !allowedRoles.includes(user.role)) {
       return next(new HttpException(HttpStatus.FORBIDDEN, "Access denied"));
     }

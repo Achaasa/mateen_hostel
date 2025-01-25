@@ -13,10 +13,10 @@ StaffRouter.post(
 );
 
 // Get all Staffs (GET request)
-StaffRouter.get("/", StaffController.getAllStaffsController);
+StaffRouter.get("/get", StaffController.getAllStaffsController);
 
 // Get a specific Staff by ID (GET request)
-StaffRouter.get("/:id", StaffController.getStaffByIdController);
+StaffRouter.get("/get/:id", StaffController.getStaffByIdController);
 
 // Update a Staff by ID (PUT request)
 StaffRouter.put(
@@ -26,6 +26,6 @@ StaffRouter.put(
 );
 
 // Delete a Staff by ID (DELETE request)
-StaffRouter.delete("/:id", StaffController.deleteStaffController);
+StaffRouter.delete("/delete/:id", StaffController.deleteStaffController);
 
 export default StaffRouter;

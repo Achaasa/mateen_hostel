@@ -17,10 +17,10 @@ residentRouter.get("/debtors", getAlldebtors);
 
 residentRouter.post("/register", registerResidentController);
 
-residentRouter.get("/", getAllResidentsController);
+residentRouter.get("/get", getAllResidentsController);
 
 
- residentRouter.get("/:id", getResidentByIdController);
+ residentRouter.get("/get/:id", getResidentByIdController);
 
 
  residentRouter.get("/email/:email", getResidentByEmailController);
@@ -29,7 +29,7 @@ residentRouter.get("/", getAllResidentsController);
  residentRouter.put("/update/:id", updateResidentController);
 
 
-residentRouter.delete("/:id", deleteResidentController);
+residentRouter.delete("/delete/:id", deleteResidentController);
 
 // Catch-all route at the end
 residentRouter.get("*", (req, res) => {
