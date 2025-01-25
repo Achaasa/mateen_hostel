@@ -35,7 +35,8 @@
       "ghCard",
       "createdAt",
       "updatedAt",
-      "isVerifeid"
+      "isVerifeid",
+      "delFlag"
     ]
   },
   {
@@ -54,7 +55,8 @@
       "createdAt",
       "updatedAt",
       "imageUrl",
-      "imageKey"
+      "imageKey",
+      "delFlag"
     ]
   },
   {
@@ -81,7 +83,8 @@
       "dateOfAppointment",
       "updatedAt",
       "passportUrl",
-      "passportKey"
+      "passportKey",
+      "delFlag"
     ]
   },
   {
@@ -114,7 +117,8 @@
       "Unnamed Field",
       "amountPaid",
       "balanceOwed",
-      "roomPrice"
+      "roomPrice",
+      "delFlag"
     ]
   },
   {
@@ -128,7 +132,8 @@
       "roomId",
       "reference",
       "method",
-      "updatedAt"
+      "updatedAt",
+      "delFlag"
     ]
   },
   {
@@ -157,7 +162,8 @@
       "createdAt",
       "updatedAt",
       "imageUrl",
-      "imageKey"
+      "imageKey",
+      "delFlag"
     ]
   },
   {

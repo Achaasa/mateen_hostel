@@ -2,7 +2,7 @@
 CREATE TYPE "StaffRole" AS ENUM ('HOSTEL_ADMIN', 'ROOM_ADMIN', 'RESIDENT', 'VISITOR');
 
 -- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'STAFF');
+CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'SUPER_ADMIN');
 
 -- CreateEnum
 CREATE TYPE "VisitorStatus" AS ENUM ('ACTIVE', 'CHECKED_OUT');
@@ -46,6 +46,8 @@ CREATE TABLE "Hostel" (
     "ghCard" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "isVerifeid" BOOLEAN NOT NULL DEFAULT false,
+    "delFlag" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Hostel_pkey" PRIMARY KEY ("id")
 );
@@ -66,6 +68,7 @@ CREATE TABLE "Room" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "imageUrl" TEXT NOT NULL,
     "imageKey" TEXT NOT NULL,
+    "delFlag" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Room_pkey" PRIMARY KEY ("id")
 );
@@ -94,6 +97,7 @@ CREATE TABLE "Staff" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "passportUrl" TEXT NOT NULL,
     "passportKey" TEXT NOT NULL,
+    "delFlag" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Staff_pkey" PRIMARY KEY ("id")
 );
@@ -128,6 +132,7 @@ CREATE TABLE "Resident" (
     "amountPaid" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "balanceOwed" DOUBLE PRECISION,
     "roomPrice" DOUBLE PRECISION,
+    "delFlag" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Resident_pkey" PRIMARY KEY ("id")
 );
@@ -143,6 +148,7 @@ CREATE TABLE "Payment" (
     "reference" TEXT NOT NULL,
     "method" TEXT,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "delFlag" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
 );
@@ -172,6 +178,9 @@ CREATE TABLE "User" (
     "role" "UserRole" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "imageUrl" TEXT NOT NULL,
+    "imageKey" TEXT NOT NULL,
+    "delFlag" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -204,19 +213,19 @@ CREATE UNIQUE INDEX "_RoomAmenities_AB_unique" ON "_RoomAmenities"("A", "B");
 CREATE INDEX "_RoomAmenities_B_index" ON "_RoomAmenities"("B");
 
 -- AddForeignKey
-ALTER TABLE "Room" ADD CONSTRAINT "Room_hostelId_fkey" FOREIGN KEY ("hostelId") REFERENCES "Hostel"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Room" ADD CONSTRAINT "Room_hostelId_fkey" FOREIGN KEY ("hostelId") REFERENCES "Hostel"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Staff" ADD CONSTRAINT "Staff_hostelId_fkey" FOREIGN KEY ("hostelId") REFERENCES "Hostel"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Staff" ADD CONSTRAINT "Staff_hostelId_fkey" FOREIGN KEY ("hostelId") REFERENCES "Hostel"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Resident" ADD CONSTRAINT "Resident_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "Room"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Resident" ADD CONSTRAINT "Resident_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "Room"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Payment" ADD CONSTRAINT "Payment_residentId_fkey" FOREIGN KEY ("residentId") REFERENCES "Resident"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Visitor" ADD CONSTRAINT "Visitor_residentId_fkey" FOREIGN KEY ("residentId") REFERENCES "Resident"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Visitor" ADD CONSTRAINT "Visitor_residentId_fkey" FOREIGN KEY ("residentId") REFERENCES "Resident"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_RoomAmenities" ADD CONSTRAINT "_RoomAmenities_A_fkey" FOREIGN KEY ("A") REFERENCES "Amenities"("id") ON DELETE CASCADE ON UPDATE CASCADE;
