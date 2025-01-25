@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // Enum for user roles
-export const userRoleEnum = z.enum(["ADMIN", "STAFF"]);
+export const userRoleEnum = z.enum(["ADMIN", "SUPER_ADMIN"]);
 
 // Schema to create a new user
 export const userSchema = z.object({

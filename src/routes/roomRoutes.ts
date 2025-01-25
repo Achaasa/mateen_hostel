@@ -4,10 +4,10 @@ import * as roomController from "../controller/roomController"; // Assuming your
 const roomRouter = Router();
 
 // Get all rooms
-roomRouter.get("/", roomController.getAllRoomsController);
+roomRouter.get("/get", roomController.getAllRoomsController);
 
 // Get a room by ID
-roomRouter.get("/:id", roomController.getRoomByIdController);
+roomRouter.get("/get/:id", roomController.getRoomByIdController);
 
 // Create a new room
 roomRouter.post("/add", roomController.addRoomController);
@@ -16,7 +16,7 @@ roomRouter.post("/add", roomController.addRoomController);
 roomRouter.put("/update/:id", roomController.updateRoomController);
 
 // Delete a room
-roomRouter.delete("/:id", roomController.deleteRoomController);
+roomRouter.delete("/delete/:id", roomController.deleteRoomController);
 
 // Get available rooms
 roomRouter.get("/available", roomController.getAvailableRoomsController);

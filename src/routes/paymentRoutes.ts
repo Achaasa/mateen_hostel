@@ -13,7 +13,7 @@ const paymentRouter = Router();
 
 paymentRouter.post("/init/", initiatePayment);
 paymentRouter.get("/confirm", handlePaymentConfirmation);
-paymentRouter.get("/",getAllPaymentController)
+paymentRouter.get("/get",getAllPaymentController)
 paymentRouter.post("/topup", initializeTopUpPaymentControler);
 paymentRouter.post("/topup/confirm", TopUpPaymentController);
 export default paymentRouter;

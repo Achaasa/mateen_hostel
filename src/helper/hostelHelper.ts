@@ -156,3 +156,18 @@ export const updateHostel = async (
     );
   }
 };
+
+
+export const getUnverifiedHostel=async()=>{
+  try {
+    const unverifiedHostel= await prisma.hostel.findMany({where:{isVerifeid:false}})
+    return unverifiedHostel;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error fetching unverified hostel"
+    );
+  }
+};
+

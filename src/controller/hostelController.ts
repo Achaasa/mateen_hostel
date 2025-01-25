@@ -37,7 +37,7 @@ export const addHostelController = async (req: Request, res: Response) => {
   } catch (error) {
     const err = error as HttpException;
     res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message 
+      message: err.message,
     });
   }
 };
@@ -87,7 +87,7 @@ export const updateHostelController = async (req: Request, res: Response) => {
     imageUrl: "",
     imageKey: "",
   };
-  console.log(hostelData)
+  console.log(hostelData);
   try {
     if (photo) {
       const uploaded = await cloudinary.uploader.upload(photo, {
@@ -126,6 +126,21 @@ export const deleteHostelController = async (req: Request, res: Response) => {
 
     res.status(HttpStatus.OK).json({
       message: "Hostel deleted successfully",
+    });
+  } catch (error) {
+    const err = error as HttpException;
+    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
+      message: err.message || "Error deleting hostel",
+    });
+  }
+};
+
+export const unverifiedHostel = async (req: Request, res: Response) => {
+  try {
+    const hostels = await hostelHelper.getUnverifiedHostel();
+    res.status(HttpStatus.OK).json({
+      message: "Hostels fetched successfully",
+      data: hostels,
     });
   } catch (error) {
     const err = error as HttpException;
