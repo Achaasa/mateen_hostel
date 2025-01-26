@@ -63,7 +63,6 @@
     "modelName": "Staff",
     "fields": [
       "id",
-      "name",
       "role",
       "hostelId",
       "firstName",
@@ -72,10 +71,10 @@
       "dateOfBirth",
       "nationality",
       "gender",
-      "religion",
       "maritalStatus",
       "ghanaCardNumber",
       "phoneNumber",
+      "religion",
       "email",
       "residence",
       "qualification",
@@ -169,10 +168,18 @@
   {
     "modelName": "StaffRole",
     "fields": [
-      "HOSTEL_ADMIN",
-      "ROOM_ADMIN",
-      "RESIDENT",
-      "VISITOR"
+      "HOSTEL_MANAGER",
+      "WARDEN",
+      "CHIEF_WADEN"
+    ]
+  },
+  {
+    "modelName": "StaffQulification",
+    "fields": [
+      "BECE",
+      "WASCE",
+      "TVET",
+      "BSC"
     ]
   },
   {
@@ -203,6 +210,14 @@
       "KUMASI",
       "ACCRA",
       "SUNYANI"
+    ]
+  },
+  {
+    "modelName": "Religion",
+    "fields": [
+      "CHRISTIAN",
+      "MUSLIM",
+      "TRADITIONALIST"
     ]
   },
   {
