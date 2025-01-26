@@ -28,9 +28,8 @@ model Hostel {
   Staffs      Staff[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  isVerifeid Boolean @default(false)
-  delFlag Boolean @default(false)
-
+  isVerifeid  Boolean  @default(false)
+  delFlag     Boolean  @default(false)
 }
 
 model Room {
@@ -40,7 +39,7 @@ model Room {
   floor  String
   maxCap Int
 
-  hostel      Hostel      @relation(fields: [hostelId], references: [id],onDelete: Cascade,onUpdate: Cascade)
+  hostel      Hostel      @relation(fields: [hostelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   hostelId    String
   Amenities   Amenities[] @relation("RoomAmenities")
   Resident    Resident[]
@@ -52,15 +51,13 @@ model Room {
   updatedAt   DateTime    @updatedAt
   imageUrl    String
   imageKey    String
-  delFlag Boolean @default(false)
-
+  delFlag     Boolean     @default(false)
 }
 
 model Staff {
   id                String        @id @default(uuid())
-  name              String
   role              StaffRole
-  hostel            Hostel        @relation(fields: [hostelId], references: [id],onDelete: Cascade,onUpdate: Cascade)
+  hostel            Hostel        @relation(fields: [hostelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   hostelId          String
   firstName         String
   middleName        String?
@@ -68,10 +65,10 @@ model Staff {
   dateOfBirth       DateTime
   nationality       String
   gender            Gender
-  religion          String
   maritalStatus     MaritalStatus
   ghanaCardNumber   String
   phoneNumber       String
+  religion          Religion
   email             String        @unique
   residence         String
   qualification     String
@@ -80,8 +77,7 @@ model Staff {
   updatedAt         DateTime      @updatedAt
   passportUrl       String
   passportKey       String
-  delFlag Boolean @default(false)
-
+  delFlag           Boolean       @default(false)
 }
 
 model Amenities {
@@ -91,8 +87,6 @@ model Amenities {
   rooms     Room[]   @relation("RoomAmenities")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-
 }
 
 model Resident {
@@ -106,7 +100,7 @@ model Resident {
   emergencyContactPhone String
   relationship          String //relationship with emergency contact
 
-  room         Room      @relation(fields: [roomId], references: [id],onDelete: Cascade,onUpdate: Cascade)
+  room         Room      @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   roomId       String
   payments     Payment[]
   Visitor      Visitor[]
@@ -118,8 +112,7 @@ model Resident {
   amountPaid   Float     @default(0) // Total amount paid so far
   balanceOwed  Float? // Remaining balance, calculated in logic
   roomPrice    Float?
-  delFlag Boolean @default(false)
-
+  delFlag      Boolean   @default(false)
 }
 
 model Payment {
@@ -133,8 +126,7 @@ model Payment {
   reference  String   @unique // Paystack payment reference
   method     String?
   updatedAt  DateTime @updatedAt
-  delFlag Boolean @default(false)
-
+  delFlag    Boolean  @default(false)
 }
 
 model Visitor {
@@ -142,7 +134,7 @@ model Visitor {
   name       String
   email      String
   phone      String
-  resident   Resident      @relation(fields: [residentId], references: [id],onDelete: Cascade,onUpdate: Cascade)
+  resident   Resident      @relation(fields: [residentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   residentId String
   timeIn     DateTime      @default(now())
   timeOut    DateTime?
@@ -159,16 +151,22 @@ model User {
   role        UserRole
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  imageUrl String
-  imageKey String
-  delFlag Boolean @default(false)
+  imageUrl    String
+  imageKey    String
+  delFlag     Boolean  @default(false)
 }
 
 enum StaffRole {
-  HOSTEL_ADMIN
-  ROOM_ADMIN
-  RESIDENT
-  VISITOR
+  HOSTEL_MANAGER
+  WARDEN
+  CHIEF_WADEN
+}
+
+enum StaffQulification {
+  BECE
+  WASCE
+  TVET
+  BSC
 }
 
 enum UserRole {
@@ -191,6 +189,12 @@ enum Location {
   KUMASI
   ACCRA
   SUNYANI
+}
+
+enum Religion {
+  CHRISTIAN
+  MUSLIM
+  TRADITIONALIST
 }
 
 enum RoomStatus {

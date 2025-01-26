@@ -173,9 +173,10 @@ export const verifyAndcreateHostelUser = async (hostelId: string) => {
     // 2. Check if the hostel manager email already exists
     const { email, isVerifeid } = hostel;
     const findUser = await prisma.user.findUnique({ where: { email } });
-    if (findUser && isVerifeid) {
-      throw new HttpException(HttpStatus.CONFLICT, "Email already exists");
+    if (findUser || isVerifeid) {
+      throw new HttpException(HttpStatus.CONFLICT, "Email already exists or is verified");
     }
+    
     const verifyHostel = await prisma.hostel.update({
       where: { id: hostelId },
       data: { isVerifeid: true },

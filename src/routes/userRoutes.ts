@@ -25,7 +25,7 @@ userRouter.post(
 );
 
 // Get all users
-userRouter.get("get/", getAllUsers); // Only accessible by admin
+userRouter.get("/get", getAllUsers); // Only accessible by admin
 
 // Get user by email
 userRouter.get("/email", authenticateJWT, getUserByEmail);
