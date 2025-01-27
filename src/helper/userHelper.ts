@@ -127,7 +127,7 @@ export const updateUser = async (
       throw new HttpException(HttpStatus.NOT_FOUND, "User not found");
     }
 
-    if (picture) {
+    if (picture && picture.imageKey && picture.imageUrl) {
       // Delete the existing photo from Cloudinary if it exists
       if (findUser.imageKey) {
         await cloudinary.uploader.destroy(findUser.imageKey);
