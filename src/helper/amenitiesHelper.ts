@@ -9,10 +9,7 @@ import {
 } from "../zodSchema/amenitiesSchema"; // Assuming you have Zod schemas for validation
 
 // Add an Amenity
-export const addAmenity = async (amenityData: {
-  name: string;
-  price: number;
-}): Promise<Amenities> => {
+export const addAmenity = async (amenityData: Amenities) => {
   try {
     // Validate the amenity data using the schema
     const validateAmenity = amenitiesSchema.safeParse(amenityData);
@@ -84,8 +81,8 @@ export const getAmenityById = async (amenityId: string): Promise<Amenities> => {
 // Update an Amenity
 export const updateAmenity = async (
   amenityId: string,
-  amenityData: { name: string; price: number }
-): Promise<Amenities> => {
+  amenityData: Partial<Amenities>
+) => {
   try {
     // Validate the amenity data using the schema
     const validateAmenity = updateAmenitiesSchema.safeParse(amenityData);

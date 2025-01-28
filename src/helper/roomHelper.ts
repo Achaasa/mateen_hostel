@@ -4,12 +4,15 @@ import { HttpStatus } from "../utils/http-status";
 import { Room, Amenities } from "@prisma/client";
 import { ErrorResponse } from "../utils/types";
 import cloudinary from "../utils/cloudinary";
+import formatPrismaError from "../utils/prismaError";
 
 export const getAllRooms = async () => {
   try {
     const rooms = await prisma.room.findMany({
       include: {
         Amenities: true, // Include the amenities in the response
+        RoomImage: true,
+        Resident: true,
       },
     });
     return rooms;
@@ -22,32 +25,30 @@ export const getAllRooms = async () => {
   }
 };
 
-export const updateRoom = async (roomId: string, roomData: Partial<Room>,picture?: { imageUrl: string; imageKey: string }) => {
+export const updateRoom = async (
+  roomId: string,
+  roomData: Partial<Room>,
+  pictures: { imageUrl: string; imageKey: string }[]
+) => {
   try {
-    const room= await prisma.room.findUnique({where:{id:roomId}})
-    if(!room){
-      throw new HttpException(HttpStatus.NOT_FOUND, "Room not found")
+    const room = await prisma.room.findUnique({ where: { id: roomId } });
+    if (!room) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Room not found");
     }
-    let updatedRoomData = { ...roomData }; 
-    if (picture && picture.imageUrl && picture.imageKey) {
-      if (room.imageKey) {
-        // Remove old image from cloud storage
-        await cloudinary.uploader.destroy(room.imageKey);
-      }
-      // Update the room data with new image details
-      updatedRoomData = {
-        ...updatedRoomData,
-        imageUrl: picture.imageUrl,
-        imageKey: picture.imageKey,
-      };
-    }
+    let updatedRoomData = { ...roomData };
+
     const updatedRoom = await prisma.room.update({
       where: { id: roomId },
-      data: 
-        updatedRoomData
-      
+      data: updatedRoomData,
     });
-
+    if (pictures.length > 0) {
+      const roomImages = pictures?.map((picture) => ({
+        imageUrl: picture.imageUrl,
+        imageKey: picture.imageKey,
+        roomId: roomId,
+      }));
+      await prisma.roomImage.createMany({ data: roomImages });
+    }
     return updatedRoom;
   } catch (error) {
     const err = error as ErrorResponse;
@@ -89,6 +90,8 @@ export const getRoomById = async (roomId: string) => {
       where: { id: roomId },
       include: {
         Amenities: true, // Include the amenities for the room
+        RoomImage: true, // Include the room images for the room
+        Resident: true,
       },
     });
 
@@ -106,7 +109,12 @@ export const getRoomById = async (roomId: string) => {
   }
 };
 
-export const createRoom = async (roomData: Room,picture: { imageUrl: string; imageKey: string }, amenitiesIds?: string[],) => {
+export const createRoom = async (
+  roomData: Room,
+  pictures: { imageUrl: string; imageKey: string }[],
+  amenitiesIds?: string[]
+) => {
+  console.log(roomData);
   try {
     // Calculate total price if amenities are provided
     let totalPrice = roomData.price;
@@ -131,7 +139,7 @@ export const createRoom = async (roomData: Room,picture: { imageUrl: string; ima
 
       // Sum up the prices of the selected amenities
       const totalAmenitiesPrice = amenities.reduce(
-        (total, amenity) => total + amenity.price,
+        (total, amenity) => total + parseFloat(amenity.price.toString()),
         0
       );
       totalPrice += totalAmenitiesPrice;
@@ -149,8 +157,6 @@ export const createRoom = async (roomData: Room,picture: { imageUrl: string; ima
         description: roomData.description,
         type: roomData.type,
         status: roomData.status,
-        imageKey: picture.imageKey,
-        imageUrl: picture.imageUrl,
         Amenities: amenitiesIds?.length
           ? {
               connect: amenitiesIds.map((id) => ({ id })),
@@ -159,6 +165,12 @@ export const createRoom = async (roomData: Room,picture: { imageUrl: string; ima
       },
     });
 
+    const roomImages = pictures.map((picture) => ({
+      imageUrl: picture.imageUrl,
+      imageKey: picture.imageKey,
+      roomId: newRoom.id,
+    }));
+    await prisma.roomImage.createMany({ data: roomImages });
     return newRoom;
   } catch (error) {
     const err = error as ErrorResponse;
@@ -178,6 +190,8 @@ export const getAvailableRooms = async () => {
       },
       include: {
         Amenities: true, // Include related amenities if needed
+        RoomImage: true,
+        Resident: true,
       },
     });
 

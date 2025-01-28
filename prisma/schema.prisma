@@ -13,28 +13,29 @@ datasource db {
 }
 
 model Hostel {
-  id          String   @id @default(uuid())
+  id          String      @id @default(uuid())
   name        String
   description String?
   address     String
   location    String
   manager     String
-  email       String   @unique
+  email       String      @unique
   phone       String
   imageKey    String
   imageUrl    String
   ghCard      String
   Rooms       Room[]
   Staffs      Staff[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  isVerifeid  Boolean  @default(false)
-  delFlag     Boolean  @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  isVerifeid  Boolean     @default(false)
+  delFlag     Boolean     @default(false)
+  Amenities   Amenities[]
 }
 
 model Room {
   id     String @id @default(uuid())
-  number Int
+  number String
   block  String
   floor  String
   maxCap Int
@@ -49,9 +50,9 @@ model Room {
   status      RoomStatus
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
-  imageUrl    String
-  imageKey    String
-  delFlag     Boolean     @default(false)
+
+  delFlag   Boolean     @default(false)
+  RoomImage RoomImage[]
 }
 
 model Staff {
@@ -87,6 +88,8 @@ model Amenities {
   rooms     Room[]   @relation("RoomAmenities")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  hostelId  String
+  hostel    Hostel   @relation(fields: [hostelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 }
 
 model Resident {
@@ -154,6 +157,17 @@ model User {
   imageUrl    String
   imageKey    String
   delFlag     Boolean  @default(false)
+}
+
+model RoomImage {
+  id        String   @id @default(uuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id])
+  imageUrl  String
+  imageKey  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  delFlag   Boolean  @default(false)
 }
 
 enum StaffRole {
