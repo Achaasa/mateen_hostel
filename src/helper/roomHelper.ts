@@ -114,7 +114,7 @@ export const createRoom = async (
   pictures: { imageUrl: string; imageKey: string }[],
   amenitiesIds?: string[]
 ) => {
-  console.log(roomData);
+ 
   try {
     // Calculate total price if amenities are provided
     let totalPrice = roomData.price;
@@ -164,6 +164,9 @@ export const createRoom = async (
           : undefined, // Only connect amenities if provided
       },
     });
+    if(!newRoom){
+      throw new HttpException(HttpStatus.INTERNAL_SERVER_ERROR, "Error adding room");
+    }
 
     const roomImages = pictures.map((picture) => ({
       imageUrl: picture.imageUrl,
@@ -180,6 +183,7 @@ export const createRoom = async (
     );
   }
 };
+
 
 export const getAvailableRooms = async () => {
   try {
