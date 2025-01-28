@@ -7,27 +7,38 @@ import cloudinary from "../utils/cloudinary";
 
 // Add a Room
 export const addRoomController = async (req: Request, res: Response) => {
-  const roomData: Room = req.body; // Assuming you are sending the room data in the request body
+  const roomData: Room = {
+    ...req.body,
+    price: parseFloat(req.body.price),
+    maxCap: parseInt(req.body.maxCap),
+  }; // Assuming you are sending the room data in the request body
   const amenitiesIds: string[] = req.body.amenitiesIds; // List of amenities IDs associated with the room
-  const photo = req.file ? req.file.path : undefined;
-  const picture = {
-    imageUrl: "",
-    imageKey: "",
-  };
+  const photos = req.files ? req.files : undefined;
+  const pictures = [];
 
-  if (photo) {
-    const uploaded = await cloudinary.uploader.upload(photo, {
-      folder: "room/",
-    });
-    if (uploaded) {
-      picture.imageUrl = uploaded.secure_url;
-      picture.imageKey = uploaded.public_id;
+  if (photos && Array.isArray(photos) && photos.length) {
+    // Loop over the photos and upload each one to Cloudinary
+    for (const photo of photos) {
+      const uploaded = await cloudinary.uploader.upload(photo.path, {
+        folder: "rooms/",
+      });
+
+      if (uploaded) {
+        // Add image info (URL & Key) to the pictures array
+        pictures.push({
+          imageUrl: uploaded.secure_url,
+          imageKey: uploaded.public_id,
+        });
+      }
     }
+  } else {
+    // If no files are provided, return an error
+    throw new HttpException(HttpStatus.BAD_REQUEST, "No files uploaded.");
   }
   try {
     const newRoom = await roomHelper.createRoom(
       roomData,
-      picture,
+      pictures,
       amenitiesIds
     );
 
@@ -82,26 +93,41 @@ export const getRoomByIdController = async (req: Request, res: Response) => {
 // Update a Room
 export const updateRoomController = async (req: Request, res: Response) => {
   const { id } = req.params; // Room ID from the URL parameters
-  const roomData: Partial<Room> = req.body; // Room data to update
-  const amenitiesIds: string[] = req.body.amenitiesIds; // List of amenities IDs to associate with the room
-  const photo = req.file ? req.file.path : undefined;
-
-  const picture = {
-    imageUrl: "",
-    imageKey: "",
+  const roomData: Partial<Room> = {
+    ...req.body,
+    price: parseFloat(req.body.price),
+    maxCap: parseInt(req.body.maxCap),
   };
+  const amenitiesIds: string[] = req.body.amenitiesIds; // List of amenities IDs to associate with the room
+  const photos = req.files as Express.Multer.File[] | undefined;
+
+  const pictures = [];
 
   try {
-    if (photo) {
-      const uploaded = await cloudinary.uploader.upload(photo, {
-        folder: "room/",
-      });
-      if (uploaded) {
-        picture.imageUrl = uploaded.secure_url;
-        picture.imageKey = uploaded.public_id;
+    if (photos && photos.length > 0) {
+      // Loop over the photos and upload each one to Cloudinary
+      for (const photo of photos) {
+        const uploaded = await cloudinary.uploader.upload(photo.path, {
+          folder: "rooms/",
+        });
+
+        if (uploaded) {
+          // Add image info (URL & Key) to the pictures array
+          pictures.push({
+            imageUrl: uploaded.secure_url,
+            imageKey: uploaded.public_id,
+          });
+        }
       }
     }
-    const updatedRoom = await roomHelper.updateRoom(id, roomData, picture);
+    const room = await roomHelper.getRoomById(id);
+    if (room) {
+      for (const image of room.RoomImage) {
+        // Delete the existing image from Cloudinary
+        await cloudinary.uploader.destroy(image.imageKey);
+      }
+    }
+    const updatedRoom = await roomHelper.updateRoom(id, roomData, pictures);
 
     res.status(HttpStatus.OK).json({
       message: "Room updated successfully",

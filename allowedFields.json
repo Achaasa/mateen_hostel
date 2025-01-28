@@ -54,8 +54,6 @@
       "status",
       "createdAt",
       "updatedAt",
-      "imageUrl",
-      "imageKey",
       "delFlag"
     ]
   },
@@ -93,7 +91,8 @@
       "name",
       "price",
       "createdAt",
-      "updatedAt"
+      "updatedAt",
+      "hostelId"
     ]
   },
   {
@@ -162,6 +161,18 @@
       "updatedAt",
       "imageUrl",
       "imageKey",
+      "delFlag"
+    ]
+  },
+  {
+    "modelName": "RoomImage",
+    "fields": [
+      "id",
+      "roomId",
+      "imageUrl",
+      "imageKey",
+      "createdAt",
+      "updatedAt",
       "delFlag"
     ]
   },

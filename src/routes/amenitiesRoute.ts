@@ -12,10 +12,10 @@ amenitiesRoute.post(
 );
 
 // Get all amenities (GET request)
-amenitiesRoute.get("/", amenitiesController.getAllAmenitiesController);
+amenitiesRoute.get("/get", amenitiesController.getAllAmenitiesController);
 
 // Get a specific amenity by ID (GET request)
-amenitiesRoute.get("/:id", amenitiesController.getAmenityByIdController);
+amenitiesRoute.get("/get/:id", amenitiesController.getAmenityByIdController);
 
 // Update an amenity by ID (PUT request)
 amenitiesRoute.put(
@@ -25,6 +25,6 @@ amenitiesRoute.put(
 );
 
 // Delete an amenity by ID (DELETE request)
-amenitiesRoute.delete("/:id", amenitiesController.deleteAmenityController);
+amenitiesRoute.delete("/delete/:id", amenitiesController.deleteAmenityController);
 
 export default amenitiesRoute;
