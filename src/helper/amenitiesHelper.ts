@@ -19,6 +19,10 @@ export const addAmenity = async (amenityData: Amenities) => {
       );
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
+    const hostel=await prisma.hostel.findUnique({where:{id:amenityData.hostelId}})
+    if(!hostel){
+      throw new HttpException(HttpStatus.NOT_FOUND, "hostel does not exist")
+    }
 
     // Check if amenity already exists (if needed)
     const existingAmenity = await prisma.amenities.findFirst({
