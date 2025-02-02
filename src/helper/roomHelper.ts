@@ -307,7 +307,7 @@ export const getAllRoomsForHostel = async (hostelId: string) => {
     const rooms = await prisma.room.findMany({
       where: { hostelId },
     });
-    return rooms;
+    return rooms as Room[]
   } catch (error) {
     throw formatPrismaError(error);
   }

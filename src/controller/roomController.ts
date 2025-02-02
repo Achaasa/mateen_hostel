@@ -48,7 +48,7 @@ export const addRoomController = async (req: Request, res: Response) => {
       message: "Room created successfully",
       data: newRoom,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -63,7 +63,7 @@ export const getAllRoomsController = async (req: Request, res: Response) => {
       message: "Rooms fetched successfully",
       data: rooms,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -80,7 +80,7 @@ export const getRoomByIdController = async (req: Request, res: Response) => {
       message: "Room fetched successfully",
       data: room,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -123,12 +123,11 @@ export const updateRoomController = async (req: Request, res: Response) => {
       message: "Room updated successfully",
       data: updatedRoom,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
 };
-
 
 // Delete a Room
 export const deleteRoomController = async (req: Request, res: Response) => {
@@ -140,7 +139,7 @@ export const deleteRoomController = async (req: Request, res: Response) => {
     res.status(HttpStatus.OK).json({
       message: result.message,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -158,7 +157,7 @@ export const getAvailableRoomsController = async (
       message: "Available rooms fetched successfully",
       data: availableRooms,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -202,7 +201,7 @@ export const removeAmenitiesFromRoomController = async (
       message: "Amenities removed successfully",
       data: updatedRoom,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -215,12 +214,33 @@ export const roomsForHostel = async (
 ) => {
   const { hostelId } = req.params;
   try {
+    // Fetch all rooms for the given hostel
     const rooms = await roomHelper.getAllRoomsForHostel(hostelId);
-    res
-      .status(HttpStatus.OK)
-      .json({ message: "rooms fetch successfully", data: rooms });
-  }  catch (error) {
-    const err = formatPrismaError(error); // Ensure this function is used
+
+    // Group rooms by their status
+    const availableRooms = rooms.filter(
+      (room: any) => room.status === "AVAILABLE"
+    );
+    const occupiedRooms = rooms.filter(
+      (room: any) => room.status === "OCCUPIED"
+    );
+    const maintenanceRooms = rooms.filter(
+      (room: any) => room.status === "MAINTENANCE"
+    );
+
+    // Prepare the response with counts for each status
+    res.status(HttpStatus.OK).json({
+      message: "Rooms fetched successfully",
+      data: {
+        totalRooms: rooms.length, // Total number of rooms
+        availableRoomsCount: availableRooms.length, // Count of available rooms
+        occupiedRoomsCount: occupiedRooms.length, // Count of occupied rooms
+        maintenanceRoomsCount: maintenanceRooms.length, // Count of rooms under maintenance
+        rooms, // All room details
+      },
+    });
+  } catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used for proper error formatting
     res.status(err.status).json({ message: err.message });
   }
 };
