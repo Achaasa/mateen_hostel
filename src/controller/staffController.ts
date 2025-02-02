@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import * as StaffHelper from "../helper/staffHelper"; // Assuming you have your service functions in this file
 import { HttpStatus } from "../utils/http-status";
 import HttpException from "../utils/http-error";
@@ -61,10 +61,10 @@ export const getAllStaffsController = async (req: Request, res: Response) => {
 
 // Get Staff by ID
 export const getStaffByIdController = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { staffId } = req.params;
 
   try {
-    const Staff = await StaffHelper.getStaffById(id);
+    const Staff = await StaffHelper.getStaffById(staffId);
 
     res.status(HttpStatus.OK).json({
       message: "Staff fetched successfully",
@@ -80,7 +80,7 @@ export const getStaffByIdController = async (req: Request, res: Response) => {
 
 // Update a Staff
 export const updateStaffController = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { staffId } = req.params;
   const StaffData: Staff = req.body satisfies UpdateStaffRequestDto; // Again, assuming you're handling file uploads
   const photo = req.file ? req.file.path : undefined;
   const picture = {
@@ -99,7 +99,11 @@ export const updateStaffController = async (req: Request, res: Response) => {
       }
     }
 
-    const updatedStaff = await StaffHelper.updateStaff(id, StaffData, picture);
+    const updatedStaff = await StaffHelper.updateStaff(
+      staffId,
+      StaffData,
+      picture
+    );
 
     res.status(HttpStatus.OK).json({
       message: "Staff updated successfully",
@@ -127,6 +131,25 @@ export const deleteStaffController = async (req: Request, res: Response) => {
     const err = error as HttpException;
     res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
       message: err.message || "Error deleting Staff",
+    });
+  }
+};
+
+export const staffForHostel = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { hostelId } = req.params;
+  try {
+    const staffs = await StaffHelper.getAllStaffForHostel(hostelId);
+    res
+      .status(HttpStatus.OK)
+      .json({ message: "staff fecthed successfully", data: staffs });
+  } catch (error) {
+    const err = error as HttpException;
+    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
+      message: err.message || "Error fetching Staffs",
     });
   }
 };

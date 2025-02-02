@@ -61,10 +61,10 @@ export const getAllHostelsController = async (req: Request, res: Response) => {
 
 // Get Hostel by ID
 export const getHostelByIdController = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { hostelId } = req.params;
 
   try {
-    const hostel = await hostelHelper.getHostelById(id);
+    const hostel = await hostelHelper.getHostelById(hostelId);
 
     res.status(HttpStatus.OK).json({
       message: "Hostel fetched successfully",
@@ -80,7 +80,7 @@ export const getHostelByIdController = async (req: Request, res: Response) => {
 
 // Update a Hostel
 export const updateHostelController = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { hostelId } = req.params;
   const hostelData: Hostel = req.body satisfies UpdateHostelRequestDto; // Again, assuming you're handling file uploads
   const photo = req.file ? req.file.path : undefined;
   const picture = {
@@ -100,7 +100,7 @@ export const updateHostelController = async (req: Request, res: Response) => {
     }
 
     const updatedHostel = await hostelHelper.updateHostel(
-      id,
+      hostelId,
       hostelData,
       picture
     );
@@ -119,10 +119,10 @@ export const updateHostelController = async (req: Request, res: Response) => {
 
 // Delete Hostel
 export const deleteHostelController = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { hostelId } = req.params;
 
   try {
-    await hostelHelper.deleteHostel(id);
+    await hostelHelper.deleteHostel(hostelId);
 
     res.status(HttpStatus.OK).json({
       message: "Hostel deleted successfully",

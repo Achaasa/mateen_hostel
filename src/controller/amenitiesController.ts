@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import * as amenitiesHelper from "../helper/amenitiesHelper"; // Assuming your service functions are in this file
 import { HttpStatus } from "../utils/http-status";
 import HttpException from "../utils/http-error";
@@ -48,10 +48,10 @@ export const getAllAmenitiesController = async (
 
 // Get Amenity by ID
 export const getAmenityByIdController = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { amenityId } = req.params;
 
   try {
-    const amenity = await amenitiesHelper.getAmenityById(id);
+    const amenity = await amenitiesHelper.getAmenityById(amenityId);
 
     res.status(HttpStatus.OK).json({
       message: "Amenity fetched successfully",
@@ -102,6 +102,25 @@ export const deleteAmenityController = async (req: Request, res: Response) => {
     const err = error as HttpException;
     res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
       message: err.message || "Error deleting amenity",
+    });
+  }
+};
+
+export const getAmenitiesForHostel = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { hostelId } = req.params;
+  try {
+    const amenities = await amenitiesHelper.getAllAmenitiesForHostel(hostelId);
+    res
+      .status(HttpStatus.OK)
+      .json({ message: "amenities fetched successfully", data: amenities });
+  } catch (error) {
+    const err = error as HttpException;
+    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
+      message: err.message || "Error fecthing amenity",
     });
   }
 };

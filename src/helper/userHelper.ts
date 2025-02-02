@@ -51,7 +51,7 @@ export const createUser = async (
 
 export const getUsers = async () => {
   try {
-    const users = await prisma.user.findMany();
+    const users = await prisma.user.findMany({ include: { hostel: true } });
     return users as User[];
   } catch (error) {
     const err = error as ErrorResponse;
@@ -64,11 +64,14 @@ export const getUsers = async () => {
 
 export const getUserById = async (id: string) => {
   try {
-    const user = await prisma.user.findUnique({ where: { id } });
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: { hostel: true },
+    });
     if (!user) {
       throw new HttpException(HttpStatus.NOT_FOUND, "User not found.");
     }
-    
+
     return user;
   } catch (error) {
     const err = error as ErrorResponse;
@@ -81,7 +84,10 @@ export const getUserById = async (id: string) => {
 
 export const getUserByEmail = async (email: string) => {
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { hostel: true },
+    });
     return user;
   } catch (error) {
     const err = error as ErrorResponse;
@@ -174,9 +180,12 @@ export const verifyAndcreateHostelUser = async (hostelId: string) => {
     const { email, isVerifeid } = hostel;
     const findUser = await prisma.user.findUnique({ where: { email } });
     if (findUser || isVerifeid) {
-      throw new HttpException(HttpStatus.CONFLICT, "Email already exists or is verified");
+      throw new HttpException(
+        HttpStatus.CONFLICT,
+        "Email already exists or is verified"
+      );
     }
-    
+
     const verifyHostel = await prisma.hostel.update({
       where: { id: hostelId },
       data: { isVerifeid: true },
@@ -195,6 +204,7 @@ export const verifyAndcreateHostelUser = async (hostelId: string) => {
         role: "ADMIN",
         imageKey: "",
         imageUrl: "", // Assign the correct role here
+        hostelId: hostel.id,
       },
     });
 
@@ -248,5 +258,22 @@ export const getUserProfileHelper = async (authHeader: string) => {
     return user; // Return the found user
   } catch (error) {
     throw error; // Re-throw the error for handling in controller
+  }
+};
+
+
+
+export const getAllUsersForHostel = async (hostelId: string) => {
+  try {
+    const Users = await prisma.user.findMany({
+      where:  { hostelId } ,
+    });
+    return Users;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error fetching users"
+    );
   }
 };

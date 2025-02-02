@@ -4,6 +4,7 @@ import { validatePayload } from "../middleware/validate-payload"; // Assuming yo
 import upload from "../utils/multer";
 import { verifyAndCreateHostelUser } from "../controller/userController";
 import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
+import { validateHostelAccess } from "../utils/AccessControl";
 
 const hostelRoute = Router();
 
@@ -19,7 +20,8 @@ hostelRoute.post(
 hostelRoute.get(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN"]),
+
   hostelController.getAllHostelsController
 );
 // get unverified hostels
@@ -31,14 +33,21 @@ hostelRoute.get(
 );
 
 // Get a specific hostel by ID (GET request)
-hostelRoute.get("/get/:id", hostelController.getHostelByIdController);
+hostelRoute.get(
+  "/get/:hostelId",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+  hostelController.getHostelByIdController
+);
 
 // Update a hostel by ID (PUT request)
 hostelRoute.put(
   "/update/:id",
   validatePayload("Hostel"),
   authenticateJWT,
-  authorizeRole(["ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
   upload.single("photo"), // Optional: Assuming you have a validation schema for updating a hostel
   hostelController.updateHostelController
 );

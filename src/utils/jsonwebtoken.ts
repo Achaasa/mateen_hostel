@@ -8,6 +8,7 @@ import { UserRole } from "@prisma/client";
 export interface UserPayload {
   id: string;
   role: UserRole;
+  hostelId?: string;
 }
 
 declare global {
@@ -82,3 +83,7 @@ export const authorizeRole = (allowedRoles: string[]) => {
     next();
   };
 };
+
+
+
+

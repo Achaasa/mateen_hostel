@@ -1,9 +1,10 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import * as roomHelper from "../helper/roomHelper"; // Assuming you have your room service functions in this file
 import { HttpStatus } from "../utils/http-status";
 import HttpException from "../utils/http-error";
 import { Room } from "@prisma/client";
 import cloudinary from "../utils/cloudinary";
+import { date } from "zod";
 
 // Add a Room
 export const addRoomController = async (req: Request, res: Response) => {
@@ -73,10 +74,10 @@ export const getAllRoomsController = async (req: Request, res: Response) => {
 
 // Get Room by ID
 export const getRoomByIdController = async (req: Request, res: Response) => {
-  const { id } = req.params; // Getting room ID from the URL parameters
+  const { roomId } = req.params; // Getting room ID from the URL parameters
 
   try {
-    const room = await roomHelper.getRoomById(id);
+    const room = await roomHelper.getRoomById(roomId);
 
     res.status(HttpStatus.OK).json({
       message: "Room fetched successfully",
@@ -92,7 +93,7 @@ export const getRoomByIdController = async (req: Request, res: Response) => {
 
 // Update a Room
 export const updateRoomController = async (req: Request, res: Response) => {
-  const { id } = req.params; // Room ID from the URL parameters
+  const { roomId } = req.params; // Room ID from the URL parameters
   const roomData: Partial<Room> = {
     ...req.body,
     price: parseFloat(req.body.price),
@@ -120,14 +121,14 @@ export const updateRoomController = async (req: Request, res: Response) => {
         }
       }
     }
-    const room = await roomHelper.getRoomById(id);
+    const room = await roomHelper.getRoomById(roomId);
     if (room) {
       for (const image of room.RoomImage) {
         // Delete the existing image from Cloudinary
         await cloudinary.uploader.destroy(image.imageKey);
       }
     }
-    const updatedRoom = await roomHelper.updateRoom(id, roomData, pictures);
+    const updatedRoom = await roomHelper.updateRoom(roomId, roomData, pictures);
 
     res.status(HttpStatus.OK).json({
       message: "Room updated successfully",
@@ -143,10 +144,10 @@ export const updateRoomController = async (req: Request, res: Response) => {
 
 // Delete a Room
 export const deleteRoomController = async (req: Request, res: Response) => {
-  const { id } = req.params; // Room ID from the URL parameters
+  const { roomId } = req.params; // Room ID from the URL parameters
 
   try {
-    const result = await roomHelper.deleteRoom(id);
+    const result = await roomHelper.deleteRoom(roomId);
 
     res.status(HttpStatus.OK).json({
       message: result.message,
@@ -183,11 +184,14 @@ export const addAmenitiesToRoomController = async (
   req: Request,
   res: Response
 ) => {
-  const { id } = req.params;
+  const { roomId } = req.params;
   const amenitiesIds: string[] = req.body.amenitiesIds;
 
   try {
-    const updatedRoom = await roomHelper.addAmenitiesToRoom(id, amenitiesIds);
+    const updatedRoom = await roomHelper.addAmenitiesToRoom(
+      roomId,
+      amenitiesIds
+    );
     res.status(HttpStatus.OK).json({
       message: "Amenities added successfully",
       data: updatedRoom,
@@ -204,12 +208,12 @@ export const removeAmenitiesFromRoomController = async (
   req: Request,
   res: Response
 ) => {
-  const { id } = req.params;
+  const { roomId } = req.params;
   const amenitiesIds: string[] = req.body.amenitiesIds;
 
   try {
     const updatedRoom = await roomHelper.removeAmenitiesFromRoom(
-      id,
+      roomId,
       amenitiesIds
     );
     res.status(HttpStatus.OK).json({
@@ -220,6 +224,25 @@ export const removeAmenitiesFromRoomController = async (
     const err = error as HttpException;
     res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
       message: err.message || "Error removing amenities from room",
+    });
+  }
+};
+
+export const roomsForHostel = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { hostelId } = req.params;
+  try {
+    const rooms = await roomHelper.getAllRoomsForHostel(hostelId);
+    res
+      .status(HttpStatus.OK)
+      .json({ message: "rooms fetch successfully", data: rooms });
+  } catch (error) {
+    const err = error as HttpException;
+    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
+      message: err.message,
     });
   }
 };

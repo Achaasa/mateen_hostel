@@ -1,5 +1,8 @@
 -- CreateEnum
-CREATE TYPE "StaffRole" AS ENUM ('HOSTEL_ADMIN', 'ROOM_ADMIN', 'RESIDENT', 'VISITOR');
+CREATE TYPE "StaffRole" AS ENUM ('HOSTEL_MANAGER', 'WARDEN', 'CHIEF_WADEN');
+
+-- CreateEnum
+CREATE TYPE "StaffQulification" AS ENUM ('BECE', 'WASCE', 'TVET', 'BSC');
 
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'SUPER_ADMIN');
@@ -12,6 +15,9 @@ CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'CONFIRMED', 'CANCELLED');
 
 -- CreateEnum
 CREATE TYPE "Location" AS ENUM ('KUMASI', 'ACCRA', 'SUNYANI');
+
+-- CreateEnum
+CREATE TYPE "Religion" AS ENUM ('CHRISTIAN', 'MUSLIM', 'TRADITIONALIST');
 
 -- CreateEnum
 CREATE TYPE "RoomStatus" AS ENUM ('AVAILABLE', 'OCCUPIED', 'MAINTENANCE');
@@ -55,7 +61,7 @@ CREATE TABLE "Hostel" (
 -- CreateTable
 CREATE TABLE "Room" (
     "id" TEXT NOT NULL,
-    "number" INTEGER NOT NULL,
+    "number" TEXT NOT NULL,
     "block" TEXT NOT NULL,
     "floor" TEXT NOT NULL,
     "maxCap" INTEGER NOT NULL,
@@ -66,8 +72,6 @@ CREATE TABLE "Room" (
     "status" "RoomStatus" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "imageUrl" TEXT NOT NULL,
-    "imageKey" TEXT NOT NULL,
     "delFlag" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Room_pkey" PRIMARY KEY ("id")
@@ -76,7 +80,6 @@ CREATE TABLE "Room" (
 -- CreateTable
 CREATE TABLE "Staff" (
     "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
     "role" "StaffRole" NOT NULL,
     "hostelId" TEXT NOT NULL,
     "firstName" TEXT NOT NULL,
@@ -85,10 +88,10 @@ CREATE TABLE "Staff" (
     "dateOfBirth" TIMESTAMP(3) NOT NULL,
     "nationality" TEXT NOT NULL,
     "gender" "Gender" NOT NULL,
-    "religion" TEXT NOT NULL,
     "maritalStatus" "MaritalStatus" NOT NULL,
     "ghanaCardNumber" TEXT NOT NULL,
     "phoneNumber" TEXT NOT NULL,
+    "religion" "Religion" NOT NULL,
     "email" TEXT NOT NULL,
     "residence" TEXT NOT NULL,
     "qualification" TEXT NOT NULL,
@@ -109,6 +112,7 @@ CREATE TABLE "Amenities" (
     "price" DOUBLE PRECISION NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "hostelId" TEXT NOT NULL,
 
     CONSTRAINT "Amenities_pkey" PRIMARY KEY ("id")
 );
@@ -186,6 +190,19 @@ CREATE TABLE "User" (
 );
 
 -- CreateTable
+CREATE TABLE "RoomImage" (
+    "id" TEXT NOT NULL,
+    "roomId" TEXT NOT NULL,
+    "imageUrl" TEXT NOT NULL,
+    "imageKey" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "delFlag" BOOLEAN NOT NULL DEFAULT false,
+
+    CONSTRAINT "RoomImage_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "_RoomAmenities" (
     "A" TEXT NOT NULL,
     "B" TEXT NOT NULL
@@ -219,6 +236,9 @@ ALTER TABLE "Room" ADD CONSTRAINT "Room_hostelId_fkey" FOREIGN KEY ("hostelId") 
 ALTER TABLE "Staff" ADD CONSTRAINT "Staff_hostelId_fkey" FOREIGN KEY ("hostelId") REFERENCES "Hostel"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Amenities" ADD CONSTRAINT "Amenities_hostelId_fkey" FOREIGN KEY ("hostelId") REFERENCES "Hostel"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Resident" ADD CONSTRAINT "Resident_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "Room"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -226,6 +246,9 @@ ALTER TABLE "Payment" ADD CONSTRAINT "Payment_residentId_fkey" FOREIGN KEY ("res
 
 -- AddForeignKey
 ALTER TABLE "Visitor" ADD CONSTRAINT "Visitor_residentId_fkey" FOREIGN KEY ("residentId") REFERENCES "Resident"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RoomImage" ADD CONSTRAINT "RoomImage_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "Room"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_RoomAmenities" ADD CONSTRAINT "_RoomAmenities_A_fkey" FOREIGN KEY ("A") REFERENCES "Amenities"("id") ON DELETE CASCADE ON UPDATE CASCADE;

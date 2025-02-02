@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import * as residentHelper from "../helper/residentHelper"; // Assuming your helper functions are in this file
 import { HttpStatus } from "../utils/http-status";
 import HttpException from "../utils/http-error";
@@ -7,6 +7,7 @@ import {
   ResidentRequestDto,
   UpdateResidentRequestDto,
 } from "../zodSchema/residentSchema";
+import prisma from "../utils/prisma";
 
 // Register a Resident
 export const registerResidentController = async (
@@ -53,10 +54,10 @@ export const getResidentByIdController = async (
   req: Request,
   res: Response
 ) => {
-  const { id } = req.params;
+  const { residentId } = req.params;
 
   try {
-    const resident = await residentHelper.getResidentById(id);
+    const resident = await residentHelper.getResidentById(residentId);
     res.status(HttpStatus.OK).json({
       message: "Resident fetched successfully ID",
       data: resident,
@@ -92,12 +93,12 @@ export const getResidentByEmailController = async (
 
 // Update a Resident
 export const updateResidentController = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { residentId } = req.params;
   const residentData: Resident = req.body satisfies UpdateResidentRequestDto;
 
   try {
     const updatedResident = await residentHelper.updateResident(
-      id,
+      residentId,
       residentData
     );
     res.status(HttpStatus.OK).json({
@@ -143,6 +144,64 @@ export const getAlldebtors = async (req: Request, res: Response) => {
     const err = error as HttpException;
     res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
       message: err.message || "Error fecthing debtors",
+    });
+  }
+};
+
+export const getDebtorsForHostel = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { hostelId } = req.params;
+  try {
+    const debtors = await residentHelper.getDebtorsForHostel(hostelId);
+    res
+      .status(HttpStatus.OK)
+      .json({ message: "debors fected successfully", data: debtors });
+  } catch (error) {
+    const err = error as HttpException;
+    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
+      message: err.message || "Error fetching debtors",
+    });
+  }
+};
+
+export const getAllresidentsForHostel = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { hostelId } = req.params;
+  try {
+    const residents = await residentHelper.getAllresidentsForHostel(hostelId);
+    res
+      .status(HttpStatus.OK)
+      .json({ message: "residents fecthed successfully", data: residents });
+  } catch (error) {
+    const err = error as HttpException;
+    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
+      message: err.message || "Error fetching residents",
+    });
+  }
+};
+
+export const addResidentFromHostelController = async (
+  req: Request,
+  res: Response
+) => {
+  const residentData: Resident = req.body satisfies ResidentRequestDto; // Get resident data from the request body
+
+  try {
+    const newResident = await residentHelper.register(residentData);
+    res.status(HttpStatus.CREATED).json({
+      message: "Resident registered successfully",
+      data: newResident,
+    });
+  } catch (error) {
+    const err = error as HttpException;
+    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
+      message: err.message || "Error registering resident",
     });
   }
 };

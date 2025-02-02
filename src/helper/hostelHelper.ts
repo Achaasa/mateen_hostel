@@ -49,7 +49,7 @@ export const addHostel = async (
 export const getAllHostels = async () => {
   try {
     const hostels = await prisma.hostel.findMany({
-      include: { Rooms: true, Staffs: true },
+      include: { Rooms: true, Staffs: true,User:true },
     });
     return hostels as Hostel[];
   } catch (error) {
@@ -65,7 +65,7 @@ export const getHostelById = async (hostelId: string) => {
   try {
     const hostel = await prisma.hostel.findUnique({
       where: { id: hostelId },
-      include: { Rooms: true, Staffs: true },
+      include: { Rooms: true, Staffs: true,User:true },
     });
     if (!hostel) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
