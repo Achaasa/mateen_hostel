@@ -42,7 +42,7 @@ amenitiesRoute.put(
 amenitiesRoute.delete(
   "/delete/:amenityId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["SUPER_ADMIN","ADMIN"]),
   amenitiesController.deleteAmenityController
 );
 
