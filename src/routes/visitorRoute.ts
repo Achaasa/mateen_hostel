@@ -1,26 +1,54 @@
 import { Router } from "express";
 import * as visitorController from "../controller/visitorController"; // Assuming your controller file is named visitorController
+import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
 
 const visitorRouter = Router();
 
 // Add a new visitor
-visitorRouter.post("/add", visitorController.addVisitorController);
+visitorRouter.post(
+  "/add",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  visitorController.addVisitorController
+);
 
 // Get all visitors
-visitorRouter.get("/get", visitorController.getAllVisitorsController);
+visitorRouter.get(
+  "/get",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  visitorController.getAllVisitorsController
+);
 
 // Get a visitor by ID
-visitorRouter.get("/get/:id", visitorController.getVisitorByIdController);
+visitorRouter.get(
+  "/get/:visitorId",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  visitorController.getVisitorByIdController
+);
 
 // Update a visitor's details
-visitorRouter.put("/update/:id", visitorController.updateVisitorController);
+visitorRouter.put(
+  "/update/:visitorId",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  visitorController.updateVisitorController
+);
 
 // Delete a visitor
-visitorRouter.delete("/delete/:id", visitorController.deleteVisitorController);
+visitorRouter.delete(
+  "/delete/:visitorId",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  visitorController.deleteVisitorController
+);
 
 // Checkout a visitor
 visitorRouter.put(
-  "/checkout/:id",
+  "/checkout/:visitorId",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   visitorController.checkoutVisitorController
 );
 

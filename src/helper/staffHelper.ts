@@ -151,3 +151,19 @@ export const updateStaff = async (
     );
   }
 };
+
+
+export const getAllStaffForHostel = async (hostelId: string) => {
+  try {
+    const staffs = await prisma.staff.findMany({
+      where:  { hostelId } ,
+    });
+    return staffs;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error fetching staffs"
+    );
+  }
+};

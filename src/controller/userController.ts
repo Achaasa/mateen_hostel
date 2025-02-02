@@ -5,15 +5,11 @@ import { ErrorResponse } from "../utils/types";
 import cloudinary from "../utils/cloudinary";
 import * as userHelper from "../helper/userHelper"; // Assuming you have similar helper methods for users
 import { User } from "@prisma/client";
-import { generatePassword } from "../utils/generatepass";
-import { sendEmail } from "../utils/nodeMailer";
-import { generateOtp, sendOtpEmail } from "../utils/otpSender";
 import { compare } from "../utils/bcrypt";
 import { setInvalidToken, signToken, UserPayload } from "../utils/jsonwebtoken";
 import { jwtDecode } from "jwt-decode";
-import jwt from "jsonwebtoken";
-import fs from "fs";
-import path from "path";
+import { getHostelById } from "../helper/hostelHelper";
+import prisma from "../utils/prisma";
 
 // User registration function
 export const signUpUser = async (
@@ -38,7 +34,12 @@ export const signUpUser = async (
         picture.imageKey = uploaded.public_id;
       }
     }
-
+    if (userData.hostelId) {
+      const hostel = await getHostelById(userData.hostelId);
+      if (!hostel) {
+        throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
+      }
+    }
     const newUser = await userHelper.createUser(userData, picture);
     res
       .status(HttpStatus.OK)
@@ -268,7 +269,11 @@ export const userLogIn = async (
 
     // Generate a new JWT token for the user
     console.log("Login - User ID:", user.id);
-    const newToken = signToken({ id: user.id, role: user.role });
+    const newToken = signToken({
+      id: user.id,
+      role: user.role,
+      hostelId: user.hostel?.id,
+    });
 
     // Successful login, return the user ID and new token
     res.status(HttpStatus.OK).json({
@@ -300,7 +305,7 @@ export const getUserProfile = async (
     const decoded = jwtDecode(token) as UserPayload;
     const user = await userHelper.getUserById(decoded?.id);
     if (user) {
-      const {password,...restofUser}=user
+      const { password, ...restofUser } = user;
       res.status(HttpStatus.OK).json({ restofUser });
     } else {
       res.status(HttpStatus.NOT_FOUND).json({ message: "User not found" });
@@ -309,7 +314,6 @@ export const getUserProfile = async (
     res.status(HttpStatus.FORBIDDEN).json({ message: "No token found" });
   }
 };
-
 
 // User logout function
 export const logout = async (
@@ -320,6 +324,28 @@ export const logout = async (
   try {
     setInvalidToken();
     res.status(HttpStatus.OK).json({ message: "Logout successful" });
+  } catch (error) {
+    const err = error as ErrorResponse;
+    next(
+      new HttpException(
+        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        err.message
+      )
+    );
+  }
+};
+
+export const usersForHostel = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { hostelId } = req.params;
+  try {
+    const users = await userHelper.getAllUsersForHostel(hostelId);
+    res
+      .status(HttpStatus.OK)
+      .json({ message: "users fecthed successfully", data: users });
   } catch (error) {
     const err = error as ErrorResponse;
     next(

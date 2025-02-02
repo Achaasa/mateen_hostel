@@ -3,7 +3,7 @@ import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
 import { Visitor, VisitorStatus } from "@prisma/client";
 import { ErrorResponse } from "../utils/types";
-import { visitorSchema, updateVisitorSchema } from "../zodSchema/visitorSchema";  // Assuming you have Zod schemas for validation
+import { visitorSchema, updateVisitorSchema } from "../zodSchema/visitorSchema"; // Assuming you have Zod schemas for validation
 
 // Add a Visitor
 
@@ -21,16 +21,13 @@ export const addVisitor = async (visitorData: Visitor) => {
     // Check if the visitor already exists by email or phone (or another unique identifier)
     const existingVisitor = await prisma.visitor.findFirst({
       where: {
-        OR: [
-          { email: visitorData.email },
-          { phone: visitorData.phone }
-        ],
+        OR: [{ email: visitorData.email }, { phone: visitorData.phone }],
       },
     });
 
     // If visitor exists, create a new entry with the same details (new visit)
     const visitorToCreate = existingVisitor
-      ? { 
+      ? {
           ...visitorData,
           status: VisitorStatus.ACTIVE, // new visit, status should be ACTIVE
           timeIn: new Date(), // Set the timeIn to now
@@ -128,7 +125,9 @@ export const updateVisitor = async (
 };
 
 // Delete a Visitor
-export const deleteVisitor = async (visitorId: string): Promise<{ message: string }> => {
+export const deleteVisitor = async (
+  visitorId: string
+): Promise<{ message: string }> => {
   try {
     const visitor = await prisma.visitor.findUnique({
       where: { id: visitorId },
@@ -153,8 +152,6 @@ export const deleteVisitor = async (visitorId: string): Promise<{ message: strin
   }
 };
 
-
-
 export const checkoutVisitor = async (visitorId: string) => {
   try {
     // Find the visitor by ID
@@ -172,7 +169,10 @@ export const checkoutVisitor = async (visitorId: string) => {
 
     // If the visitor is already checked out, throw an error
     if (visitor.status === VisitorStatus.CHECKED_OUT) {
-      throw new HttpException(HttpStatus.BAD_REQUEST, "Visitor is already checked out");
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Visitor is already checked out"
+      );
     }
 
     // Update the visitor's status to checked out
@@ -191,6 +191,21 @@ export const checkoutVisitor = async (visitorId: string) => {
     throw new HttpException(
       err.status || HttpStatus.INTERNAL_SERVER_ERROR,
       err.message || "Error during checkout"
+    );
+  }
+};
+
+export const getVisitorsForHostel = async (hostelId: string) => {
+  try {
+    const visitors = await prisma.visitor.findMany({
+      where: { resident: { room: { hostelId } } },
+    });
+    return visitors;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error fetching  visitors"
     );
   }
 };

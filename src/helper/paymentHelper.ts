@@ -280,3 +280,54 @@ export const getAllPayments = async () => {
     );
   }
 };
+
+export const getPaymentsForHostel = async (hostelId: string) => {
+  try {
+    const payments = await prisma.payment.findMany({
+      where: { resident: { room: { hostelId } } },
+    });
+    return payments;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error fecthing payments  "
+    );
+  }
+};
+
+export const getPaymentsById = async (paymentId: string) => {
+  try {
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
+    if (!payment) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Payment not found");
+    }
+    return payment as Payment;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error fecthing payment  "
+    );
+  }
+};
+
+export const getPaymentsByReference = async (reference: string) => {
+  try {
+    const payment = await prisma.payment.findUnique({
+      where: { reference },
+    });
+    if (!payment) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Payment not found");
+    }
+    return payment as Payment;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error fecthing payment  "
+    );
+  }
+};

@@ -169,11 +169,91 @@ export const getDebtors = async () => {
     });
     return debtors as Resident[];
   } catch (error) {
-    console.error("Error fetching debtors:", error);
     const err = error as ErrorResponse;
     throw new HttpException(
       err.status || HttpStatus.INTERNAL_SERVER_ERROR,
       err.message || "Error fetching debtors"
+    );
+  }
+};
+
+export const getDebtorsForHostel = async (hostelId: string) => {
+  try {
+    const debtors = await prisma.resident.findMany({
+      where: { balanceOwed: { gt: 0 }, room: { hostelId } },
+    });
+    return debtors as Resident[];
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error fetching debtors"
+    );
+  }
+};
+
+export const getAllresidentsForHostel = async (hostelId: string) => {
+  try {
+    const residents = await prisma.resident.findMany({
+      where: { room: { hostelId } },
+    });
+    return residents;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error fetching residents"
+    );
+  }
+};
+
+
+
+export const addResidentFromHostel = async (residentData: Resident) => {
+  try {
+    const validateResident = residentSchema.safeParse(residentData);
+    if (!validateResident.success) {
+      const errors = validateResident.error.issues.map(
+        ({ message, path }) => `${path}: ${message}`
+      );
+      throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
+    }
+
+    const resident = await prisma.resident.findUnique({
+      where: { email: residentData.email },
+    });
+    if (resident) {
+      throw new HttpException(
+        HttpStatus.CONFLICT,
+        "resident with the same Email already exists"
+      );
+    }
+    const { roomId } = residentData;
+    const existingRoom = await prisma.room.findUnique({
+      where: { id: roomId },
+    });
+    if (!existingRoom) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
+    }
+    const currentResidentsCount = await prisma.resident.count({
+      where: { roomId: residentData.roomId },
+    });
+
+    if (currentResidentsCount >= existingRoom.maxCap) {
+      throw new HttpException(
+        HttpStatus.CONFLICT,
+        "Room has reached its maximum capacity."
+      );
+    }
+    const newResident = await prisma.resident.create({
+      data: { ...residentData, roomPrice: existingRoom.price },
+    });
+    return newResident as Resident;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error adding  resident"
     );
   }
 };

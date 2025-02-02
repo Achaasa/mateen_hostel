@@ -302,3 +302,20 @@ export const removeAmenitiesFromRoom = async (
     );
   }
 };
+
+
+
+export const getAllRoomsForHostel = async (hostelId: string) => {
+  try {
+    const rooms = await prisma.room.findMany({
+      where:  { hostelId } ,
+    });
+    return rooms;
+  } catch (error) {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Error fetching rooms"
+    );
+  }
+};

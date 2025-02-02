@@ -8,6 +8,7 @@ import {
   userLogIn,
   getUserProfile,
   logout,
+  usersForHostel,
 } from "../controller/userController";
 import upload from "../utils/multer";
 import { validatePayload } from "../middleware/validate-payload";
@@ -21,17 +22,34 @@ userRouter.post(
   "/signup",
   validatePayload("User"), // Assuming you have validation logic for user payload
   upload.single("photo"),
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   signUpUser
 );
 
 // Get all users
-userRouter.get("/get", getAllUsers); // Only accessible by admin
+userRouter.get(
+  "/get",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN"]),
+  getAllUsers
+); // Only accessible by SuperAdmin
 
 // Get user by email
-userRouter.get("/email", authenticateJWT, getUserByEmail);
+userRouter.get(
+  "/email",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  getUserByEmail
+);
 
 // Get user by ID
-userRouter.get("/get/:id", authenticateJWT, getUserById);
+userRouter.get(
+  "/get/:id",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  getUserById
+);
 
 // Update user
 userRouter.put(
@@ -45,12 +63,11 @@ userRouter.put(
 // Delete user
 userRouter.delete(
   "/delete/:id",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
 
   deleteUser
 );
-
-
-
 
 // User login
 userRouter.post("/login", validatePayload("User"), userLogIn);
@@ -60,5 +77,10 @@ userRouter.get("/profile", authenticateJWT, getUserProfile);
 
 // User logout
 userRouter.post("/logout", authenticateJWT, logout);
-
+userRouter.get(
+  "/get/hoste/:hostelId",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  usersForHostel
+);
 export default userRouter;

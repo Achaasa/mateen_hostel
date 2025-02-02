@@ -9,6 +9,9 @@ import {
   initializePayment,
   initializeTopUpPayment,
   TopUpPayment,
+  getPaymentsById,
+  getPaymentsByReference,
+  getPaymentsForHostel
 } from "../helper/paymentHelper";
 import { date } from "zod";
 export const initiatePayment = async (
@@ -105,6 +108,48 @@ export const getAllPaymentController = async (req: Request, res: Response) => {
     res
       .status(HttpStatus.OK)
       .json({ message: "retrieved succesfully", data: payments });
+  } catch (error) {
+    const err = error as HttpException;
+    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
+      message: err.message,
+    });
+  }
+};
+
+
+export const getPaymentByIdController=async(req:Request,res:Response,next:NextFunction)=>{
+  const {paymentId}=req.params
+  try {
+    const payments=await getPaymentsById(paymentId)
+    res.status(HttpStatus.OK).json({message:"payment fetch successfully",data:payments})
+  } catch (error) {
+    const err = error as HttpException;
+    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
+      message: err.message,
+    });
+  }
+};
+
+export const getPaymentsForHostelController= async(req:Request,res:Response,next:NextFunction)=>{
+ const {hostelId}=req.params
+  try {
+    const payments= await getPaymentsForHostel(hostelId)
+    res.status(HttpStatus.OK).json({message:"payments fetch successfully",data:payments})
+
+  } catch (error) {
+    const err = error as HttpException;
+    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
+      message: err.message,
+    });
+  }
+};
+
+export const getPaymentByReferenceController=async(req:Request,res:Response,next:NextFunction)=>{
+  const {reference}=req.params
+  try {
+    const payments=await getPaymentsByReference(reference as string)
+    res.status(HttpStatus.OK).json({message:"payments fetch successfully",data:payments})
+
   } catch (error) {
     const err = error as HttpException;
     res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({

@@ -2,30 +2,59 @@ import { Router } from "express";
 import * as StaffController from "../controller/staffController"; // Adjust the path as necessary
 import { validatePayload } from "../middleware/validate-payload"; // Assuming you have validation middleware
 import upload from "../utils/multer";
+import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
 
 const StaffRouter = Router();
 
 // Add a new Staff (POST request)
 StaffRouter.post(
   "/add",
-  validatePayload("Staff"),upload.single('photo'), // Optional: Assuming you have a validation schema for Staff data
+  validatePayload("Staff"),
+  upload.single("photo"), // Optional: Assuming you have a validation schema for Staff data
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN"]),
   StaffController.addStaffController
 );
 
 // Get all Staffs (GET request)
-StaffRouter.get("/get", StaffController.getAllStaffsController);
+StaffRouter.get(
+  "/get",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  StaffController.getAllStaffsController
+);
 
 // Get a specific Staff by ID (GET request)
-StaffRouter.get("/get/:id", StaffController.getStaffByIdController);
+StaffRouter.get(
+  "/get/:staffId",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  StaffController.getStaffByIdController
+);
 
 // Update a Staff by ID (PUT request)
 StaffRouter.put(
-  "/update/:id",
-  validatePayload("Staff"),upload.single('photo'), // Optional: Assuming you have a validation schema for updating a Staff
+  "/update/:staffId",
+  validatePayload("Staff"),
+  upload.single("photo"),
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]), // Optional: Assuming you have a validation schema for updating a Staff
   StaffController.updateStaffController
 );
 
 // Delete a Staff by ID (DELETE request)
-StaffRouter.delete("/delete/:id", StaffController.deleteStaffController);
+StaffRouter.delete(
+  "/delete/:staffId",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  StaffController.deleteStaffController
+);
+
+StaffRouter.get(
+  "/get/hostel/:hostelId",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  StaffController.staffForHostel
+);
 
 export default StaffRouter;

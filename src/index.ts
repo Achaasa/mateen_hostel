@@ -4,6 +4,8 @@ import morgan from "morgan";
 import cors from "cors";
 import mainRouter from "./routes";
 import swaggerUi from "swagger-ui-express"
+import prisma from "./utils/prisma";
+import { createAdminUser } from "./controller/adminPanel";
 // import * as swaggerDocs from './swagger.json'
 dotenv.config();
 
@@ -33,6 +35,19 @@ app.use((error: any, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`[server]: Server is running at http://localhost:${port}`);
-});
+const startServer = async () => {
+  try {
+    await createAdminUser(); // Call the function to create the admin user
+    app.listen(port, () => {
+      console.log(`[server]: Server is running at http://localhost:${port}`);
+    });
+  } catch (error) {
+    console.error('Error starting the server:', error);
+  } finally {
+    await prisma.$disconnect(); // Ensure Prisma client disconnects
+  }
+
+  
+};
+
+startServer(); // Start the server

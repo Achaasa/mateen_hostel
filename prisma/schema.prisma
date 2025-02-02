@@ -31,6 +31,7 @@ model Hostel {
   isVerifeid  Boolean     @default(false)
   delFlag     Boolean     @default(false)
   Amenities   Amenities[]
+  User        User[]
 }
 
 model Room {
@@ -157,6 +158,8 @@ model User {
   imageUrl    String
   imageKey    String
   delFlag     Boolean  @default(false)
+  hostelId    String?
+  hostel      Hostel?  @relation(fields: [hostelId], references: [id])
 }
 
 model RoomImage {
