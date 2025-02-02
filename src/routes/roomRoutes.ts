@@ -69,7 +69,7 @@ roomRouter.post(
 );
 
 roomRouter.get(
-  "/get/hoste/hosteId",
+  "/hostel/:hostelId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   roomController.roomsForHostel

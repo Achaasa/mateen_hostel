@@ -8,6 +8,7 @@ import {
   StaffRequestDto,
   UpdateStaffRequestDto,
 } from "../zodSchema/staffSchema";
+import { formatPrismaError } from "../utils/formatPrisma";
 
 // Add a Staff
 export const addStaffController = async (req: Request, res: Response) => {
@@ -34,11 +35,9 @@ export const addStaffController = async (req: Request, res: Response) => {
       message: "Staff created successfully",
       data: newStaff,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message,
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -51,11 +50,9 @@ export const getAllStaffsController = async (req: Request, res: Response) => {
       message: "Staffs fetched successfully",
       data: Staffs,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching Staffs",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -70,11 +67,9 @@ export const getStaffByIdController = async (req: Request, res: Response) => {
       message: "Staff fetched successfully",
       data: Staff,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching Staff",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -109,11 +104,9 @@ export const updateStaffController = async (req: Request, res: Response) => {
       message: "Staff updated successfully",
       data: updatedStaff,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error updating Staff",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -127,11 +120,9 @@ export const deleteStaffController = async (req: Request, res: Response) => {
     res.status(HttpStatus.OK).json({
       message: "Staff deleted successfully",
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error deleting Staff",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -146,10 +137,8 @@ export const staffForHostel = async (
     res
       .status(HttpStatus.OK)
       .json({ message: "staff fecthed successfully", data: staffs });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching Staffs",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };

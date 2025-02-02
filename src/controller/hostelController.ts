@@ -8,6 +8,7 @@ import {
   HostelRequestDto,
   UpdateHostelRequestDto,
 } from "../zodSchema/hostelSchema";
+import { formatPrismaError } from "../utils/formatPrisma";
 
 // Add a Hostel
 export const addHostelController = async (req: Request, res: Response) => {
@@ -34,11 +35,9 @@ export const addHostelController = async (req: Request, res: Response) => {
       message: "Hostel created successfully",
       data: newHostel,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message,
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -51,11 +50,9 @@ export const getAllHostelsController = async (req: Request, res: Response) => {
       message: "Hostels fetched successfully",
       data: hostels,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching hostels",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -70,11 +67,9 @@ export const getHostelByIdController = async (req: Request, res: Response) => {
       message: "Hostel fetched successfully",
       data: hostel,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching hostel",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -109,11 +104,9 @@ export const updateHostelController = async (req: Request, res: Response) => {
       message: "Hostel updated successfully",
       data: updatedHostel,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error updating hostel",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -127,11 +120,9 @@ export const deleteHostelController = async (req: Request, res: Response) => {
     res.status(HttpStatus.OK).json({
       message: "Hostel deleted successfully",
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error deleting hostel",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -142,10 +133,8 @@ export const unverifiedHostel = async (req: Request, res: Response) => {
       message: "Hostels fetched successfully",
       data: hostels,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error deleting hostel",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };

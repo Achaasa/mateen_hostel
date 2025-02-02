@@ -2,9 +2,9 @@ import prisma from "../utils/prisma";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
 import { Hostel } from "@prisma/client";
-import { ErrorResponse } from "../utils/types";
 import { hostelSchema, updateHostelSchema } from "../zodSchema/hostelSchema";
 import cloudinary from "../utils/cloudinary";
+import { formatPrismaError } from "../utils/formatPrisma";
 
 export const addHostel = async (
   hostelData: Hostel,
@@ -38,11 +38,7 @@ export const addHostel = async (
     });
     return createdHostel as Hostel; // Return the created hostel
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error adding  hostel"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -53,11 +49,7 @@ export const getAllHostels = async () => {
     });
     return hostels as Hostel[];
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error getting  hostels"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -72,11 +64,7 @@ export const getHostelById = async (hostelId: string) => {
     }
     return hostel as Hostel;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error getting  hostel"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -92,11 +80,7 @@ export const deleteHostel = async (hostelId: string) => {
     }
     await prisma.hostel.delete({ where: { id: hostelId } });
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error deleting  hostel"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -149,11 +133,7 @@ export const updateHostel = async (
     // Return the updated hostel object
     return updatedHostel;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error updating hostel"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -163,11 +143,7 @@ export const getUnverifiedHostel=async()=>{
     const unverifiedHostel= await prisma.hostel.findMany({where:{isVerifeid:false}})
     return unverifiedHostel;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching unverified hostel"
-    );
+    throw formatPrismaError(error);
   }
 };
 

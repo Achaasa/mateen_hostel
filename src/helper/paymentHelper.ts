@@ -6,6 +6,7 @@ import { HttpStatus } from "../utils/http-status";
 import { Payment, Resident } from "@prisma/client";
 import { ErrorResponse } from "../utils/types";
 import paystack from "../utils/paystack";
+import { formatPrismaError } from "../utils/formatPrisma";
 
 export const initializePayment = async (
   roomId: string,
@@ -58,11 +59,7 @@ export const initializePayment = async (
 
     return paymentResponse.data.authorization_url;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error initializing payment "
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -116,11 +113,7 @@ export const confirmPayment = async (reference: string) => {
 
     return resident;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error confirming payment  "
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -184,12 +177,8 @@ export const initializeTopUpPayment = async (
     });
 
     return paymentResponse.data.authorization_url;
-  } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error initializing payment "
-    );
+  }catch (error) {
+    throw formatPrismaError(error);
   }
 };
 
@@ -260,11 +249,7 @@ export const TopUpPayment = async (reference: string) => {
 
     return resident;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error confirming payment"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -273,11 +258,7 @@ export const getAllPayments = async () => {
     const payments = await prisma.payment.findMany();
     return payments as Payment[];
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error confirming payment  "
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -288,11 +269,7 @@ export const getPaymentsForHostel = async (hostelId: string) => {
     });
     return payments;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fecthing payments  "
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -306,11 +283,7 @@ export const getPaymentsById = async (paymentId: string) => {
     }
     return payment as Payment;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fecthing payment  "
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -324,10 +297,6 @@ export const getPaymentsByReference = async (reference: string) => {
     }
     return payment as Payment;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fecthing payment  "
-    );
+    throw formatPrismaError(error);
   }
 };

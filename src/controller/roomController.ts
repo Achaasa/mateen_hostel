@@ -5,6 +5,7 @@ import HttpException from "../utils/http-error";
 import { Room } from "@prisma/client";
 import cloudinary from "../utils/cloudinary";
 import { date } from "zod";
+import { formatPrismaError } from "../utils/formatPrisma";
 
 // Add a Room
 export const addRoomController = async (req: Request, res: Response) => {
@@ -47,11 +48,9 @@ export const addRoomController = async (req: Request, res: Response) => {
       message: "Room created successfully",
       data: newRoom,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error adding room",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -64,11 +63,9 @@ export const getAllRoomsController = async (req: Request, res: Response) => {
       message: "Rooms fetched successfully",
       data: rooms,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching rooms",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -83,11 +80,9 @@ export const getRoomByIdController = async (req: Request, res: Response) => {
       message: "Room fetched successfully",
       data: room,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching room",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -128,11 +123,9 @@ export const updateRoomController = async (req: Request, res: Response) => {
       message: "Room updated successfully",
       data: updatedRoom,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error updating room",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -147,11 +140,9 @@ export const deleteRoomController = async (req: Request, res: Response) => {
     res.status(HttpStatus.OK).json({
       message: result.message,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error deleting room",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -167,11 +158,9 @@ export const getAvailableRoomsController = async (
       message: "Available rooms fetched successfully",
       data: availableRooms,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching available rooms",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -192,10 +181,8 @@ export const addAmenitiesToRoomController = async (
       data: updatedRoom,
     });
   } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error adding amenities to room",
-    });
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -215,11 +202,9 @@ export const removeAmenitiesFromRoomController = async (
       message: "Amenities removed successfully",
       data: updatedRoom,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error removing amenities from room",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -234,10 +219,8 @@ export const roomsForHostel = async (
     res
       .status(HttpStatus.OK)
       .json({ message: "rooms fetch successfully", data: rooms });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message,
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };

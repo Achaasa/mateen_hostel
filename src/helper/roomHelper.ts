@@ -2,9 +2,8 @@ import prisma from "../utils/prisma";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
 import { Room, Amenities } from "@prisma/client";
-import { ErrorResponse } from "../utils/types";
 import cloudinary from "../utils/cloudinary";
-import formatPrismaError from "../utils/prismaError";
+import { formatPrismaError } from "../utils/formatPrisma";
 
 export const getAllRooms = async () => {
   try {
@@ -17,11 +16,7 @@ export const getAllRooms = async () => {
     });
     return rooms;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching rooms"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -71,11 +66,7 @@ export const updateRoom = async (
 
     return updatedRoom;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error updating room"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -107,11 +98,7 @@ export const deleteRoom = async (roomId: string) => {
 
     return { message: "Room and associated images deleted successfully" };
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error deleting room"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -132,11 +119,7 @@ export const getRoomById = async (roomId: string) => {
 
     return room;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching room"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -209,11 +192,7 @@ export const createRoom = async (
     await prisma.roomImage.createMany({ data: roomImages });
     return newRoom;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error adding room"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -232,12 +211,8 @@ export const getAvailableRooms = async () => {
     });
 
     return availableRooms; // Return the list of available rooms
-  } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error adding room"
-    );
+  }catch (error) {
+    throw formatPrismaError(error);
   }
 };
 
@@ -280,11 +255,7 @@ export const addAmenitiesToRoom = async (
 
     return updatedRoom;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error adding amenities"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -327,11 +298,7 @@ export const removeAmenitiesFromRoom = async (
 
     return updatedRoom;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error removing amenities"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -342,10 +309,6 @@ export const getAllRoomsForHostel = async (hostelId: string) => {
     });
     return rooms;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching rooms"
-    );
+    throw formatPrismaError(error);
   }
 };

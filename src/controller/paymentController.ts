@@ -14,6 +14,7 @@ import {
   getPaymentsForHostel
 } from "../helper/paymentHelper";
 import { date } from "zod";
+import { formatPrismaError } from "../utils/formatPrisma";
 export const initiatePayment = async (
   req: Request,
   res: Response,
@@ -30,11 +31,9 @@ export const initiatePayment = async (
       message: "Payment initialized.",
       paymentUrl,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message,
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -50,11 +49,9 @@ export const handlePaymentConfirmation = async (
       message: "Payment confirmed.",
       data: resident,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message,
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -71,10 +68,8 @@ export const TopUpPaymentController = async (
       data: resident,
     });
   } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message,
-    });
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -94,11 +89,9 @@ export const initializeTopUpPaymentControler = async (
       message: "Payment initialized.",
       paymentUrl,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message,
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -108,11 +101,9 @@ export const getAllPaymentController = async (req: Request, res: Response) => {
     res
       .status(HttpStatus.OK)
       .json({ message: "retrieved succesfully", data: payments });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message,
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -123,10 +114,8 @@ export const getPaymentByIdController=async(req:Request,res:Response,next:NextFu
     const payments=await getPaymentsById(paymentId)
     res.status(HttpStatus.OK).json({message:"payment fetch successfully",data:payments})
   } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message,
-    });
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -136,11 +125,9 @@ export const getPaymentsForHostelController= async(req:Request,res:Response,next
     const payments= await getPaymentsForHostel(hostelId)
     res.status(HttpStatus.OK).json({message:"payments fetch successfully",data:payments})
 
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message,
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -151,9 +138,7 @@ export const getPaymentByReferenceController=async(req:Request,res:Response,next
     res.status(HttpStatus.OK).json({message:"payments fetch successfully",data:payments})
 
   } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message,
-    });
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };

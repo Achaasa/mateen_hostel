@@ -4,6 +4,7 @@ import { HttpStatus } from "../utils/http-status";
 import HttpException from "../utils/http-error";
 import { Visitor } from "@prisma/client";
 import { VisitorRequestDto } from "../zodSchema/visitorSchema";
+import { formatPrismaError } from "../utils/formatPrisma";
 
 // Add a Visitor
 export const addVisitorController = async (req: Request, res: Response) => {
@@ -15,10 +16,8 @@ export const addVisitorController = async (req: Request, res: Response) => {
       data: createdVisitor,
     });
   } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error adding visitor",
-    });
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -31,10 +30,8 @@ export const getAllVisitorsController = async (req: Request, res: Response) => {
       data: visitors,
     });
   } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching visitors",
-    });
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -48,10 +45,8 @@ export const getVisitorByIdController = async (req: Request, res: Response) => {
       data: visitor,
     });
   } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching visitor",
-    });
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -69,10 +64,8 @@ export const updateVisitorController = async (req: Request, res: Response) => {
       data: updatedVisitor,
     });
   } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error updating visitor",
-    });
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -85,10 +78,8 @@ export const deleteVisitorController = async (req: Request, res: Response) => {
       message: result.message,
     });
   } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error deleting visitor",
-    });
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -105,10 +96,8 @@ export const checkoutVisitorController = async (
       data: checkedOutVisitor,
     });
   } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error checking out visitor",
-    });
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -125,9 +114,7 @@ export const visitorForHostel = async (
       data: visitors,
     });
   } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error checking out visitor",
-    });
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };

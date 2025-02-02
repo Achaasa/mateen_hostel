@@ -10,6 +10,7 @@ import { setInvalidToken, signToken, UserPayload } from "../utils/jsonwebtoken";
 import { jwtDecode } from "jwt-decode";
 import { getHostelById } from "../helper/hostelHelper";
 import prisma from "../utils/prisma";
+import { formatPrismaError } from "../utils/formatPrisma";
 
 // User registration function
 export const signUpUser = async (
@@ -44,14 +45,9 @@ export const signUpUser = async (
     res
       .status(HttpStatus.OK)
       .json({ message: "User created successfully", user: newUser });
-  } catch (error) {
-    const err = error as ErrorResponse;
-    next(
-      new HttpException(
-        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        err.message
-      )
-    );
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -64,14 +60,9 @@ export const getAllUsers = async (
   try {
     const allUsers = await userHelper.getUsers();
     res.status(HttpStatus.OK).json(allUsers);
-  } catch (error) {
-    const err = error as ErrorResponse;
-    next(
-      new HttpException(
-        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        err.message
-      )
-    );
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -86,13 +77,8 @@ export const getUserByEmail = async (
     const user = await userHelper.getUserByEmail(email);
     res.status(HttpStatus.OK).json(user);
   } catch (error) {
-    const err = error as ErrorResponse;
-    next(
-      new HttpException(
-        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        err.message
-      )
-    );
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -106,14 +92,9 @@ export const getUserById = async (
     const { id } = req.params;
     const user = await userHelper.getUserById(id);
     res.status(HttpStatus.OK).json(user);
-  } catch (error) {
-    const err = error as ErrorResponse;
-    next(
-      new HttpException(
-        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        err.message
-      )
-    );
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -146,14 +127,9 @@ export const updateUser = async (
     res
       .status(HttpStatus.OK)
       .json({ message: "User updated successfully", user: updatedUser });
-  } catch (error) {
-    const err = error as ErrorResponse;
-    next(
-      new HttpException(
-        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        err.message
-      )
-    );
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -169,14 +145,9 @@ export const deleteUser = async (
     res
       .status(HttpStatus.OK)
       .json({ message: `User deleted successfully: ${id}` });
-  } catch (error) {
-    const err = error as ErrorResponse;
-    next(
-      new HttpException(
-        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        err.message
-      )
-    );
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -197,14 +168,9 @@ export const verifyAndCreateHostelUser = async (
       message: "Hostel manager user created and credentials sent to email",
       user: newHostelUser,
     });
-  } catch (error) {
-    const err = error as ErrorResponse;
-    next(
-      new HttpException(
-        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        err.message
-      )
-    );
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -281,14 +247,9 @@ export const userLogIn = async (
       message: "login successful",
       token: newToken,
     });
-  } catch (error) {
-    const err = error as ErrorResponse;
-    next(
-      new HttpException(
-        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        err.message
-      )
-    );
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -324,14 +285,9 @@ export const logout = async (
   try {
     setInvalidToken();
     res.status(HttpStatus.OK).json({ message: "Logout successful" });
-  } catch (error) {
-    const err = error as ErrorResponse;
-    next(
-      new HttpException(
-        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        err.message
-      )
-    );
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -346,13 +302,8 @@ export const usersForHostel = async (
     res
       .status(HttpStatus.OK)
       .json({ message: "users fecthed successfully", data: users });
-  } catch (error) {
-    const err = error as ErrorResponse;
-    next(
-      new HttpException(
-        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        err.message
-      )
-    );
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };

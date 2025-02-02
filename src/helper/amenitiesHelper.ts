@@ -2,11 +2,11 @@ import prisma from "../utils/prisma";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
 import { Amenities } from "@prisma/client";
-import { ErrorResponse } from "../utils/types";
 import {
   amenitiesSchema,
   updateAmenitiesSchema,
 } from "../zodSchema/amenitiesSchema"; // Assuming you have Zod schemas for validation
+import { formatPrismaError } from "../utils/formatPrisma";
 
 // Add an Amenity
 export const addAmenity = async (amenityData: Amenities) => {
@@ -38,12 +38,8 @@ export const addAmenity = async (amenityData: Amenities) => {
     });
 
     return createdAmenity;
-  } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error adding amenity"
-    );
+  }catch (error) {
+    throw formatPrismaError(error);
   }
 };
 
@@ -53,11 +49,7 @@ export const getAllAmenities = async () => {
     const amenities = await prisma.amenities.findMany();
     return amenities;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching amenities"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -74,11 +66,7 @@ export const getAmenityById = async (amenityId: string): Promise<Amenities> => {
 
     return amenity;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching amenity"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -113,11 +101,7 @@ export const updateAmenity = async (
 
     return updatedAmenity;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error updating amenity"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -141,11 +125,7 @@ export const deleteAmenity = async (
 
     return { message: "Amenity deleted successfully" };
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error deleting amenity"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -157,10 +137,6 @@ export const getAllAmenitiesForHostel = async (hostelId: string) => {
     });
     return rooms;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching amenities"
-    );
+    throw formatPrismaError(error);
   }
 };
