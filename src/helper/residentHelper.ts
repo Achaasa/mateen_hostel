@@ -7,6 +7,7 @@ import {
   residentSchema,
   updateResidentSchema,
 } from "../zodSchema/residentSchema";
+import { formatPrismaError } from "../utils/formatPrisma";
 
 export const register = async (residentData: Resident) => {
   try {
@@ -49,11 +50,7 @@ export const register = async (residentData: Resident) => {
     });
     return newResident as Resident;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error adding  resident"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -64,11 +61,7 @@ export const getAllResident = async () => {
     });
     return residents as Resident[];
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching  residents"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -83,11 +76,7 @@ export const getResidentById = async (residentId: string) => {
     }
     return resident as Resident;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching  resident"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -102,11 +91,7 @@ export const getResidentByEmail = async (email: string) => {
     }
     return resident as Resident;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching  resident"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -136,11 +121,7 @@ export const updateResident = async (
     });
     return updatedResident as Resident;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error updating  resident"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -154,11 +135,7 @@ export const deleteResident = async (residentId: string) => {
     }
     await prisma.resident.delete({ where: { id: residentId } });
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error deleting  resident"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -169,11 +146,7 @@ export const getDebtors = async () => {
     });
     return debtors as Resident[];
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching debtors"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -199,11 +172,7 @@ export const getAllresidentsForHostel = async (hostelId: string) => {
     });
     return residents;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching residents"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -250,10 +219,6 @@ export const addResidentFromHostel = async (residentData: Resident) => {
     });
     return newResident as Resident;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error adding  resident"
-    );
+    throw formatPrismaError(error);
   }
 };

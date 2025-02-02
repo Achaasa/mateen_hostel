@@ -4,6 +4,7 @@ import { HttpStatus } from "../utils/http-status";
 import HttpException from "../utils/http-error";
 import { Amenities } from "@prisma/client";
 import { amenitiesDto } from "../zodSchema/amenitiesSchema";
+import { formatPrismaError } from "../utils/formatPrisma";
 
 // Add an Amenity
 export const addAmenityController = async (req: Request, res: Response) => {
@@ -18,11 +19,9 @@ export const addAmenityController = async (req: Request, res: Response) => {
       message: "Amenity created successfully",
       data: newAmenity,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error adding amenity",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -38,11 +37,9 @@ export const getAllAmenitiesController = async (
       message: "Amenities fetched successfully",
       data: amenities,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching amenities",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -57,11 +54,9 @@ export const getAmenityByIdController = async (req: Request, res: Response) => {
       message: "Amenity fetched successfully",
       data: amenity,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching amenity",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -80,11 +75,9 @@ export const updateAmenityController = async (req: Request, res: Response) => {
       message: "Amenity updated successfully",
       data: updatedAmenity,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error updating amenity",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -96,15 +89,14 @@ export const deleteAmenityController = async (req: Request, res: Response) => {
     const result = await amenitiesHelper.deleteAmenity(amenityId);
 
     res.status(HttpStatus.OK).json({
-      message: result.message,
+      message: "deleted successfully",
     });
   } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error deleting amenity",
-    });
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
+
 
 export const getAmenitiesForHostel = async (
   req: Request,
@@ -117,10 +109,8 @@ export const getAmenitiesForHostel = async (
     res
       .status(HttpStatus.OK)
       .json({ message: "amenities fetched successfully", data: amenities });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fecthing amenity",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };

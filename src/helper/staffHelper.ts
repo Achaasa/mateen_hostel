@@ -2,9 +2,9 @@ import prisma from "../utils/prisma";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
 import { Staff } from "@prisma/client";
-import { ErrorResponse } from "../utils/types";
 import { StaffSchema, updateStaffSchema } from "../zodSchema/staffSchema";
 import cloudinary from "../utils/cloudinary";
+import { formatPrismaError } from "../utils/formatPrisma";
 
 export const addStaff = async (
   StaffData: Staff,
@@ -38,11 +38,7 @@ export const addStaff = async (
     });
     return createdStaff as Staff; // Return the created Staff
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error adding  Staff"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -51,11 +47,7 @@ export const getAllStaffs = async () => {
     const Staffs = await prisma.staff.findMany({ include: { hostel: true } });
     return Staffs as Staff[];
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error getting  Staffs"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -70,11 +62,7 @@ export const getStaffById = async (StaffId: string) => {
     }
     return Staff as Staff;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error getting  Staff"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -87,11 +75,7 @@ export const deleteStaff = async (StaffId: string) => {
     await cloudinary.uploader.destroy(findStaff.passportKey);
     await prisma.staff.delete({ where: { id: StaffId } });
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error deleting  Staff"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -144,11 +128,7 @@ export const updateStaff = async (
     // Return the updated Staff object
     return updatedStaff;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error updating Staff"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -160,10 +140,6 @@ export const getAllStaffForHostel = async (hostelId: string) => {
     });
     return staffs;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching staffs"
-    );
+    throw formatPrismaError(error);
   }
 };

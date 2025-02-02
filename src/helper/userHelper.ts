@@ -10,6 +10,7 @@ import { generatePassword } from "../utils/generatepass";
 import { sendEmail } from "../utils/nodeMailer";
 import { jwtDecode } from "jwt-decode";
 import { UserPayload } from "../utils/jsonwebtoken";
+import { formatPrismaError } from "../utils/formatPrisma";
 export const createUser = async (
   UserData: User,
   picture: { imageUrl: string; imageKey: string }
@@ -41,11 +42,7 @@ export const createUser = async (
     const { password, ...restOfUser } = newUser;
     return restOfUser as User;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error Creating User"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -54,11 +51,7 @@ export const getUsers = async () => {
     const users = await prisma.user.findMany({ include: { hostel: true } });
     return users as User[];
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error getting all users"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -74,11 +67,7 @@ export const getUserById = async (id: string) => {
 
     return user;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error getting user by id"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -90,11 +79,7 @@ export const getUserByEmail = async (email: string) => {
     });
     return user;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error getting user by email"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -107,11 +92,7 @@ export const deleteUser = async (id: string) => {
 
     await prisma.user.delete({ where: { id } });
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error deleting user"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -162,11 +143,7 @@ export const updateUser = async (
     const { password, ...restOfUpdate } = updatedUser;
     return restOfUpdate as User;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error deleting user"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -215,11 +192,7 @@ export const verifyAndcreateHostelUser = async (hostelId: string) => {
     const { password, ...restOfUser } = newUser;
     return restOfUser as User;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error Creating User for Hostel"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -257,7 +230,7 @@ export const getUserProfileHelper = async (authHeader: string) => {
 
     return user; // Return the found user
   } catch (error) {
-    throw error; // Re-throw the error for handling in controller
+    throw formatPrismaError(error);
   }
 };
 
@@ -270,10 +243,6 @@ export const getAllUsersForHostel = async (hostelId: string) => {
     });
     return Users;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching users"
-    );
+    throw formatPrismaError(error);
   }
 };

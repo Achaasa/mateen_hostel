@@ -37,8 +37,8 @@ model Hostel {
 model Room {
   id     String @id @default(uuid())
   number String
-  block  String
-  floor  String
+  block  String?
+  floor  String?
   maxCap Int
 
   hostel      Hostel      @relation(fields: [hostelId], references: [id], onDelete: Cascade, onUpdate: Cascade)

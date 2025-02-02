@@ -2,8 +2,8 @@ import prisma from "../utils/prisma";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
 import { Visitor, VisitorStatus } from "@prisma/client";
-import { ErrorResponse } from "../utils/types";
 import { visitorSchema, updateVisitorSchema } from "../zodSchema/visitorSchema"; // Assuming you have Zod schemas for validation
+import { formatPrismaError } from "../utils/formatPrisma";
 
 // Add a Visitor
 
@@ -42,11 +42,7 @@ export const addVisitor = async (visitorData: Visitor) => {
 
     return createdVisitor;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error adding visitor"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -56,11 +52,7 @@ export const getAllVisitors = async (): Promise<Visitor[]> => {
     const visitors = await prisma.visitor.findMany();
     return visitors;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching visitors"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -77,11 +69,7 @@ export const getVisitorById = async (visitorId: string): Promise<Visitor> => {
 
     return visitor;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching visitor"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -116,11 +104,7 @@ export const updateVisitor = async (
 
     return updatedVisitor;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error updating visitor"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -144,11 +128,7 @@ export const deleteVisitor = async (
 
     return { message: "Visitor deleted successfully" };
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error deleting visitor"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -187,11 +167,7 @@ export const checkoutVisitor = async (visitorId: string) => {
     // Return the updated visitor information
     return updatedVisitor;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error during checkout"
-    );
+    throw formatPrismaError(error);
   }
 };
 
@@ -202,10 +178,6 @@ export const getVisitorsForHostel = async (hostelId: string) => {
     });
     return visitors;
   } catch (error) {
-    const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching  visitors"
-    );
+    throw formatPrismaError(error);
   }
 };

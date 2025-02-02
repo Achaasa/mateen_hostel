@@ -8,6 +8,7 @@ import {
   UpdateResidentRequestDto,
 } from "../zodSchema/residentSchema";
 import prisma from "../utils/prisma";
+import { formatPrismaError } from "../utils/formatPrisma";
 
 // Register a Resident
 export const registerResidentController = async (
@@ -22,11 +23,9 @@ export const registerResidentController = async (
       message: "Resident registered successfully",
       data: newResident,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error registering resident",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -41,11 +40,9 @@ export const getAllResidentsController = async (
       message: "Residents fetched successfully",
       data: residents,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching residents",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -62,11 +59,9 @@ export const getResidentByIdController = async (
       message: "Resident fetched successfully ID",
       data: resident,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching resident",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -83,11 +78,9 @@ export const getResidentByEmailController = async (
       message: "Resident fetched successfully email",
       data: resident,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching resident by email",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -105,11 +98,9 @@ export const updateResidentController = async (req: Request, res: Response) => {
       message: "Resident updated successfully",
       data: updatedResident,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error updating resident",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -122,11 +113,9 @@ export const deleteResidentController = async (req: Request, res: Response) => {
     res.status(HttpStatus.OK).json({
       message: "Resident deleted successfully",
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error deleting resident",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -140,11 +129,9 @@ export const getAlldebtors = async (req: Request, res: Response) => {
     res
       .status(HttpStatus.OK)
       .json({ message: "debtors fetched successfully", data: debtors });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fecthing debtors",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -159,11 +146,9 @@ export const getDebtorsForHostel = async (
     res
       .status(HttpStatus.OK)
       .json({ message: "debors fected successfully", data: debtors });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching debtors",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -178,14 +163,11 @@ export const getAllresidentsForHostel = async (
     res
       .status(HttpStatus.OK)
       .json({ message: "residents fecthed successfully", data: residents });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error fetching residents",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
-
 export const addResidentFromHostelController = async (
   req: Request,
   res: Response
@@ -198,10 +180,8 @@ export const addResidentFromHostelController = async (
       message: "Resident registered successfully",
       data: newResident,
     });
-  } catch (error) {
-    const err = error as HttpException;
-    res.status(err.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: err.message || "Error registering resident",
-    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
   }
 };
