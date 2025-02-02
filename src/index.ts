@@ -27,6 +27,12 @@ app.get("/", (req: Request, res: Response) => {
 
 app.use("/api", mainRouter);
 
+app.use("*", (req: Request, res: Response) => {
+  console.log("Catch-all route hit!"); // Logs if an undefined route is hit
+  res.status(404).json({
+    message: "Route not found",
+  });
+});
 app.use((error: any, req: Request, res: Response, next: NextFunction) => {
   console.log("error handler: ", error.status || 500, next);
   res.status(error.status || 500).json({
