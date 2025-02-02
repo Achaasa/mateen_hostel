@@ -67,12 +67,12 @@ export const getAmenityByIdController = async (req: Request, res: Response) => {
 
 // Update an Amenity
 export const updateAmenityController = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { amenityId } = req.params;
   const amenitiesData: Amenities = req.body satisfies amenitiesDto;
 
   try {
     const updatedAmenity = await amenitiesHelper.updateAmenity(
-      id,
+      amenityId,
       amenitiesData
     );
 
@@ -90,10 +90,10 @@ export const updateAmenityController = async (req: Request, res: Response) => {
 
 // Delete Amenity
 export const deleteAmenityController = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { amenityId } = req.params;
 
   try {
-    const result = await amenitiesHelper.deleteAmenity(id);
+    const result = await amenitiesHelper.deleteAmenity(amenityId);
 
     res.status(HttpStatus.OK).json({
       message: result.message,
