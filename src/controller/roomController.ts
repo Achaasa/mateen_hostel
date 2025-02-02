@@ -121,13 +121,7 @@ export const updateRoomController = async (req: Request, res: Response) => {
         }
       }
     }
-    const room = await roomHelper.getRoomById(roomId);
-    if (room) {
-      for (const image of room.RoomImage) {
-        // Delete the existing image from Cloudinary
-        await cloudinary.uploader.destroy(image.imageKey);
-      }
-    }
+
     const updatedRoom = await roomHelper.updateRoom(roomId, roomData, pictures);
 
     res.status(HttpStatus.OK).json({
@@ -141,6 +135,7 @@ export const updateRoomController = async (req: Request, res: Response) => {
     });
   }
 };
+
 
 // Delete a Room
 export const deleteRoomController = async (req: Request, res: Response) => {

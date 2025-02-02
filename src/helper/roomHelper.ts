@@ -31,16 +31,35 @@ export const updateRoom = async (
   pictures: { imageUrl: string; imageKey: string }[]
 ) => {
   try {
-    const room = await prisma.room.findUnique({ where: { id: roomId } });
+    const room = await prisma.room.findUnique({
+      where: { id: roomId },
+      include: { RoomImage: true },
+    });
     if (!room) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Room not found");
     }
+
+    // Delete old images from Cloudinary
+    if (room.RoomImage && room.RoomImage.length > 0) {
+      for (const image of room.RoomImage) {
+        await cloudinary.uploader.destroy(image.imageKey); // Delete image from Cloudinary
+      }
+    }
+
+    // Remove old images from the database
+    await prisma.roomImage.deleteMany({
+      where: { roomId: roomId },
+    });
+
+    // Update the room data
     let updatedRoomData = { ...roomData };
 
     const updatedRoom = await prisma.room.update({
       where: { id: roomId },
       data: updatedRoomData,
     });
+
+    // Add new images to Cloudinary and save them to the database
     if (pictures.length > 0) {
       const roomImages = pictures?.map((picture) => ({
         imageUrl: picture.imageUrl,
@@ -49,6 +68,7 @@ export const updateRoom = async (
       }));
       await prisma.roomImage.createMany({ data: roomImages });
     }
+
     return updatedRoom;
   } catch (error) {
     const err = error as ErrorResponse;
@@ -63,18 +83,29 @@ export const deleteRoom = async (roomId: string) => {
   try {
     const room = await prisma.room.findUnique({
       where: { id: roomId },
+      include: { RoomImage: true }, // Include associated images
     });
 
     if (!room) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Room not found");
     }
 
+    // Delete images from Cloudinary first
+    for (const image of room.RoomImage) {
+      await cloudinary.uploader.destroy(image.imageKey); // Delete image from Cloudinary
+    }
+
+    // Remove the images from the database
+    await prisma.roomImage.deleteMany({
+      where: { roomId: roomId },
+    });
+
     // Remove the room from the database
     await prisma.room.delete({
       where: { id: roomId },
     });
 
-    return { message: "Room deleted successfully" };
+    return { message: "Room and associated images deleted successfully" };
   } catch (error) {
     const err = error as ErrorResponse;
     throw new HttpException(
@@ -114,7 +145,6 @@ export const createRoom = async (
   pictures: { imageUrl: string; imageKey: string }[],
   amenitiesIds?: string[]
 ) => {
- 
   try {
     // Calculate total price if amenities are provided
     let totalPrice = roomData.price;
@@ -164,8 +194,11 @@ export const createRoom = async (
           : undefined, // Only connect amenities if provided
       },
     });
-    if(!newRoom){
-      throw new HttpException(HttpStatus.INTERNAL_SERVER_ERROR, "Error adding room");
+    if (!newRoom) {
+      throw new HttpException(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Error adding room"
+      );
     }
 
     const roomImages = pictures.map((picture) => ({
@@ -183,7 +216,6 @@ export const createRoom = async (
     );
   }
 };
-
 
 export const getAvailableRooms = async () => {
   try {
@@ -303,12 +335,10 @@ export const removeAmenitiesFromRoom = async (
   }
 };
 
-
-
 export const getAllRoomsForHostel = async (hostelId: string) => {
   try {
     const rooms = await prisma.room.findMany({
-      where:  { hostelId } ,
+      where: { hostelId },
     });
     return rooms;
   } catch (error) {
