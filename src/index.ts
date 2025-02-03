@@ -6,6 +6,9 @@ import mainRouter from "./routes";
 import swaggerUi from "swagger-ui-express"
 import prisma from "./utils/prisma";
 import { createAdminUser } from "./controller/adminPanel";
+import { ErrorResponse } from "./utils/types";
+import HttpException from "./utils/http-error";
+import { HttpStatus } from "./utils/http-status";
 // import * as swaggerDocs from './swagger.json'
 dotenv.config();
 
@@ -48,8 +51,12 @@ const startServer = async () => {
       console.log(`[server]: Server is running at http://localhost:${port}`);
     });
   } catch (error) {
-    console.error('Error starting the server:', error);
-  } finally {
+    const err = error as ErrorResponse;
+    throw new HttpException(
+      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      err.message || "Failed to start server"
+    );
+  }finally {
     await prisma.$disconnect(); // Ensure Prisma client disconnects
   }
 

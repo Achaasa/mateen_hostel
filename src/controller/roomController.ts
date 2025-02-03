@@ -15,9 +15,9 @@ export const addRoomController = async (req: Request, res: Response) => {
     maxCap: parseInt(req.body.maxCap),
   }; // Assuming you are sending the room data in the request body
   const amenitiesIds: string[] = req.body.amenitiesIds; // List of amenities IDs associated with the room
-  const photos = req.files ? req.files : undefined;
+  const photos = req.files ? req.files : [];
   const pictures = [];
-
+  console.log(photos);
   if (photos && Array.isArray(photos) && photos.length) {
     // Loop over the photos and upload each one to Cloudinary
     for (const photo of photos) {
@@ -33,10 +33,7 @@ export const addRoomController = async (req: Request, res: Response) => {
         });
       }
     }
-  } else {
-    // If no files are provided, return an error
-    throw new HttpException(HttpStatus.BAD_REQUEST, "No files uploaded.");
-  }
+  } 
   try {
     const newRoom = await roomHelper.createRoom(
       roomData,
