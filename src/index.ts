@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import morgan from "morgan";
 import cors from "cors";
 import mainRouter from "./routes";
-import swaggerUi from "swagger-ui-express"
 import prisma from "./utils/prisma";
 import { createAdminUser } from "./controller/adminPanel";
 import { ErrorResponse } from "./utils/types";
