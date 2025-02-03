@@ -189,7 +189,12 @@ export const createRoom = async (
       imageKey: picture.imageKey,
       roomId: newRoom.id,
     }));
-    await prisma.roomImage.createMany({ data: roomImages });
+    
+    // Ensure the images are inserted into the database
+    if (roomImages.length > 0) {
+      await prisma.roomImage.createMany({ data: roomImages });
+    }
+    
     return newRoom;
   } catch (error) {
     throw formatPrismaError(error);

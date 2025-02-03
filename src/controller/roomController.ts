@@ -13,28 +13,27 @@ export const addRoomController = async (req: Request, res: Response) => {
     ...req.body,
     price: parseFloat(req.body.price),
     maxCap: parseInt(req.body.maxCap),
-  }; // Assuming you are sending the room data in the request body
-  const amenitiesIds: string[] = req.body.amenitiesIds; // List of amenities IDs associated with the room
+  };
+  const amenitiesIds: string[] = req.body.amenitiesIds;
   const photos = req.files ? req.files : [];
   const pictures = [];
-  console.log(photos);
-  if (photos && Array.isArray(photos) && photos.length) {
-    // Loop over the photos and upload each one to Cloudinary
-    for (const photo of photos) {
-      const uploaded = await cloudinary.uploader.upload(photo.path, {
-        folder: "rooms/",
-      });
-
-      if (uploaded) {
-        // Add image info (URL & Key) to the pictures array
-        pictures.push({
-          imageUrl: uploaded.secure_url,
-          imageKey: uploaded.public_id,
+  console.log(`the photos: ${photos}`);
+  try {
+    if (photos && Array.isArray(photos) && photos.length) {
+      for (const photo of photos) {
+        const uploaded = await cloudinary.uploader.upload(photo.path, {
+          folder: "rooms/",
         });
+
+        if (uploaded) {
+          pictures.push({
+            imageUrl: uploaded.secure_url,
+            imageKey: uploaded.public_id,
+          });
+        }
       }
     }
-  } 
-  try {
+
     const newRoom = await roomHelper.createRoom(
       roomData,
       pictures,
@@ -46,7 +45,7 @@ export const addRoomController = async (req: Request, res: Response) => {
       data: newRoom,
     });
   } catch (error) {
-    const err = formatPrismaError(error); // Ensure this function is used
+    const err = formatPrismaError(error);
     res.status(err.status).json({ message: err.message });
   }
 };
