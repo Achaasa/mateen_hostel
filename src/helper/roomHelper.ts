@@ -211,7 +211,7 @@ export const getAvailableRooms = async () => {
     });
 
     return availableRooms; // Return the list of available rooms
-  }catch (error) {
+  } catch (error) {
     throw formatPrismaError(error);
   }
 };
@@ -306,8 +306,9 @@ export const getAllRoomsForHostel = async (hostelId: string) => {
   try {
     const rooms = await prisma.room.findMany({
       where: { hostelId },
+      include: { RoomImage: true, Resident: true, Amenities: true },
     });
-    return rooms as Room[]
+    return rooms as Room[];
   } catch (error) {
     throw formatPrismaError(error);
   }
