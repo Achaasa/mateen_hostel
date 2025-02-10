@@ -31,6 +31,8 @@ export const validateHostelAccess = async (
       staffId,
       amenityId,
       reference,
+      userId,
+      calendarYearId,
     } = req.params;
 
     if (roomId) {
@@ -79,6 +81,20 @@ export const validateHostelAccess = async (
         select: { hostelId: true },
       });
       requestedHostelId = amenities?.hostelId;
+    } else if (userId) {
+      // Fetch hostelId from the amenities
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { hostelId: true },
+      });
+      requestedHostelId = user?.hostelId;
+    } else if (calendarYearId) {
+      // Fetch hostelId from the amenities
+      const calender = await prisma.calendarYear.findUnique({
+        where: { id: calendarYearId },
+        select: { hostelId: true },
+      });
+      requestedHostelId = calender?.hostelId;
     } else if (reference) {
       // Fetch hostelId from the reference
       const payment = await prisma.payment.findUnique({

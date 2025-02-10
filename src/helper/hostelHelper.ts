@@ -1,7 +1,7 @@
 import prisma from "../utils/prisma";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
-import { Hostel } from "@prisma/client";
+import { Hostel, HostelState } from "@prisma/client";
 import { hostelSchema, updateHostelSchema } from "../zodSchema/hostelSchema";
 import cloudinary from "../utils/cloudinary";
 import { formatPrismaError } from "../utils/formatPrisma";
@@ -45,7 +45,7 @@ export const addHostel = async (
 export const getAllHostels = async () => {
   try {
     const hostels = await prisma.hostel.findMany({
-      include: { Rooms: true, Staffs: true,User:true },
+      include: { Rooms: true, Staffs: true, User: true },
     });
     return hostels as Hostel[];
   } catch (error) {
@@ -57,7 +57,7 @@ export const getHostelById = async (hostelId: string) => {
   try {
     const hostel = await prisma.hostel.findUnique({
       where: { id: hostelId },
-      include: { Rooms: true, Staffs: true,User:true },
+      include: { Rooms: true, Staffs: true, User: true },
     });
     if (!hostel) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
@@ -74,9 +74,9 @@ export const deleteHostel = async (hostelId: string) => {
     if (!findHostel) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
     }
-    
-    if(findHostel.imageKey){
-      await cloudinary.uploader.destroy(findHostel.imageKey);  // Delete the existing image from cloudinary
+
+    if (findHostel.imageKey) {
+      await cloudinary.uploader.destroy(findHostel.imageKey); // Delete the existing image from cloudinary
     }
     await prisma.hostel.delete({ where: { id: hostelId } });
   } catch (error) {
@@ -129,7 +129,7 @@ export const updateHostel = async (
       where: { id: hostelId },
       data: updatedHostelData,
     });
-    console.log("Updated Hostel: ", updatedHostel); 
+    console.log("Updated Hostel: ", updatedHostel);
     // Return the updated hostel object
     return updatedHostel;
   } catch (error) {
@@ -137,13 +137,28 @@ export const updateHostel = async (
   }
 };
 
-
-export const getUnverifiedHostel=async()=>{
+export const getUnverifiedHostel = async () => {
   try {
-    const unverifiedHostel= await prisma.hostel.findMany({where:{isVerifeid:false}})
+    const unverifiedHostel = await prisma.hostel.findMany({
+      where: { isVerifeid: false },
+    });
     return unverifiedHostel;
   } catch (error) {
     throw formatPrismaError(error);
   }
 };
 
+export const publishHostel = async (hostelId: string) => {
+  try {
+    const hostel = await prisma.hostel.findUnique({ where: { id: hostelId } });
+    if (!hostel) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
+    }
+    await prisma.hostel.update({
+      where: { id: hostelId },
+      data: { state: HostelState.PUBLISHED },
+    });
+  } catch (error) {
+    throw formatPrismaError(error);
+  }
+};

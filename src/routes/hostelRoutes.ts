@@ -43,12 +43,20 @@ hostelRoute.get(
 
 // Update a hostel by ID (PUT request)
 hostelRoute.put(
-  "/update/:id",
+  "/update/:hostelId",
   validatePayload("Hostel"),
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   validateHostelAccess,
   upload.single("photo"), // Optional: Assuming you have a validation schema for updating a hostel
+  hostelController.updateHostelController
+);
+// publish hostel
+hostelRoute.put(
+  "/publish/:hostelId",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
   hostelController.updateHostelController
 );
 
@@ -60,7 +68,7 @@ hostelRoute.delete(
   hostelController.deleteHostelController
 );
 hostelRoute.post(
-  "/verify/:hostelId",
+  "/verify/:id",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN"]),
 

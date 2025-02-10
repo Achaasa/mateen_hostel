@@ -13,6 +13,10 @@ export const initializePayment = async (
   residentId: string,
   initialPayment: number
 ) => {
+   // check for active calendar
+   const activeCalendar = await prisma.calendarYear.findFirst({
+    where: { isActive: true },
+  });
   try {
     // Check if the resident and room exist
     const room = await prisma.room.findUnique({ where: { id: roomId } });
@@ -54,6 +58,8 @@ export const initializePayment = async (
         status: "PENDING",
         reference: paymentResponse.data.reference,
         method: paymentResponse.data.payment_method,
+        calendarYearId:activeCalendar?.id as string
+
       },
     });
 
@@ -123,6 +129,10 @@ export const initializeTopUpPayment = async (
   initialPayment: number
 ) => {
   try {
+    // check for active calendar
+    const activeCalendar = await prisma.calendarYear.findFirst({
+      where: { isActive: true },
+    });
     // Check if the resident and room exist
     const room = await prisma.room.findUnique({ where: { id: roomId } });
     const resident = await prisma.resident.findUnique({
@@ -173,11 +183,12 @@ export const initializeTopUpPayment = async (
         status: "PENDING",
         reference: paymentResponse.data.reference,
         method: paymentResponse.data.channel, // Adjust method to use 'channel'
+        calendarYearId:activeCalendar?.id as string
       },
     });
 
     return paymentResponse.data.authorization_url;
-  }catch (error) {
+  } catch (error) {
     throw formatPrismaError(error);
   }
 };

@@ -3,6 +3,7 @@ import * as StaffController from "../controller/staffController"; // Adjust the 
 import { validatePayload } from "../middleware/validate-payload"; // Assuming you have validation middleware
 import upload from "../utils/multer";
 import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
+import { validateHostelAccess } from "../utils/AccessControl";
 
 const StaffRouter = Router();
 
@@ -13,6 +14,7 @@ StaffRouter.post(
   upload.single("photo"), // Optional: Assuming you have a validation schema for Staff data
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN"]),
+
   StaffController.addStaffController
 );
 
@@ -20,7 +22,9 @@ StaffRouter.post(
 StaffRouter.get(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN"]),
+  validateHostelAccess,
+
   StaffController.getAllStaffsController
 );
 
@@ -29,6 +33,8 @@ StaffRouter.get(
   "/get/:staffId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+
   StaffController.getStaffByIdController
 );
 
@@ -38,7 +44,9 @@ StaffRouter.put(
   validatePayload("Staff"),
   upload.single("photo"),
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]), // Optional: Assuming you have a validation schema for updating a Staff
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+   // Optional: Assuming you have a validation schema for updating a Staff
   StaffController.updateStaffController
 );
 
@@ -47,6 +55,8 @@ StaffRouter.delete(
   "/delete/:staffId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+
   StaffController.deleteStaffController
 );
 
@@ -54,6 +64,8 @@ StaffRouter.get(
   "/get/hostel/:hostelId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+
   StaffController.staffForHostel
 );
 
