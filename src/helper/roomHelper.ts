@@ -28,10 +28,13 @@ export const updateRoom = async (
   try {
     const room = await prisma.room.findUnique({
       where: { id: roomId },
-      include: { RoomImage: true },
+      include: { RoomImage: true,Resident:true },
     });
     if (!room) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Room not found");
+    }
+    if (roomData.maxCap && room.Resident.length > roomData.maxCap) {
+      throw new HttpException(HttpStatus.BAD_REQUEST, "Cannot update maxCap as it is less than the number of residents in the room");
     }
 
     // Delete old images from Cloudinary
@@ -167,6 +170,7 @@ export const createRoom = async (
         maxCap: roomData.maxCap,
         hostelId: roomData.hostelId,
         price: totalPrice,
+        gender:roomData.gender,
         description: roomData.description,
         type: roomData.type,
         status: roomData.status,

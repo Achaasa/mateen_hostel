@@ -2,6 +2,7 @@ import { Router } from "express";
 import * as roomController from "../controller/roomController"; // Assuming your controller file is named roomController
 import upload from "../utils/multer";
 import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
+import { validateHostelAccess } from "../utils/AccessControl";
 
 const roomRouter = Router();
 
@@ -18,6 +19,8 @@ roomRouter.get(
   "/get/:roomId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+
   roomController.getRoomByIdController
 );
 
@@ -27,6 +30,8 @@ roomRouter.post(
   upload.array("photos"),
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+
   roomController.addRoomController
 );
 
@@ -36,6 +41,8 @@ roomRouter.put(
   upload.array("photos"),
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+
   roomController.updateRoomController
 );
 
@@ -44,6 +51,8 @@ roomRouter.delete(
   "/delete/:roomId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+
   roomController.deleteRoomController
 );
 
@@ -52,6 +61,8 @@ roomRouter.get(
   "/available",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+
   roomController.getAvailableRoomsController
 );
 
@@ -59,12 +70,16 @@ roomRouter.post(
   "/:roomId/add",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN"]),
+  validateHostelAccess,
+
   roomController.addAmenitiesToRoomController
 );
 roomRouter.post(
   "/:roomId/remove",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+
   roomController.removeAmenitiesFromRoomController
 );
 
@@ -72,6 +87,8 @@ roomRouter.get(
   "/hostel/:hostelId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+
   roomController.roomsForHostel
 );
 export default roomRouter;

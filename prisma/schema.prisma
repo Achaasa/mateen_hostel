@@ -13,29 +13,31 @@ datasource db {
 }
 
 model Hostel {
-  id          String      @id @default(uuid())
-  name        String
-  description String?
-  address     String
-  location    String
-  manager     String
-  email       String      @unique
-  phone       String
-  imageKey    String
-  imageUrl    String
-  ghCard      String
-  Rooms       Room[]
-  Staffs      Staff[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  isVerifeid  Boolean     @default(false)
-  delFlag     Boolean     @default(false)
-  Amenities   Amenities[]
-  User        User[]
+  id           String         @id @default(uuid())
+  name         String
+  description  String?
+  address      String
+  location     String
+  manager      String
+  email        String         @unique
+  phone        String
+  imageKey     String
+  imageUrl     String
+  ghCard       String
+  Rooms        Room[]
+  Staffs       Staff[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  isVerifeid   Boolean        @default(false)
+  delFlag      Boolean        @default(false)
+  Amenities    Amenities[]
+  User         User[]
+  state        HostelState    @default(UNPUBLISHED)
+  CalendarYear CalendarYear[]
 }
 
 model Room {
-  id     String @id @default(uuid())
+  id     String  @id @default(uuid())
   number String
   block  String?
   floor  String?
@@ -52,8 +54,10 @@ model Room {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  delFlag   Boolean     @default(false)
-  RoomImage RoomImage[]
+  delFlag            Boolean              @default(false)
+  RoomImage          RoomImage[]
+  gender             RoomGender
+  HistoricalResident HistoricalResident[]
 }
 
 model Staff {
@@ -73,7 +77,7 @@ model Staff {
   religion          Religion
   email             String        @unique
   residence         String
-  qualification     String
+  qualification     StaffQualification
   block             String
   dateOfAppointment DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -104,33 +108,38 @@ model Resident {
   emergencyContactPhone String
   relationship          String //relationship with emergency contact
 
-  room         Room      @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  roomId       String
-  payments     Payment[]
-  Visitor      Visitor[]
-  gender       Gender
-  roomAssigned Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  room               Room                 @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  roomId             String
+  payments           Payment[]
+  Visitor            Visitor[]
+  gender             Gender
+  roomAssigned       Boolean              @default(false)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
   //tracking payments 
-  amountPaid   Float     @default(0) // Total amount paid so far
-  balanceOwed  Float? // Remaining balance, calculated in logic
-  roomPrice    Float?
-  delFlag      Boolean   @default(false)
+  amountPaid         Float                @default(0) // Total amount paid so far
+  balanceOwed        Float? // Remaining balance, calculated in logic
+  roomPrice          Float?
+  delFlag            Boolean              @default(false)
+  CalendarYear       CalendarYear         @relation(fields: [calendarYearId], references: [id])
+  calendarYearId     String
+  HistoricalResident HistoricalResident[]
 }
 
 model Payment {
-  id         String   @id @default(uuid())
-  amount     Float
-  date       DateTime @default(now())
-  resident   Resident @relation(fields: [residentId], references: [id])
-  residentId String
-  status     String?
-  roomId     String?
-  reference  String   @unique // Paystack payment reference
-  method     String?
-  updatedAt  DateTime @updatedAt
-  delFlag    Boolean  @default(false)
+  id             String       @id @default(uuid())
+  amount         Float
+  date           DateTime     @default(now())
+  resident       Resident     @relation(fields: [residentId], references: [id])
+  residentId     String
+  status         String?
+  roomId         String?
+  reference      String       @unique // Paystack payment reference
+  method         String?
+  updatedAt      DateTime     @updatedAt
+  delFlag        Boolean      @default(false)
+  CalendarYear   CalendarYear @relation(fields: [calendarYearId], references: [id])
+  calendarYearId String
 }
 
 model Visitor {
@@ -173,13 +182,42 @@ model RoomImage {
   delFlag   Boolean  @default(false)
 }
 
+model CalendarYear {
+  id                 String               @id @default(uuid())
+  name               String               @unique // e.g., "Fall 2023"
+  startDate          DateTime
+  endDate            DateTime?
+  isActive           Boolean              @default(false) // Indicates if this is the current semester
+  Residents          Resident[]
+  Payments           Payment[]
+  hostelId           String
+  hostel             Hostel               @relation(fields: [hostelId], references: [id])
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  HistoricalResident HistoricalResident[]
+}
+
+model HistoricalResident {
+  id             String       @id @default(uuid())
+  resident       Resident     @relation(fields: [residentId], references: [id])
+  residentId     String
+  room           Room         @relation(fields: [roomId], references: [id])
+  roomId         String
+  CalendarYear   CalendarYear @relation(fields: [calendarYearId], references: [id])
+  calendarYearId String
+  amountPaid     Float
+  roomPrice      Float
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
 enum StaffRole {
   HOSTEL_MANAGER
   WARDEN
   CHIEF_WADEN
 }
 
-enum StaffQulification {
+enum StaffQualification {
   BECE
   WASCE
   TVET
@@ -255,4 +293,15 @@ enum MaritalStatus {
   MARRIED
   DIVORCED
   WIDOWED
+}
+
+enum RoomGender {
+  MALE
+  FEMALE
+  MIX
+}
+
+enum HostelState {
+  PUBLISHED
+  UNPUBLISHED
 }

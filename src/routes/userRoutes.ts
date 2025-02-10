@@ -14,6 +14,7 @@ import upload from "../utils/multer";
 import { validatePayload } from "../middleware/validate-payload";
 import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
 import { Router } from "express";
+import { validateHostelAccess } from "../utils/AccessControl";
 
 const userRouter = Router();
 
@@ -45,26 +46,30 @@ userRouter.get(
 
 // Get user by ID
 userRouter.get(
-  "/get/:id",
+  "/get/:userId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+
   getUserById
 );
 
 // Update user
 userRouter.put(
-  "/update/:id",
+  "/update/:userId",
   validatePayload("User"),
   upload.single("photo"),
+  validateHostelAccess,
 
   updateUser
 );
 
 // Delete user
 userRouter.delete(
-  "/delete/:id",
+  "/delete/:userId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
 
   deleteUser
 );
@@ -78,9 +83,11 @@ userRouter.get("/profile", authenticateJWT, getUserProfile);
 // User logout
 userRouter.post("/logout", authenticateJWT, logout);
 userRouter.get(
-  "/get/hoste/:hostelId",
+  "/get/:hostel/:hostelId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+
   usersForHostel
 );
 export default userRouter;

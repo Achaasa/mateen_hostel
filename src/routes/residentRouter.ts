@@ -75,13 +75,6 @@ residentRouter.get(
   "/debtors/hostel/:hostelId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"])
-),
-  // Catch-all route at the end
-  residentRouter.get("*", (req, res) => {
-    console.log("Catch-all route hit!"); // Logs if this route is hit
-    res.status(404).json({
-      message: "Route not found",
-    });
-  });
+)
 
 export default residentRouter;

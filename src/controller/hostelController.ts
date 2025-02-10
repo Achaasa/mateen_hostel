@@ -138,3 +138,18 @@ export const unverifiedHostel = async (req: Request, res: Response) => {
     res.status(err.status).json({ message: err.message });
   }
 };
+
+export const publishHostel=async(req: Request, res: Response)=>{
+try {
+  const { hostelId } = req.params;
+  await hostelHelper.publishHostel(hostelId);
+
+  res.status(HttpStatus.OK).json({
+    message: "Hostel published successfully",
+  });
+  
+}  catch (error) {
+  const err = formatPrismaError(error); // Ensure this function is used
+  res.status(err.status).json({ message: err.message });
+}
+};
