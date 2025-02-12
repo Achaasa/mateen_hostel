@@ -241,9 +241,24 @@ enum PaymentStatus {
 }
 
 enum Location {
-  KUMASI
-  ACCRA
-  SUNYANI
+ 
+
+AHAFO  
+ASHANTI  
+BONO  
+BONO_EAST  
+CENTRAL  
+EASTERN  
+GREATER_ACCRA  
+NORTH_EAST  
+NORTHERN  
+OTI  
+SAVANNAH  
+UPPER_EAST  
+UPPER_WEST  
+VOLTA  
+WESTERN  
+WESTERN_NORTH
 }
 
 enum Religion {
