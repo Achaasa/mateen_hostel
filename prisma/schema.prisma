@@ -43,27 +43,27 @@ model Room {
   floor  String?
   maxCap Int
 
-  hostel      Hostel      @relation(fields: [hostelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  hostelId    String
-  Amenities   Amenities[] @relation("RoomAmenities")
-  Resident    Resident[]
-  price       Float
-  description String
-  type        RoomType
-  status      RoomStatus
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  delFlag            Boolean              @default(false)
-  RoomImage          RoomImage[]
-  gender             RoomGender
-  HistoricalResident HistoricalResident[]
+  hostel               Hostel               @relation(fields: [hostelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  hostelId             String
+  Amenities            Amenities[]          @relation("RoomAmenities")
+  Resident             Resident[]
+  price                Float
+  description          String
+  type                 RoomType
+  status               RoomStatus
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  currentResidentCount Int                  @default(0)
+  delFlag              Boolean              @default(false)
+  RoomImage            RoomImage[]
+  gender               RoomGender
+  HistoricalResident   HistoricalResident[]
 }
 
 model Staff {
-  id                String        @id @default(uuid())
+  id                String             @id @default(uuid())
   role              StaffRole
-  hostel            Hostel        @relation(fields: [hostelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  hostel            Hostel             @relation(fields: [hostelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   hostelId          String
   firstName         String
   middleName        String?
@@ -75,15 +75,15 @@ model Staff {
   ghanaCardNumber   String
   phoneNumber       String
   religion          Religion
-  email             String        @unique
+  email             String             @unique
   residence         String
   qualification     StaffQualification
   block             String
-  dateOfAppointment DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  dateOfAppointment DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
   passportUrl       String
   passportKey       String
-  delFlag           Boolean       @default(false)
+  delFlag           Boolean            @default(false)
 }
 
 model Amenities {
@@ -241,9 +241,22 @@ enum PaymentStatus {
 }
 
 enum Location {
-  KUMASI
-  ACCRA
-  SUNYANI
+  AHAFO
+  ASHANTI
+  BONO
+  BONO_EAST
+  CENTRAL
+  EASTERN
+  GREATER_ACCRA
+  NORTH_EAST
+  NORTHERN
+  OTI
+  SAVANNAH
+  UPPER_EAST
+  UPPER_WEST
+  VOLTA
+  WESTERN
+  WESTERN_NORTH
 }
 
 enum Religion {

@@ -48,6 +48,8 @@ export const register = async (residentData: Resident) => {
     const newResident = await prisma.resident.create({
       data: { ...residentData, roomPrice: existingRoom.price },
     });
+     
+     
     return newResident as Resident;
   } catch (error) {
     throw formatPrismaError(error);
@@ -216,6 +218,10 @@ export const addResidentFromHostel = async (residentData: Resident) => {
     }
     const newResident = await prisma.resident.create({
       data: { ...residentData, roomPrice: existingRoom.price },
+    });
+    await prisma.room.update({
+      where: { id: roomId },
+      data: { currentResidentCount: currentResidentsCount + 1 },
     });
     return newResident as Resident;
   } catch (error) {

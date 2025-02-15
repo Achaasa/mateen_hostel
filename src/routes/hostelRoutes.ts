@@ -62,13 +62,13 @@ hostelRoute.put(
 
 // Delete a hostel by ID (DELETE request)
 hostelRoute.delete(
-  "/delete/:id",
+  "/delete/:hostelId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN"]),
   hostelController.deleteHostelController
 );
 hostelRoute.post(
-  "/verify/:id",
+  "/verify/:hostelId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN"]),
 

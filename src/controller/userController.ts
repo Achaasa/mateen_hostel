@@ -89,8 +89,8 @@ export const getUserById = async (
   next: NextFunction
 ) => {
   try {
-    const { id } = req.params;
-    const user = await userHelper.getUserById(id);
+    const { userId } = req.params;
+    const user = await userHelper.getUserById(userId);
     res.status(HttpStatus.OK).json(user);
   }  catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
@@ -104,7 +104,7 @@ export const updateUser = async (
   res: Response,
   next: NextFunction
 ) => {
-  const { id } = req.params;
+  const { userId } = req.params;
   const userData: Partial<User> = req.body;
   const photo = req.file ? req.file.path : undefined;
   const picture = {
@@ -123,7 +123,7 @@ export const updateUser = async (
       }
     }
 
-    const updatedUser = await userHelper.updateUser(id, userData, picture);
+    const updatedUser = await userHelper.updateUser(userId, userData, picture);
     res
       .status(HttpStatus.OK)
       .json({ message: "User updated successfully", user: updatedUser });
@@ -139,12 +139,12 @@ export const deleteUser = async (
   res: Response,
   next: NextFunction
 ) => {
-  const { id } = req.params;
+  const { userId } = req.params;
   try {
-    await userHelper.deleteUser(id);
+    await userHelper.deleteUser(userId);
     res
       .status(HttpStatus.OK)
-      .json({ message: `User deleted successfully: ${id}` });
+      .json({ message: `User deleted successfully: ${userId}` });
   }  catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
