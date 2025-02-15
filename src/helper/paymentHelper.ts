@@ -108,7 +108,8 @@ export const confirmPayment = async (reference: string) => {
         balanceOwed: debt, // update balance owed
       },
     });
-
+    const currentResidentsCount = await prisma.resident.count({where:{id:roomId}})
+    
     await prisma.payment.update({
       where: { id: paymentRecord.id },
       data: {
@@ -116,7 +117,11 @@ export const confirmPayment = async (reference: string) => {
         method: verificationResponse.data.channel,
       },
     });
-
+ 
+    await prisma.room.update({
+      where: { id: roomId },
+      data: { currentResidentCount: currentResidentsCount + 1 },
+    });
     return resident;
   } catch (error) {
     throw formatPrismaError(error);
