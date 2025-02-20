@@ -35,6 +35,13 @@ export const register = async (residentData: Resident) => {
     if (!existingRoom) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
     }
+    if (existingRoom.gender !== 'MIX' && existingRoom.gender !== residentData.gender) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        `Room gender does not match resident's gender.`
+      );
+    }
+
     const currentResidentsCount = await prisma.resident.count({
       where: { roomId: residentData.roomId },
     });
@@ -45,6 +52,7 @@ export const register = async (residentData: Resident) => {
         "Room has reached its maximum capacity."
       );
     }
+    
     const newResident = await prisma.resident.create({
       data: { ...residentData, roomPrice: existingRoom.price },
     });
