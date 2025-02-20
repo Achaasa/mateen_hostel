@@ -13,7 +13,8 @@ StaffRouter.post(
   validatePayload("Staff"),
   upload.single("photo"), // Optional: Assuming you have a validation schema for Staff data
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
 
   StaffController.addStaffController
 );
