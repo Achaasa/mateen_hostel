@@ -214,7 +214,7 @@ model HistoricalResident {
 enum StaffRole {
   HOSTEL_MANAGER
   WARDEN
-  CHIEF_WADEN
+  CHIEF_WARDEN
 }
 
 enum StaffQualification {
