@@ -10,14 +10,14 @@ const StaffRouter = Router();
 // Add a new Staff (POST request)
 StaffRouter.post(
   "/add",
-  validatePayload("Staff"),
-  upload.single("photo"), // Optional: Assuming you have a validation schema for Staff data
-  authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
-  validateHostelAccess,
-
-  StaffController.addStaffController
+  authenticateJWT, // Ensure user is authenticated first
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]), // Ensure user has required roles
+  upload.single("photo"), // Process file upload AFTER validation
+  validateHostelAccess, // Ensure user has access to the hostel
+  validatePayload("Staff"), // ✅ Validate payload before file upload
+  StaffController.addStaffController // Proceed to controller
 );
+
 
 // Get all Staffs (GET request)
 StaffRouter.get(

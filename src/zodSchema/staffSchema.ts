@@ -14,10 +14,6 @@ const dateWithTimeValidator = z
   .transform((date) => `${date}T00:00:00Z`); // Adding the time part
 // Schema for creating a staff member
 export const StaffSchema = z.object({
-  name: z
-    .string({ required_error: "Staff name is required" })
-    .trim()
-    .min(1, { message: "Staff name can't be empty" }),
 
   role: staffRoleEnum,
 
