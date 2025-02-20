@@ -9,37 +9,70 @@ import {
   UpdateStaffRequestDto,
 } from "../zodSchema/staffSchema";
 import { formatPrismaError } from "../utils/formatPrisma";
+import prisma from "../utils/prisma";
 
 // Add a Staff
 export const addStaffController = async (req: Request, res: Response) => {
   const photo = req.file ? req.file.path : undefined;
   const StaffData: Staff = req.body satisfies StaffRequestDto;
+  console.log("staff data:", JSON.stringify(StaffData));
+
   const picture = {
     passportUrl: "",
     passportKey: "",
   };
 
-  if (photo) {
-    const uploaded = await cloudinary.uploader.upload(photo, {
-      folder: "Staff/",
-    });
-    if (uploaded) {
-      picture.passportUrl = uploaded.secure_url;
-      picture.passportKey = uploaded.public_id;
-    }
-  }
   try {
+    // First, try to add the staff (don't upload the photo yet)
     const newStaff = await StaffHelper.addStaff(StaffData, picture);
 
+    // If staff creation is successful, upload the photo to Cloudinary
+    if (photo) {
+      const uploaded = await cloudinary.uploader.upload(photo, {
+        folder: "Staff/",
+      });
+
+      if (uploaded) {
+        // Update the picture URL and key after the photo is successfully uploaded
+        picture.passportUrl = uploaded.secure_url;
+        picture.passportKey = uploaded.public_id;
+
+        // Optionally, update the staff record with the photo URL and key
+        await prisma.staff.update({
+          where: { email: StaffData.email }, // Make sure to update with the correct identifier
+          data: {
+            passportUrl: picture.passportUrl,
+            passportKey: picture.passportKey,
+          },
+        });
+      }
+    }
+
+    // Respond with success if everything went well
     res.status(HttpStatus.CREATED).json({
       message: "Staff created successfully",
       data: newStaff,
     });
-  }  catch (error) {
-    const err = formatPrismaError(error); // Ensure this function is used
+
+  } catch (error) {
+    // If anything fails, handle the error, rollback any uploaded photo
+    if (photo) {
+      // Optionally delete the uploaded photo from Cloudinary
+      const filePath = req.file?.path; // Use the file path here if needed to delete the photo
+      if (filePath) {
+        const publicId = picture.passportKey;
+        if (publicId) {
+          await cloudinary.uploader.destroy(publicId); // Delete the uploaded file from Cloudinary
+        }
+      }
+    }
+
+    // Format and send error response
+    const err = formatPrismaError(error); 
     res.status(err.status).json({ message: err.message });
   }
 };
+
 
 // Get All Staffs
 export const getAllStaffsController = async (req: Request, res: Response) => {

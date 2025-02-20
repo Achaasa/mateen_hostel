@@ -14,6 +14,9 @@ dotenv.config();
 const app: Express = express();
 const port = process.env.PORT || 2020;
 app.use(express.json());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Ensure form-data is parsed properly
+
 app.use(morgan("dev"));
 app.use(
   cors({
