@@ -1,10 +1,9 @@
 import { z } from "zod";
-
+import { StaffRole } from "@prisma/client";
 const staffRoleEnum = z.enum([
-  "HOSTEL_ADMIN",
-  "ROOM_ADMIN",
-  "RESIDENT",
-  "VISITOR",
+  "HOSTEL_MANAGER",
+  "WARDEN",
+ "CHIEF_WARDEN"
 ]);
 const genderEnum = z.enum(["MALE", "FEMALE", "OTHER"]);
 const maritalStatusEnum = z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]);
