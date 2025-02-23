@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { StaffRole } from "@prisma/client";
 const staffRoleEnum = z.enum([
   "HOSTEL_MANAGER",
   "WARDEN",
@@ -7,11 +6,7 @@ const staffRoleEnum = z.enum([
 ]);
 const genderEnum = z.enum(["MALE", "FEMALE", "OTHER"]);
 const maritalStatusEnum = z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]);
-const locationEnum = z.enum(["ACCRA", "SUNYANI", "KUMASI"]);
-const dateWithTimeValidator = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in the format YYYY-MM-DD")
-  .transform((date) => `${date}T00:00:00Z`); // Adding the time part
+const staffQualificationEnum=z.enum(["WASCE","BECE","TVET","BSC"])
 // Schema for creating a staff member
 export const StaffSchema = z.object({
 
@@ -71,11 +66,7 @@ export const StaffSchema = z.object({
     .trim()
     .min(1, { message: "Residence can't be empty" }),
 
-  qualification: z
-    .string({ required_error: "Qualification is required" })
-    .trim()
-    .min(1, { message: "Qualification can't be empty" }),
-
+  qualification: staffQualificationEnum,
   block: z
     .string({ required_error: "Block is required" })
     .trim()
@@ -83,7 +74,7 @@ export const StaffSchema = z.object({
   dateOfAppointment: z.string({ required_error: "Date is required" })
   .trim()
   .min(1, { message: "Date of appointment can't be empty" })
-    .optional(),
+    
 });
 
 // Schema for updating a staff member (all fields are optional)
@@ -115,12 +106,9 @@ export const updateStaffSchema = z.object({
     .min(1, { message: "Last name can't be empty" })
     .optional(),
 
-  dateOfBirth: z
-    .string({ required_error: "Date of birth is required" })
-    .regex(
-      /^\d{4}-\d{2}-\d{2}$/,
-      "Date of birth must be in the format YYYY-MM-DD"
-    )
+    dateOfBirth: z.string({ required_error: "Date is required" })
+  .trim()
+  .min(1, { message: "Date of appointment can't be empty" })
     .optional(),
 
   nationality: z
@@ -162,11 +150,7 @@ export const updateStaffSchema = z.object({
     .min(1, { message: "Residence can't be empty" })
     .optional(),
 
-  qualification: z
-    .string({ required_error: "Qualification is required" })
-    .trim()
-    .min(1, { message: "Qualification can't be empty" })
-    .optional(),
+  qualification: staffQualificationEnum.optional(),
 
   block: z
     .string({ required_error: "Block is required" })
@@ -174,13 +158,10 @@ export const updateStaffSchema = z.object({
     .min(1, { message: "Block can't be empty" })
     .optional(),
 
-  dateOfAppointment: z
-    .string({ required_error: "Date of appointment is required" })
-    .regex(
-      /^\d{4}-\d{2}-\d{2}$/,
-      "Date of appointment must be in the format YYYY-MM-DD"
-    )
-    .optional(),
+    dateOfAppointment: z.string({ required_error: "Date is required" })
+    .trim()
+    .min(1, { message: "Date of appointment can't be empty" })
+      .optional(),
 });
 
 // Types to infer the data structures

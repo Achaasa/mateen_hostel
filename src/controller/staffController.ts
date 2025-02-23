@@ -145,10 +145,10 @@ export const updateStaffController = async (req: Request, res: Response) => {
 
 // Delete Staff
 export const deleteStaffController = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { staffId } = req.params;
 
   try {
-    await StaffHelper.deleteStaff(id);
+    await StaffHelper.deleteStaff(staffId);
 
     res.status(HttpStatus.OK).json({
       message: "Staff deleted successfully",
