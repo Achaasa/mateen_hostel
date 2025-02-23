@@ -57,9 +57,18 @@ hostelRoute.put(
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   validateHostelAccess,
-  hostelController.updateHostelController
+  hostelController.publishHostel
 );
 
+
+// unpublish hostel
+hostelRoute.put(
+  "/unpublish/:hostelId",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+  hostelController.unPublishHostel
+);
 // Delete a hostel by ID (DELETE request)
 hostelRoute.delete(
   "/delete/:hostelId",

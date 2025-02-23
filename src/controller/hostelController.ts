@@ -153,3 +153,19 @@ try {
   res.status(err.status).json({ message: err.message });
 }
 };
+
+
+export const unPublishHostel=async(req: Request, res: Response)=>{
+  try {
+    const { hostelId } = req.params;
+    await hostelHelper.unPublishHostel(hostelId);
+  
+    res.status(HttpStatus.OK).json({
+      message: "Hostel unpublished successfully",
+    });
+    
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
+  }
+  };

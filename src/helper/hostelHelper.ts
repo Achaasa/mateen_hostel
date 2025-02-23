@@ -162,3 +162,18 @@ export const publishHostel = async (hostelId: string) => {
     throw formatPrismaError(error);
   }
 };
+
+export const unPublishHostel = async (hostelId: string) => {
+  try {
+    const hostel = await prisma.hostel.findUnique({ where: { id: hostelId } });
+    if (!hostel) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
+    }
+    await prisma.hostel.update({
+      where: { id: hostelId },
+      data: { state: HostelState.UNPUBLISHED },
+    });
+  } catch (error) {
+    throw formatPrismaError(error);
+  }
+};
