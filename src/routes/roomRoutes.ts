@@ -43,6 +43,7 @@ roomRouter.put(
   upload.array("photos"),
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validatePayload("Room"),
   validateHostelAccess,
 
   roomController.updateRoomController
