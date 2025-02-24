@@ -31,7 +31,6 @@ roomRouter.post(
   upload.array("photos"),
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
-  validatePayload("Room"),
   validateHostelAccess,
 
   roomController.addRoomController
@@ -43,7 +42,6 @@ roomRouter.put(
   upload.array("photos"),
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
-  validatePayload("Room"),
   validateHostelAccess,
 
   roomController.updateRoomController
