@@ -4,6 +4,7 @@ import { z } from "zod";
 export const amenitiesSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
   price: z.number().min(0, { message: "Price must be a non-negative value" }),
+  hostelId: z.string({ required_error: "HOSTEL ID is required" }).uuid(),
 });
 
 // Schema for updating amenities
@@ -13,7 +14,7 @@ export const updateAmenitiesSchema = z.object({
     .number()
     .min(0, { message: "Price must be a non-negative value" })
     .optional(),
-  hostelId: z.string({ required_error: "HOSTEL ID is required" }).uuid(),
+  hostelId: z.string({ required_error: "HOSTEL ID is required" }).uuid().optional()
 });
 
 export type amenitiesDto = z.infer<typeof amenitiesSchema>;
