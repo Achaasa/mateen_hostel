@@ -209,23 +209,6 @@
     ]
   },
   {
-    "modelName": "StaffRole",
-    "fields": [
-      "HOSTEL_MANAGER",
-      "WARDEN",
-      "CHIEF_WARDEN"
-    ]
-  },
-  {
-    "modelName": "StaffQualification",
-    "fields": [
-      "BECE",
-      "WASCE",
-      "TVET",
-      "BSC"
-    ]
-  },
-  {
     "modelName": "UserRole",
     "fields": [
       "ADMIN",

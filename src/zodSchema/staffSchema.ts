@@ -10,7 +10,11 @@ const staffQualificationEnum=z.enum(["WASCE","BECE","TVET","BSC"])
 // Schema for creating a staff member
 export const StaffSchema = z.object({
 
-  role: staffRoleEnum,
+  role:  z
+  .string({ required_error: "role is required" })
+  .trim()
+  .min(1, { message: "role can't be empty" }),
+  
 
   hostelId: z
     .string({ required_error: "Hostel ID is required" })
@@ -66,7 +70,10 @@ export const StaffSchema = z.object({
     .trim()
     .min(1, { message: "Residence can't be empty" }),
 
-  qualification: staffQualificationEnum,
+  qualification:z
+  .string({ required_error: "Qualification is required" })
+  .trim()
+  .min(1, { message: "Qualifucation can't be empty" }),
   block: z
     .string({ required_error: "Block is required" })
     .trim()
@@ -85,7 +92,11 @@ export const updateStaffSchema = z.object({
     .min(1, { message: "Staff name can't be empty" })
     .optional(),
 
-  role: staffRoleEnum.optional(),
+  role:  z
+  .string({ required_error: "role is required" })
+  .trim()
+  .min(1, { message: "role can't be empty" })
+  .optional(),
 
   hostelId: z
     .string({ required_error: "Hostel ID is required" })
@@ -150,7 +161,11 @@ export const updateStaffSchema = z.object({
     .min(1, { message: "Residence can't be empty" })
     .optional(),
 
-  qualification: staffQualificationEnum.optional(),
+  qualification: z
+  .string({ required_error: "Qualification is required" })
+  .trim()
+  .min(1, { message: "Qualification can't be empty" })
+  .optional(),
 
   block: z
     .string({ required_error: "Block is required" })
