@@ -2,6 +2,7 @@ import { Router } from "express";
 import * as visitorController from "../controller/visitorController"; // Assuming your controller file is named visitorController
 import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
 import { validateHostelAccess } from "../utils/AccessControl";
+import { validatePayload } from "../middleware/validate-payload";
 
 const visitorRouter = Router();
 
@@ -10,6 +11,8 @@ visitorRouter.post(
   "/add",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validatePayload("Visitor"),
+  validateHostelAccess,
   visitorController.addVisitorController
 );
 
@@ -17,7 +20,7 @@ visitorRouter.post(
 visitorRouter.get(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN",]),
   visitorController.getAllVisitorsController
 );
 

@@ -3,6 +3,7 @@ import * as roomController from "../controller/roomController"; // Assuming your
 import upload from "../utils/multer";
 import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
 import { validateHostelAccess } from "../utils/AccessControl";
+import { validatePayload } from "../middleware/validate-payload";
 
 const roomRouter = Router();
 
@@ -30,6 +31,7 @@ roomRouter.post(
   upload.array("photos"),
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validatePayload("Room"),
   validateHostelAccess,
 
   roomController.addRoomController

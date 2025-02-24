@@ -11,7 +11,7 @@ const calendarYearRoute = Router();
 // Start a new calendar year (POST request)
 calendarYearRoute.post(
   "/start",
-  validatePayload("calendarYear"), // Assuming you have a validation schema for calendar year data
+  validatePayload("CalendarYear"), // Assuming you have a validation schema for calendar year data
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]), // Example roles, modify as per your requirements
   calendarYearController.startNewCalendarController

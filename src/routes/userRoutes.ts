@@ -21,10 +21,11 @@ const userRouter = Router();
 // User sign up
 userRouter.post(
   "/signup",
-  validatePayload("User"), // Assuming you have validation logic for user payload
   upload.single("photo"),
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validatePayload("User"), // Assuming you have validation logic for user payload
+
   signUpUser
 );
 

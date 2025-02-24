@@ -153,9 +153,15 @@ export const publishHostel = async (hostelId: string) => {
     const hostel = await prisma.hostel.findUnique({ where: { id: hostelId } });
     if (!hostel) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
-    }const isActive= await prisma.hostel.findFirst({ where: { id: hostelId },include:{CalendarYear:{select:{isActive:true}}} });
-    if(!isActive){
-      throw new HttpException(HttpStatus.BAD_REQUEST,"Calendar year must be active before publishing hostel")
+    }
+    const isActive = await prisma.calendarYear.findFirst({
+      where: {
+        hostelId: hostelId,
+        isActive: true
+      }
+    });
+    if (!isActive) {
+      throw new HttpException(HttpStatus.BAD_REQUEST, "Calendar year must be active before publishing hostel");
     }
     await prisma.hostel.update({
       where: { id: hostelId },
