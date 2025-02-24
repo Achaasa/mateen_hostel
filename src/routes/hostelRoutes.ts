@@ -11,7 +11,7 @@ const hostelRoute = Router();
 // Add a new hostel (POST request)
 hostelRoute.post(
   "/add",
-  validatePayload("hostel"),
+  validatePayload("Hostel"),
   upload.single("photo"), // Optional: Assuming you have a validation schema for hostel data
   hostelController.addHostelController
 );

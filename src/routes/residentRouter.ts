@@ -11,6 +11,7 @@ import {
   getDebtorsForHostel,
 } from "../controller/residentController"; // Assuming your controller file is named residentController
 import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
+import { validatePayload } from "../middleware/validate-payload";
 
 const residentRouter = Router();
 
@@ -27,6 +28,7 @@ residentRouter.post(
   "/add",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN"]),
+  validatePayload("Resident"),
   registerResidentController
 );
 residentRouter.get(
