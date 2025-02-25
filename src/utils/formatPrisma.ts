@@ -1,7 +1,7 @@
-
+// error-formatter.ts
 import { Prisma } from "@prisma/client";
 import { HttpStatus } from "./http-status";
-import  HttpException  from "./http-error";
+import HttpException from "./http-error";
 
 export const formatPrismaError = (error: unknown): HttpException => {
   // Handle Prisma known errors
@@ -47,23 +47,32 @@ export const formatPrismaError = (error: unknown): HttpException => {
   if (error instanceof Prisma.PrismaClientValidationError) {
     const lines = error.message.split("\n").map(line => line.trim());
 
-    // Look for the specific error explanation with field context
+    // Look for specific error explanation
     const errorDetail = lines.find(line => 
       line.includes("needs at least one") || 
       line.includes("is missing") || 
-      line.includes("is invalid")
+      line.includes("is invalid") || 
+      line.includes("Unknown argument")
     );
 
     if (errorDetail) {
-      // Extract the field name (e.g., `where`)
+      // Handle "Unknown argument" case
+      const unknownArgMatch = errorDetail.match(/Unknown argument `([^`]+)`. Did you mean `([^`]+)`?/);
+      if (unknownArgMatch) {
+        const [, invalidArg, suggestedArg] = unknownArgMatch;
+        return new HttpException(
+          HttpStatus.BAD_REQUEST,
+          `Validation error: Invalid argument \`${invalidArg}\`. Did you mean \`${suggestedArg}\`?`
+        );
+      }
+
+      // Handle "needs at least one" case
       const fieldMatch = errorDetail.match(/Argument `([^`]+)`/) || [];
       const fieldName = fieldMatch[1] || "unknown field";
 
-      // Extract the specific required fields (e.g., `hostelId` or others)
       const requiredFieldsMatch = errorDetail.match(/needs at least one of ([^.]+)/);
       let requiredFields = "required arguments";
       if (requiredFieldsMatch && requiredFieldsMatch[1]) {
-        // Parse the fields listed between "needs at least one of" and the next period
         requiredFields = requiredFieldsMatch[1]
           .trim()
           .split(/` or `/)
@@ -72,7 +81,6 @@ export const formatPrismaError = (error: unknown): HttpException => {
           .join(" or ");
       }
 
-      // Construct a clear message
       if (fieldName !== "unknown field" && requiredFields !== "required arguments") {
         return new HttpException(
           HttpStatus.BAD_REQUEST,
@@ -80,7 +88,7 @@ export const formatPrismaError = (error: unknown): HttpException => {
         );
       }
 
-      // Fallback if we can't parse fields properly
+      // Fallback for other validation errors
       const cleanMessage = errorDetail
         .replace(/.*invocation in [^:]+:\d+:\d+\s*/, "") // Remove file path
         .replace(/Available options are marked with \?.*/, "") // Remove extra hints
