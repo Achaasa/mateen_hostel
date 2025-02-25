@@ -240,3 +240,58 @@ export const roomsForHostel = async (
     res.status(err.status).json({ message: err.message });
   }
 };
+
+
+
+// Update a Room
+// Update a Room
+export const updateRoomControllerAll = async (req: Request, res: Response) => {
+  const { roomId } = req.params; // Room ID from the URL parameters
+  const { addAmenitiesIds, removeAmenitiesIds, ...filteredBody } = req.body;
+  const roomData: Partial<Room> = {
+    ...filteredBody,
+    price: req.body.price ? parseFloat(req.body.price) : undefined,
+    maxCap: req.body.maxCap ? parseInt(req.body.maxCap) : undefined,
+  };
+  
+  const photos = req.files as Express.Multer.File[] | undefined;
+  console.log("Cleaned Room Data:", JSON.stringify(roomData, null, 2));
+  console.log("Add Amenities:", addAmenitiesIds);
+  console.log("Remove Amenities:", removeAmenitiesIds);
+  const pictures = [];
+
+  try {
+    if (photos && photos.length > 0) {
+      // Loop over the photos and upload each one to Cloudinary
+      for (const photo of photos) {
+        const uploaded = await cloudinary.uploader.upload(photo.path, {
+          folder: "rooms/",
+        });
+
+        if (uploaded) {
+          // Add image info (URL & Key) to the pictures array
+          pictures.push({
+            imageUrl: uploaded.secure_url,
+            imageKey: uploaded.public_id,
+          });
+        }
+      }
+    }
+
+    const updatedRoom = await roomHelper.updateRoomAll(
+      roomId,
+      roomData,
+      pictures,
+      addAmenitiesIds,
+      removeAmenitiesIds
+    );
+
+    res.status(HttpStatus.OK).json({
+      message: "Room updated successfully",
+      data: updatedRoom,
+    });
+  } catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
+  }
+};

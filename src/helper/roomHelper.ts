@@ -322,3 +322,110 @@ export const getAllRoomsForHostel = async (hostelId: string) => {
     throw formatPrismaError(error);
   }
 };
+
+
+
+export const updateRoomAll = async (
+  roomId: string,
+  roomData: Partial<Room>,
+  pictures: { imageUrl: string; imageKey: string }[],
+  addAmenitiesIds?: string[],
+  removeAmenitiesIds?: string[]
+) => {
+  console.log("roomData: " + JSON.stringify(roomData, null, 2));
+  console.log(`addAmenitiesIds ${addAmenitiesIds}`);
+  console.log(`removeAmenitiesIds ${removeAmenitiesIds}`);
+
+  try {
+    const room = await prisma.room.findUnique({
+      where: { id: roomId },
+      include: { RoomImage: true, Resident: true, Amenities: true },
+    });
+
+    if (!room) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Room not found");
+    }
+
+    if (roomData.maxCap && room.Resident.length > roomData.maxCap) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Cannot update maxCap as it is less than the number of residents in the room"
+      );
+    }
+
+    // Fetch prices of added and removed amenities
+    let totalAddedPrice = 0;
+    let totalRemovedPrice = 0;
+
+    if (addAmenitiesIds && addAmenitiesIds.length > 0) {
+      const addedAmenities = await prisma.amenities.findMany({
+        where: { id: { in: addAmenitiesIds } },
+        select: { price: true },
+      });
+      totalAddedPrice = addedAmenities.reduce((sum, amenity) => sum + amenity.price, 0);
+    }
+
+    if (removeAmenitiesIds && removeAmenitiesIds.length > 0) {
+      const removedAmenities = await prisma.amenities.findMany({
+        where: { id: { in: removeAmenitiesIds } },
+        select: { price: true },
+      });
+      totalRemovedPrice = removedAmenities.reduce((sum, amenity) => sum + amenity.price, 0);
+    }
+
+    // Calculate the new room price
+    const updatedPrice =
+      (room.price || 0) + totalAddedPrice - totalRemovedPrice;
+
+    console.log(`Updated Room Price: ${updatedPrice}`);
+
+    // Delete old images from Cloudinary
+    if (room.RoomImage && room.RoomImage.length > 0) {
+      for (const image of room.RoomImage) {
+        await cloudinary.uploader.destroy(image.imageKey);
+      }
+    }
+
+    // Remove old images from the database
+    await prisma.roomImage.deleteMany({ where: { roomId: roomId } });
+
+    // Prepare updates for amenities
+    const updateAmenities: any = {};
+    if (addAmenitiesIds && addAmenitiesIds.length > 0) {
+      updateAmenities.connect = addAmenitiesIds.map((id) => ({ id }));
+    }
+    if (removeAmenitiesIds && removeAmenitiesIds.length > 0) {
+      updateAmenities.disconnect = removeAmenitiesIds.map((id) => ({ id }));
+    }
+
+    // Update the room data along with amenities and the new price
+    const updatedRoom = await prisma.room.update({
+      where: { id: roomId },
+      data: {
+        ...roomData,
+        price: updatedPrice,
+        Amenities: Object.keys(updateAmenities).length ? updateAmenities : undefined,
+      },
+      include: {
+        Amenities: true,
+        RoomImage: true,
+        Resident: true,
+      },
+    });
+
+    // Add new images to Cloudinary and save them to the database
+    if (pictures.length > 0) {
+      const roomImages = pictures.map((picture) => ({
+        imageUrl: picture.imageUrl,
+        imageKey: picture.imageKey,
+        roomId: roomId,
+      }));
+      await prisma.roomImage.createMany({ data: roomImages });
+    }
+
+    return updatedRoom;
+  } catch (error) {
+    throw formatPrismaError(error);
+  }
+};
+

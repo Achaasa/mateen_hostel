@@ -47,6 +47,17 @@ roomRouter.put(
   roomController.updateRoomController
 );
 
+// Update an existing room
+roomRouter.put(
+  "/updateall/:roomId",
+  upload.array("photos"),
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+
+  roomController.updateRoomControllerAll
+);
+
 // Delete a room
 roomRouter.delete(
   "/delete/:roomId",
