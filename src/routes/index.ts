@@ -8,6 +8,7 @@ import residentRouter from "./residentRouter";
 import StaffRouter from "./staffRoutes";
 import userRouter from "./userRoutes";
 import calendarYearRoute from "./calendarYearRouter";
+import exportRouter from "./exportRoutes";
 
 const mainRouter = Router();
 
@@ -20,4 +21,5 @@ mainRouter.use("/residents", residentRouter);
 mainRouter.use("/staffs", StaffRouter);
 mainRouter.use("/users", userRouter);
 mainRouter.use("/calendar", calendarYearRoute);
+mainRouter.use("/exports", exportRouter);
 export default mainRouter;

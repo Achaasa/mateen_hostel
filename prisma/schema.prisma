@@ -108,8 +108,8 @@ model Resident {
   emergencyContactPhone String
   relationship          String //relationship with emergency contact
 
-  room               Room                 @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  roomId             String
+  room               Room?                 @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  roomId             String?
   payments           Payment[]
   Visitor            Visitor[]
   gender             Gender

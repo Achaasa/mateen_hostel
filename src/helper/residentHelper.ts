@@ -29,6 +29,9 @@ export const register = async (residentData: Resident) => {
       );
     }
     const { roomId } = residentData;
+    if(!roomId) {
+      throw new HttpException(HttpStatus.BAD_REQUEST, "Room was not is provided.");
+    }
     const existingRoom = await prisma.room.findUnique({
       where: { id: roomId },
     });
@@ -207,32 +210,57 @@ export const addResidentFromHostel = async (residentData: Resident) => {
         "resident with the same Email already exists"
       );
     }
-    const { roomId } = residentData;
-    const existingRoom = await prisma.room.findUnique({
-      where: { id: roomId },
+   
+    const newResident = await prisma.resident.create({
+      data: { ...residentData, },
     });
-    if (!existingRoom) {
+  
+    
+    return newResident as Resident;
+  } catch (error) {
+    throw formatPrismaError(error);
+  }
+};
+
+
+export const assignRoomToResident = async (residentId: string, roomId: string) => {
+  try {
+    const resident = await prisma.resident.findUnique({
+      where: { id: residentId },
+    });
+    if (!resident) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
+    }
+    const room = await prisma.room.findUnique({ where: { id: roomId } });
+    if (!room) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
     }
+    if (room.gender !== 'MIX' && room.gender !== resident.gender) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        `Room gender does not match resident's gender.`
+      );
+    }
+
     const currentResidentsCount = await prisma.resident.count({
-      where: { roomId: residentData.roomId },
+      where: { roomId: resident.roomId },
     });
 
-    if (currentResidentsCount >= existingRoom.maxCap) {
+    if (currentResidentsCount >= room.maxCap) {
       throw new HttpException(
         HttpStatus.CONFLICT,
         "Room has reached its maximum capacity."
       );
     }
-    const newResident = await prisma.resident.create({
-      data: { ...residentData, roomPrice: existingRoom.price },
+    
+    const assignResident = await prisma.resident.update({
+      where: { id: residentId },
+      data: { roomId },
     });
-    await prisma.room.update({
-      where: { id: roomId },
-      data: { currentResidentCount: currentResidentsCount + 1 },
-    });
-    return newResident as Resident;
-  } catch (error) {
-    throw formatPrismaError(error);
-  }
+     
+     
+    return assignResident as Resident;
+}catch (error) {
+  throw formatPrismaError(error);
+}
 };
