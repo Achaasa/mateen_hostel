@@ -48,7 +48,7 @@ export const validateHostelAccess = async (
         where: { id: residentId },
         include: { room: { select: { hostelId: true } } },
       });
-      requestedHostelId = resident?.room.hostelId;
+      requestedHostelId = resident?.room?.hostelId;
     } else if (paymentId) {
       // Fetch hostelId from the payment's resident's room
       const payment = await prisma.payment.findUnique({
@@ -57,7 +57,7 @@ export const validateHostelAccess = async (
           resident: { include: { room: { select: { hostelId: true } } } },
         },
       });
-      requestedHostelId = payment?.resident.room.hostelId;
+      requestedHostelId = payment?.resident.room?.hostelId;
     } else if (visitorId) {
       // Fetch hostelId from the visitor's resident's room
       const visitor = await prisma.visitor.findUnique({
@@ -66,7 +66,7 @@ export const validateHostelAccess = async (
           resident: { include: { room: { select: { hostelId: true } } } },
         },
       });
-      requestedHostelId = visitor?.resident.room.hostelId;
+      requestedHostelId = visitor?.resident.room?.hostelId;
     } else if (staffId) {
       // Fetch hostelId from the staff
       const staff = await prisma.staff.findUnique({
@@ -112,7 +112,7 @@ export const validateHostelAccess = async (
         },
       });
 
-      requestedHostelId = payment?.resident.room.hostelId;
+      requestedHostelId = payment?.resident.room?.hostelId;
     }
   }
 

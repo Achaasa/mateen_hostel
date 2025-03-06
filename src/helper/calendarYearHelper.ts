@@ -35,7 +35,8 @@ export const startNewCalendar = async (hostelId: string, name: string) => {
 
       // Process each resident
       for (const resident of residents) {
-        // Create historical record
+        if (resident.roomId) {
+          // Create historical record only if roomId is assigned
         await tx.historicalResident.create({
           data: {
             residentId: resident.id,
@@ -44,7 +45,7 @@ export const startNewCalendar = async (hostelId: string, name: string) => {
             amountPaid: resident.amountPaid,
             roomPrice: resident.roomPrice as number,
           },
-        });
+        });}
 
         // Delete from main resident table
         await tx.resident.delete({

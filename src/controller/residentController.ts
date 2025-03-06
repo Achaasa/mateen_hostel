@@ -185,3 +185,25 @@ export const addResidentFromHostelController = async (
     res.status(err.status).json({ message: err.message });
   }
 };
+
+
+export const assignRoomToResidentController = async (
+  req: Request,res: Response
+) => {
+  const { residentId } = req.params;
+  const { roomId } = req.body;
+
+  try {
+    const updatedResident = await residentHelper.assignRoomToResident(
+      residentId,
+      roomId
+    );
+    res.status(HttpStatus.OK).json({
+      message: "Room assigned to resident successfully",
+      data: updatedResident,
+    });
+  }  catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
+  }
+}
