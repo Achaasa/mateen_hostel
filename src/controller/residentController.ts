@@ -175,7 +175,7 @@ export const addResidentFromHostelController = async (
   const residentData: Resident = req.body satisfies ResidentRequestDto; // Get resident data from the request body
 
   try {
-    const newResident = await residentHelper.register(residentData);
+    const newResident = await residentHelper.addResidentFromHostel(residentData);
     res.status(HttpStatus.CREATED).json({
       message: "Resident registered successfully",
       data: newResident,
