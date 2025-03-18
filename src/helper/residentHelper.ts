@@ -241,6 +241,12 @@ export const assignRoomToResident = async (residentId: string, roomId: string) =
         `Room gender does not match resident's gender.`
       );
     }
+    if(resident.hostelId !== room.hostelId) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        `Resident and room do not belong to the same hostel.`
+      );
+    }
 
     const currentResidentsCount = await prisma.resident.count({
       where: { roomId: resident.roomId },

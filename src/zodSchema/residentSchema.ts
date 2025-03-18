@@ -43,7 +43,7 @@ export const residentSchema = z.object({
   roomId: z
     .string({ required_error: "Room ID is required" })
     .trim()
-    .min(1, { message: "Room ID can't be empty" }),
+    .min(1, { message: "Room ID can't be empty" }).optional(),
 });
 
 // Schema for updating a Resident (all fields are optional)
