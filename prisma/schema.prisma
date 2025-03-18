@@ -13,27 +13,29 @@ datasource db {
 }
 
 model Hostel {
-  id           String         @id @default(uuid())
-  name         String
-  description  String?
-  address      String
-  location     String
-  manager      String
-  email        String         @unique
-  phone        String
-  imageKey     String
-  imageUrl     String
-  ghCard       String
-  Rooms        Room[]
-  Staffs       Staff[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  isVerifeid   Boolean        @default(false)
-  delFlag      Boolean        @default(false)
-  Amenities    Amenities[]
-  User         User[]
-  state        HostelState    @default(UNPUBLISHED)
-  CalendarYear CalendarYear[]
+  id              String               @id @default(uuid())
+  name            String
+  description     String?
+  address         String
+  location        String
+  manager         String
+  email           String               @unique
+  phone           String
+  imageKey        String
+  imageUrl        String
+  ghCard          String
+  Rooms           Room[]
+  Staffs          Staff[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  isVerifeid      Boolean              @default(false)
+  delFlag         Boolean              @default(false)
+  Amenities       Amenities[]
+  User            User[]
+  state           HostelState          @default(UNPUBLISHED)
+  CalendarYear    CalendarYear[]
+  resident        Resident[]
+  historyResident HistoricalResident[]
 }
 
 model Room {
@@ -61,9 +63,9 @@ model Room {
 }
 
 model Staff {
-  id                String             @id @default(uuid())
+  id                String        @id @default(uuid())
   role              String
-  hostel            Hostel             @relation(fields: [hostelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  hostel            Hostel        @relation(fields: [hostelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   hostelId          String
   firstName         String
   middleName        String?
@@ -75,15 +77,15 @@ model Staff {
   ghanaCardNumber   String
   phoneNumber       String
   religion          Religion
-  email             String             @unique
+  email             String        @unique
   residence         String
   qualification     String
   block             String
-  dateOfAppointment DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  dateOfAppointment DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
   passportUrl       String
   passportKey       String
-  delFlag           Boolean            @default(false)
+  delFlag           Boolean       @default(false)
 }
 
 model Amenities {
@@ -108,7 +110,7 @@ model Resident {
   emergencyContactPhone String
   relationship          String //relationship with emergency contact
 
-  room               Room?                 @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  room               Room?                @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   roomId             String?
   payments           Payment[]
   Visitor            Visitor[]
@@ -124,6 +126,8 @@ model Resident {
   CalendarYear       CalendarYear         @relation(fields: [calendarYearId], references: [id])
   calendarYearId     String
   HistoricalResident HistoricalResident[]
+  Hostel             Hostel?              @relation(fields: [hostelId], references: [id])
+  hostelId           String?
 }
 
 model Payment {
@@ -209,10 +213,9 @@ model HistoricalResident {
   roomPrice      Float
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  Hostel         Hostel?      @relation(fields: [hostelId], references: [id])
+  hostelId       String?
 }
-
-
-
 
 enum UserRole {
   ADMIN

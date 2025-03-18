@@ -14,7 +14,7 @@ export const formatPrismaError = (error: unknown): HttpException => {
         .trim();
 
     switch (error.code) {
-      case "P2002":
+      case "P2002": {
         const fields = error.meta?.target
           ? (error.meta.target as string[]).join(", ")
           : "field";
@@ -22,6 +22,7 @@ export const formatPrismaError = (error: unknown): HttpException => {
           HttpStatus.CONFLICT,
           `Duplicate entry: The ${fields} already exists.`
         );
+      }
 
       case "P2025":
         return new HttpException(
@@ -29,11 +30,14 @@ export const formatPrismaError = (error: unknown): HttpException => {
           "Record not found: The requested resource does not exist."
         );
 
-      case "P2003":
+      case "P2003": {
+        // Extracting the specific field that caused the error
+        const field = error.meta?.field_name || "unknown field";
         return new HttpException(
           HttpStatus.BAD_REQUEST,
-          "Invalid reference: Related resource not found."
+          `Invalid reference: The provided value for '${field}' does not exist.`
         );
+      }
 
       default:
         return new HttpException(
@@ -45,13 +49,13 @@ export const formatPrismaError = (error: unknown): HttpException => {
 
   // Handle Prisma validation errors
   if (error instanceof Prisma.PrismaClientValidationError) {
-    const lines = error.message.split("\n").map(line => line.trim());
+    const lines = error.message.split("\n").map((line) => line.trim());
 
     // Look for specific error explanation
-    const errorDetail = lines.find(line => 
-      line.includes("needs at least one") || 
-      line.includes("is missing") || 
-      line.includes("is invalid") || 
+    const errorDetail = lines.find((line) =>
+      line.includes("needs at least one") ||
+      line.includes("is missing") ||
+      line.includes("is invalid") ||
       line.includes("Unknown argument")
     );
 
@@ -76,7 +80,7 @@ export const formatPrismaError = (error: unknown): HttpException => {
         requiredFields = requiredFieldsMatch[1]
           .trim()
           .split(/` or `/)
-          .map(field => field.replace(/`/g, "").trim())
+          .map((field) => field.replace(/`/g, "").trim())
           .filter(Boolean)
           .join(" or ");
       }
@@ -102,14 +106,16 @@ export const formatPrismaError = (error: unknown): HttpException => {
     }
 
     // Fallback to a concise version of the message
-    const cleanMessage = lines
-      .filter(line => 
-        !line.includes("invocation in") && 
-        !line.startsWith("→") && 
-        line.length > 0
-      )
-      .join(" ")
-      .trim() || "Invalid request format";
+    const cleanMessage =
+      lines
+        .filter(
+          (line) =>
+            !line.includes("invocation in") &&
+            !line.startsWith("→") &&
+            line.length > 0
+        )
+        .join(" ")
+        .trim() || "Invalid request format";
 
     return new HttpException(
       HttpStatus.BAD_REQUEST,
