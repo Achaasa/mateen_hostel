@@ -181,13 +181,25 @@ export const getDebtorsForHostel = async (hostelId: string) => {
 export const getAllresidentsForHostel = async (hostelId: string) => {
   try {
     const residents = await prisma.resident.findMany({
-      where: { room: { hostelId } },
+      where: {
+        OR: [
+          // Condition 1: Residents with rooms, where room's hostelId matches the provided hostelId
+          { room: { hostelId } },
+          
+          // Condition 2: Residents without a room assigned, where they are directly associated with the hostelId
+          {  hostelId: hostelId },  // Assuming we have a `hostelId` field in the resident record itself
+        ],
+      },
+      include: {
+        room: true, // Include room data, null for residents without rooms
+      },
     });
     return residents;
   } catch (error) {
     throw formatPrismaError(error);
   }
 };
+
 
 
 

@@ -75,7 +75,7 @@ residentRouter.delete(
 );
 
 residentRouter.get(
-  "/residents/hostel/:hostelId",
+  "/hostel/:hostelId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   validateHostelAccess,
