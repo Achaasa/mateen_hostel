@@ -57,7 +57,7 @@ export const getHostelById = async (hostelId: string) => {
   try {
     const hostel = await prisma.hostel.findUnique({
       where: { id: hostelId },
-      include: { Rooms: true, Staffs: true, User: true },
+      include: { Rooms: true, Staffs: true, User: true ,CalendarYear:{where:{isActive:true}}},
     });
     if (!hostel) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
