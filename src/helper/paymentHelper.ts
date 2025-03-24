@@ -129,6 +129,9 @@ export const confirmPayment = async (reference: string) => {
   }
 };
 
+
+
+
 export const initializeTopUpPayment = async (
   roomId: string,
   residentId: string,
@@ -269,6 +272,133 @@ export const TopUpPayment = async (reference: string) => {
     throw formatPrismaError(error);
   }
 };
+
+
+export const processTopUpPayment = async (
+  roomId: string,
+  residentId: string,
+  initialPayment: number
+) => {
+  try {
+    // Step 1: Check for active calendar
+    const activeCalendar = await prisma.calendarYear.findFirst({
+      where: { isActive: true },
+    });
+
+    // Step 2: Check if the resident and room exist
+    const room = await prisma.room.findUnique({ where: { id: roomId } });
+    const resident = await prisma.resident.findUnique({
+      where: { id: residentId },
+    });
+
+    console.log({
+      room: `${roomId}, resident: ${residentId} payment:${initialPayment}`,
+    });
+
+    if (!room) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
+    }
+
+    if (!resident) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
+    }
+
+    const { roomPrice } = resident;
+
+    if (!roomPrice) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Room price not set for the resident."
+      );
+    }
+
+    // Step 3: Validate the payment amount doesn't exceed the balance owed
+    const debtbal = roomPrice - resident.amountPaid;
+
+    if (initialPayment > debtbal) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Amount you want to pay must be less than or equal to what you owe."
+      );
+    }
+
+    // Step 4: Create a Paystack transaction to initialize the top-up payment
+    const paymentResponse = await paystack.initializeTransaction(
+      resident.email,
+      initialPayment
+    );
+
+    // Step 5: Save the payment as "PENDING"
+    const paymentRecord = await prisma.payment.create({
+      data: {
+        amount: initialPayment,
+        residentId,
+        roomId,
+        status: "PENDING",
+        reference: paymentResponse.data.reference,
+        method: paymentResponse.data.channel, // Adjust method to use 'channel'
+        calendarYearId: activeCalendar?.id as string,
+      },
+    });
+
+    // Step 6: Immediately verify the payment
+    const verificationResponse = await paystack.verifyTransaction(
+      paymentResponse.data.reference
+    );
+
+    // Step 7: If the payment is successful, proceed to update the resident's information
+    if (verificationResponse.data.status !== "success") {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Payment verification failed."
+      );
+    }
+
+    // Fetch the payment record again to update it with the verified status
+    await prisma.payment.update({
+      where: { id: paymentRecord.id },
+      data: {
+        status: "CONFIRMED", // Mark payment as confirmed
+        method: verificationResponse.data.channel, // Adjust method based on the payment method
+      },
+    });
+
+    // Step 8: Update the resident's balance and other details
+    const findResident = await prisma.resident.findUnique({
+      where: { id: paymentRecord.residentId },
+    });
+
+    if (!findResident) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
+    }
+    if (findResident.roomPrice === null) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Room price is missing for this resident."
+      );
+    }
+
+    // Calculate total paid and remaining balance
+    const totalPaid = findResident.amountPaid + paymentRecord.amount;
+    const debt = findResident.roomPrice - totalPaid;
+
+    const updatedResident = await prisma.resident.update({
+      where: { id: paymentRecord.residentId },
+      data: {
+        roomAssigned: true,
+        amountPaid: totalPaid, // Update the total amount paid
+        balanceOwed: debt > 0 ? debt : 0, // Ensure balance owed doesn't go below 0
+      },
+    });
+
+    // Step 9: Return the updated resident info after successful top-up payment
+    return updatedResident;
+
+  } catch (error) {
+    throw formatPrismaError(error);
+  }
+};
+
 
 export const getAllPayments = async () => {
   try {

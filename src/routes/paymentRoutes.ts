@@ -12,8 +12,10 @@ import {
   getPaymentByReferenceController,
   getPaymentsForHostelController,
 } from "../controller/paymentController";
+import { handlePaystackWebhook } from "../utils/payStackWebhook";
 
 const paymentRouter = Router();
+paymentRouter.post("/webhook", handlePaystackWebhook);
 
 paymentRouter.post("/init/", initiatePayment);
 paymentRouter.get("/confirm", handlePaymentConfirmation);

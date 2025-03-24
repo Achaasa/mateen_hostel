@@ -1,4 +1,5 @@
 import axios from "axios";
+import crypto from "crypto";
 import HttpException from "./http-error";
 import { ErrorResponse } from "./types";
 
@@ -11,12 +12,18 @@ if (!PAYSTACK_SECRET_KEY) {
   );
 }
 
-const paystack = {
+interface PaystackService {
+  initializeTransaction: (email: string, amount: number) => Promise<any>;
+  verifyTransaction: (reference: string) => Promise<any>;
+  verifyWebhookSignature: (body: string, signature: string) => boolean;
+}
+
+const paystack: PaystackService = {
   initializeTransaction: async (email: string, amount: number) => {
     try {
       const response = await axios.post(
         `${PAYSTACK_BASE_URL}/transaction/initialize`,
-        { email, amount: amount * 100 }, // Amount in kobo (smallest currency unit)
+        { email, amount: amount * 100 },
         {
           headers: {
             Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
@@ -53,6 +60,12 @@ const paystack = {
         }`
       );
     }
+  },
+
+  verifyWebhookSignature: (body: string, signature: string): boolean => {
+    const hmac = crypto.createHmac("sha512", PAYSTACK_SECRET_KEY);
+    const computedSignature = hmac.update(body).digest("hex");
+    return computedSignature === signature;
   },
 };
 
