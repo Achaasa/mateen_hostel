@@ -63,7 +63,8 @@ export const initializePayment = async (
       },
     });
 
-    return paymentResponse.data.authorization_url;
+    return { authorizationUrl: paymentResponse.data.authorization_url, reference:paymentResponse.data.reference };
+
   } catch (error) {
     throw formatPrismaError(error);
   }
