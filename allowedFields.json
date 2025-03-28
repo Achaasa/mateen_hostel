@@ -137,7 +137,8 @@
       "method",
       "updatedAt",
       "delFlag",
-      "calendarYearId"
+      "calendarYearId",
+      "historicalResidentId"
     ]
   },
   {
@@ -201,6 +202,10 @@
     "fields": [
       "id",
       "residentId",
+      "residentName",
+      "residentEmail",
+      "residentPhone",
+      "residentCourse",
       "roomId",
       "calendarYearId",
       "amountPaid",

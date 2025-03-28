@@ -20,6 +20,10 @@ export const initializePayment = async (
   try {
     // Check if the resident and room exist
     const room = await prisma.room.findUnique({ where: { id: roomId } });
+  //  checking for residentId since we made it optional in the prisma schema
+    if(!residentId){
+      throw new HttpException(HttpStatus.BAD_REQUEST, "Resident ID is required.")
+   }
     const resident = await prisma.resident.findUnique({
       where: { id: residentId },
     });
@@ -91,9 +95,12 @@ export const confirmPayment = async (reference: string) => {
         "Payment record not found."
       );
     }
-    const { roomId } = paymentRecord;
+    const { roomId ,residentId} = paymentRecord;
     if (!roomId) {
       throw new Error("Room ID is not in the payment record");
+    }
+    if(!residentId){
+      throw new HttpException(HttpStatus.NOT_FOUND, "There is no resident id in the record.");
     }
     const room = await prisma.room.findUnique({ where: { id: roomId } });
     if (!room) {
@@ -101,11 +108,12 @@ export const confirmPayment = async (reference: string) => {
     }
     const debt = room.price - paymentRecord.amount;
     const resident = await prisma.resident.update({
-      where: { id: paymentRecord.residentId },
+      where: { id: residentId },
       data: {
         roomAssigned: true,
         roomId,
         amountPaid: paymentRecord.amount,
+        roomPrice: room.price,
         balanceOwed: debt, // update balance owed
       },
     });
@@ -224,18 +232,16 @@ export const TopUpPayment = async (reference: string) => {
       );
     }
 
-    const { roomId } = paymentRecord;
+    const { roomId ,residentId} = paymentRecord;
     if (!roomId) {
       throw new Error("Room ID is not in the payment record");
     }
-
-    const room = await prisma.room.findUnique({ where: { id: roomId } });
-    if (!room) {
-      throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
+    if(!residentId){
+      throw new HttpException(HttpStatus.NOT_FOUND, "There is no resident id in the record.");
     }
 
     const findResident = await prisma.resident.findUnique({
-      where: { id: paymentRecord.residentId },
+      where: { id: residentId },
     });
     if (!findResident) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
@@ -254,7 +260,7 @@ export const TopUpPayment = async (reference: string) => {
     const debt = roomPrice - totalPaid;
 
     const resident = await prisma.resident.update({
-      where: { id: paymentRecord.residentId },
+      where: { id: residentId },
       data: {
         roomAssigned: true,
         amountPaid: totalPaid, // Update the total amount paid

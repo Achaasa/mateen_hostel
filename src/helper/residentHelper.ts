@@ -1,7 +1,7 @@
 import prisma from "../utils/prisma";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
-import { Resident } from "@prisma/client";
+import { Prisma, Resident, RoomStatus } from "@prisma/client";
 import { ErrorResponse } from "../utils/types";
 import {
   residentSchema,
@@ -14,7 +14,7 @@ export const register = async (residentData: Resident) => {
     const validateResident = residentSchema.safeParse(residentData);
     if (!validateResident.success) {
       const errors = validateResident.error.issues.map(
-        ({ message, path }) => `${path}: ${message}`
+        ({ message, path }) => `${path}: ${message}`,
       );
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
@@ -25,12 +25,15 @@ export const register = async (residentData: Resident) => {
     if (resident) {
       throw new HttpException(
         HttpStatus.CONFLICT,
-        "resident with the same Email already exists"
+        "resident with the same Email already exists",
       );
     }
     const { roomId } = residentData;
-    if(!roomId) {
-      throw new HttpException(HttpStatus.BAD_REQUEST, "Room was not is provided.");
+    if (!roomId) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Room was not is provided.",
+      );
     }
     const existingRoom = await prisma.room.findUnique({
       where: { id: roomId },
@@ -38,10 +41,13 @@ export const register = async (residentData: Resident) => {
     if (!existingRoom) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
     }
-    if (existingRoom.gender !== 'MIX' && existingRoom.gender !== residentData.gender) {
+    if (
+      existingRoom.gender !== "MIX" &&
+      existingRoom.gender !== residentData.gender
+    ) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        `Room gender does not match resident's gender.`
+        `Room gender does not match resident's gender.`,
       );
     }
 
@@ -52,15 +58,14 @@ export const register = async (residentData: Resident) => {
     if (currentResidentsCount >= existingRoom.maxCap) {
       throw new HttpException(
         HttpStatus.CONFLICT,
-        "Room has reached its maximum capacity."
+        "Room has reached its maximum capacity.",
       );
     }
-    
+
     const newResident = await prisma.resident.create({
       data: { ...residentData, roomPrice: existingRoom.price },
     });
-     
-     
+
     return newResident as Resident;
   } catch (error) {
     throw formatPrismaError(error);
@@ -110,13 +115,13 @@ export const getResidentByEmail = async (email: string) => {
 
 export const updateResident = async (
   residentId: string,
-  residentData: Resident
+  residentData: Resident,
 ) => {
   try {
     const validateResident = updateResidentSchema.safeParse(residentData);
     if (!validateResident.success) {
       const errors = validateResident.error.issues.map(
-        ({ message, path }) => `${path}: ${message}`
+        ({ message, path }) => `${path}: ${message}`,
       );
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
@@ -142,11 +147,79 @@ export const deleteResident = async (residentId: string) => {
   try {
     const findResident = await prisma.resident.findUnique({
       where: { id: residentId },
+      include: { room: true, CalendarYear: true, Hostel: true },
     });
     if (!findResident) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found");
     }
-    await prisma.resident.delete({ where: { id: residentId } });
+
+    const paymentCount = await prisma.payment.count({
+      where: { residentId: residentId },
+    });
+
+    const result = await prisma.$transaction(async (tx) => {
+      if (paymentCount > 0 && findResident.roomId) {
+        // Archive to HistoricalResident if payments and roomId exist
+        const historicalResident = await tx.historicalResident.create({
+          data: {
+            residentId: findResident.id,
+            room: { connect: { id: findResident.roomId } }, // roomId is guaranteed to exist here
+            CalendarYear: { connect: { id: findResident.calendarYearId } },
+            amountPaid: findResident.amountPaid,
+            roomPrice: findResident.roomPrice ?? 0,
+            Hostel: findResident.hostelId ? { connect: { id: findResident.hostelId } } : undefined,
+            residentName: findResident.name,
+            residentEmail: findResident.email,
+            residentPhone: findResident.phone,
+            residentCourse: findResident.course,
+          },
+        });
+
+        // Reassign Payments to HistoricalResident
+        await tx.payment.updateMany({
+          where: { residentId: residentId },
+          data: {
+            residentId: null,
+            historicalResidentId: historicalResident.id,
+          },
+        });
+
+        // Delete the Resident
+        await tx.resident.delete({
+          where: { id: residentId },
+        });
+
+        // Free up the room
+        await tx.room.update({
+          where: { id: findResident.roomId },
+          data: { status: RoomStatus.AVAILABLE },
+        });
+
+        return { archived: true, historicalResident };
+      } else {
+        // Hard delete Resident and Payments if no roomId or no payments
+        if (paymentCount > 0) {
+          await tx.payment.deleteMany({
+            where: { residentId: residentId },
+          });
+        }
+
+        await tx.resident.delete({
+          where: { id: residentId },
+        });
+
+        if (findResident.roomId) {
+          await tx.room.update({
+            where: { id: findResident.roomId },
+            data: { status: RoomStatus.AVAILABLE },
+          });
+        }
+
+        return { archived: false };
+      }
+    });
+
+    return result;
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -173,7 +246,7 @@ export const getDebtorsForHostel = async (hostelId: string) => {
     const err = error as ErrorResponse;
     throw new HttpException(
       err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Error fetching debtors"
+      err.message || "Error fetching debtors",
     );
   }
 };
@@ -185,9 +258,9 @@ export const getAllresidentsForHostel = async (hostelId: string) => {
         OR: [
           // Condition 1: Residents with rooms, where room's hostelId matches the provided hostelId
           { room: { hostelId } },
-          
+
           // Condition 2: Residents without a room assigned, where they are directly associated with the hostelId
-          {  hostelId: hostelId },  // Assuming we have a `hostelId` field in the resident record itself
+          { hostelId: hostelId }, // Assuming we have a `hostelId` field in the resident record itself
         ],
       },
       include: {
@@ -200,15 +273,12 @@ export const getAllresidentsForHostel = async (hostelId: string) => {
   }
 };
 
-
-
-
 export const addResidentFromHostel = async (residentData: Resident) => {
   try {
     const validateResident = residentSchema.safeParse(residentData);
     if (!validateResident.success) {
       const errors = validateResident.error.issues.map(
-        ({ message, path }) => `${path}: ${message}`
+        ({ message, path }) => `${path}: ${message}`,
       );
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
@@ -219,23 +289,24 @@ export const addResidentFromHostel = async (residentData: Resident) => {
     if (resident) {
       throw new HttpException(
         HttpStatus.CONFLICT,
-        "resident with the same Email already exists"
+        "resident with the same Email already exists",
       );
     }
-   
+
     const newResident = await prisma.resident.create({
-      data: { ...residentData, },
+      data: { ...residentData },
     });
-  
-    
+
     return newResident as Resident;
   } catch (error) {
     throw formatPrismaError(error);
   }
 };
 
-
-export const assignRoomToResident = async (residentId: string, roomId: string) => {
+export const assignRoomToResident = async (
+  residentId: string,
+  roomId: string,
+) => {
   try {
     const resident = await prisma.resident.findUnique({
       where: { id: residentId },
@@ -247,16 +318,16 @@ export const assignRoomToResident = async (residentId: string, roomId: string) =
     if (!room) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
     }
-    if (room.gender !== 'MIX' && room.gender !== resident.gender) {
+    if (room.gender !== "MIX" && room.gender !== resident.gender) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        `Room gender does not match resident's gender.`
+        `Room gender does not match resident's gender.`,
       );
     }
-    if(resident.hostelId !== room.hostelId) {
+    if (resident.hostelId !== room.hostelId) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        `Resident and room do not belong to the same hostel.`
+        `Resident and room do not belong to the same hostel.`,
       );
     }
 
@@ -267,18 +338,17 @@ export const assignRoomToResident = async (residentId: string, roomId: string) =
     if (currentResidentsCount >= room.maxCap) {
       throw new HttpException(
         HttpStatus.CONFLICT,
-        "Room has reached its maximum capacity."
+        "Room has reached its maximum capacity.",
       );
     }
-    
+
     const assignResident = await prisma.resident.update({
       where: { id: residentId },
       data: { roomId },
     });
-     
-     
+
     return assignResident as Resident;
-}catch (error) {
-  throw formatPrismaError(error);
-}
+  } catch (error) {
+    throw formatPrismaError(error);
+  }
 };
