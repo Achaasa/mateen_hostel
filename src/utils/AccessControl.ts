@@ -8,7 +8,7 @@ import prisma from "../utils/prisma"; // Import Prisma client
 export const validateHostelAccess = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   const user = req.user as UserPayload;
 
@@ -54,10 +54,15 @@ export const validateHostelAccess = async (
       const payment = await prisma.payment.findUnique({
         where: { id: paymentId },
         include: {
+          HistoricalResident: {
+            include: { room: { select: { hostelId: true } } },
+          },
           resident: { include: { room: { select: { hostelId: true } } } },
         },
       });
-      requestedHostelId = payment?.resident.room?.hostelId;
+      requestedHostelId =
+        payment?.resident?.room?.hostelId ??
+        payment?.HistoricalResident?.room?.hostelId;
     } else if (visitorId) {
       // Fetch hostelId from the visitor's resident's room
       const visitor = await prisma.visitor.findUnique({
@@ -100,6 +105,9 @@ export const validateHostelAccess = async (
       const payment = await prisma.payment.findUnique({
         where: { reference },
         include: {
+          HistoricalResident: {
+            include: { room: { select: { hostelId: true } } },
+          },
           resident: {
             include: {
               room: {
@@ -112,21 +120,26 @@ export const validateHostelAccess = async (
         },
       });
 
-      requestedHostelId = payment?.resident.room?.hostelId;
+      requestedHostelId =
+        payment?.resident?.room?.hostelId ??
+        payment?.HistoricalResident?.room?.hostelId;
     }
   }
 
   // If no hostelId is found, deny access
   if (!requestedHostelId) {
     return next(
-      new HttpException(HttpStatus.BAD_REQUEST, "Hostel ID is required")
+      new HttpException(HttpStatus.BAD_REQUEST, "Hostel ID is required"),
     );
   }
 
   // Check if the user's hostelId matches the requested hostelId
   if (user.hostelId !== requestedHostelId) {
     return next(
-      new HttpException(HttpStatus.FORBIDDEN, "Access to this hostel is denied")
+      new HttpException(
+        HttpStatus.FORBIDDEN,
+        "Access to this hostel is denied",
+      ),
     );
   }
 

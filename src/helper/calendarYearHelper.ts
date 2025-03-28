@@ -7,16 +7,14 @@ import { formatPrismaError } from "../utils/formatPrisma";
 export const startNewCalendar = async (hostelId: string, name: string) => {
   try {
     const transaction = await prisma.$transaction(async (tx) => {
-      // Update previous calendar year
       await tx.calendarYear.updateMany({
         where: { hostelId, isActive: true },
         data: { isActive: false, endDate: new Date() },
       });
 
-      // Create new calendar year
       const newCalendarYear = await tx.calendarYear.create({
         data: {
-          name, // Adjust based on your naming convention
+          name,
           startDate: new Date(),
           endDate: null,
           isActive: true,
@@ -24,7 +22,6 @@ export const startNewCalendar = async (hostelId: string, name: string) => {
         },
       });
 
-      // Get all active residents in the hostel
       const residents = await tx.resident.findMany({
         where: {
           room: { hostelId },
@@ -33,33 +30,53 @@ export const startNewCalendar = async (hostelId: string, name: string) => {
         },
       });
 
-      // Process each resident
+      console.log("Fetched residents:", residents);
+
       for (const resident of residents) {
         if (resident.roomId) {
-          // Create historical record only if roomId is assigned
-        await tx.historicalResident.create({
-          data: {
-            residentId: resident.id,
-            roomId: resident.roomId,
-            calendarYearId: newCalendarYear.id,
-            amountPaid: resident.amountPaid,
-            roomPrice: resident.roomPrice as number,
-          },
-        });}
+          const historicalResident = await tx.historicalResident.create({
+            data: {
+              residentId: resident.id,
+              room: {
+                connect: { id: resident.roomId },
+              },
+              CalendarYear: {
+                connect: { id: newCalendarYear.id },
+              },
+              amountPaid: resident.amountPaid,
+              roomPrice: resident.roomPrice ?? 0,
+              Hostel: {
+                connect: { id: hostelId },
+              },
+              residentName: resident.name,
+              residentEmail: resident.email,
+              residentPhone: resident.phone,
+              residentCourse: resident.course,
+            },
+          });
 
-        // Delete from main resident table
-        await tx.resident.delete({
-          where: { id: resident.id },
-        });
+          // Reassign Payments to HistoricalResident
+          await tx.payment.updateMany({
+            where: { residentId: resident.id },
+            data: {
+              residentId: null, // Clear the old reference (now allowed since residentId is optional)
+              historicalResidentId: historicalResident.id, // Set new reference
+            },
+          });
+
+          await tx.resident.delete({
+            where: { id: resident.id },
+          });
+        }
       }
 
-      // Update room statuses
       await tx.room.updateMany({
         where: { hostelId },
         data: { status: RoomStatus.AVAILABLE },
       });
     });
   } catch (error) {
+    console.error("Transaction failed with error:", error);
     throw formatPrismaError(error);
   }
 };
@@ -106,8 +123,7 @@ export const getHistoricalCalendarYears = async (hostelId: string) => {
       include: {
         HistoricalResident: {
           include: {
-            resident: true,
-            room: true,
+            room: true, // Keep room relation, remove resident
           },
         },
       },
@@ -130,11 +146,7 @@ export const getCalendarYearFinancialReport = async (
     const report = await prisma.calendarYear.findUnique({
       where: { id: calendarYearId },
       include: {
-        HistoricalResident: {
-          include: {
-            resident: true, // Include resident for historical data
-          },
-        },
+        HistoricalResident: true, // Include HistoricalResident without resident
       },
     });
 
@@ -142,7 +154,6 @@ export const getCalendarYearFinancialReport = async (
       throw new HttpException(HttpStatus.NOT_FOUND, "Calendar year not found");
     }
 
-    // Calculate total revenue using historical records
     const totalRevenue = report.HistoricalResident.reduce(
       (sum, hist) => sum + hist.amountPaid,
       0
@@ -152,7 +163,7 @@ export const getCalendarYearFinancialReport = async (
       totalRevenue,
       historicalResidents: report.HistoricalResident.length,
       averageRevenuePerResident:
-        totalRevenue / report.HistoricalResident.length,
+        totalRevenue / report.HistoricalResident.length || 0, // Handle division by zero
     };
   } catch (error) {
     throw formatPrismaError(error);

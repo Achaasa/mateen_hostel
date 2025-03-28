@@ -110,40 +110,41 @@ model Resident {
   emergencyContactPhone String
   relationship          String //relationship with emergency contact
 
-  room               Room?                @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  roomId             String?
-  payments           Payment[]
-  Visitor            Visitor[]
-  gender             Gender
-  roomAssigned       Boolean              @default(false)
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  //tracking payments 
-  amountPaid         Float                @default(0) // Total amount paid so far
-  balanceOwed        Float? // Remaining balance, calculated in logic
-  roomPrice          Float?
-  delFlag            Boolean              @default(false)
-  CalendarYear       CalendarYear         @relation(fields: [calendarYearId], references: [id])
-  calendarYearId     String
-  HistoricalResident HistoricalResident[]
-  Hostel             Hostel?              @relation(fields: [hostelId], references: [id])
-  hostelId           String?
-}
-
-model Payment {
-  id             String       @id @default(uuid())
-  amount         Float
-  date           DateTime     @default(now())
-  resident       Resident     @relation(fields: [residentId], references: [id])
-  residentId     String
-  status         String?
+  room           Room?        @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   roomId         String?
-  reference      String       @unique // Paystack payment reference
-  method         String?
+  payments       Payment[]
+  Visitor        Visitor[]
+  gender         Gender
+  roomAssigned   Boolean      @default(false)
+  createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  //tracking payments 
+  amountPaid     Float        @default(0) // Total amount paid so far
+  balanceOwed    Float? // Remaining balance, calculated in logic
+  roomPrice      Float?
   delFlag        Boolean      @default(false)
   CalendarYear   CalendarYear @relation(fields: [calendarYearId], references: [id])
   calendarYearId String
+  Hostel         Hostel?      @relation(fields: [hostelId], references: [id])
+  hostelId       String?
+}
+
+model Payment {
+  id                   String              @id @default(uuid())
+  amount               Float
+  date                 DateTime            @default(now())
+  resident             Resident?            @relation(fields: [residentId], references: [id])
+  residentId           String?
+  status               String?
+  roomId               String?
+  reference            String              @unique // Paystack payment reference
+  method               String?
+  updatedAt            DateTime            @updatedAt
+  delFlag              Boolean             @default(false)
+  CalendarYear         CalendarYear        @relation(fields: [calendarYearId], references: [id])
+  calendarYearId       String
+  HistoricalResident   HistoricalResident? @relation(fields: [historicalResidentId], references: [id])
+  historicalResidentId String?
 }
 
 model Visitor {
@@ -203,8 +204,11 @@ model CalendarYear {
 
 model HistoricalResident {
   id             String       @id @default(uuid())
-  resident       Resident     @relation(fields: [residentId], references: [id])
-  residentId     String
+  residentId     String // Keep as a reference but not a relation
+  residentName   String
+  residentEmail  String
+  residentPhone  String
+  residentCourse String
   room           Room         @relation(fields: [roomId], references: [id])
   roomId         String
   CalendarYear   CalendarYear @relation(fields: [calendarYearId], references: [id])
@@ -215,6 +219,7 @@ model HistoricalResident {
   updatedAt      DateTime     @updatedAt
   Hostel         Hostel?      @relation(fields: [hostelId], references: [id])
   hostelId       String?
+  payments       Payment[]
 }
 
 enum UserRole {
