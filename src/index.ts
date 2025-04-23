@@ -26,9 +26,9 @@ app.use(express.urlencoded({ extended: true })); // Ensure form-data is parsed p
 app.use(morgan("dev"));
 app.use(
   cors({
-    origin: ["http://localhost:2020", "https://simple-hostel.vercel.app/"],
+    origin: ["http://localhost:2020", "https://simple-hostel.vercel.app"],
     credentials: true,
-  }),
+  })
 );
 app.get("/", (req: Request, res: Response) => {
   res.send("Express + TypeScript Server");
