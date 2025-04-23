@@ -14,8 +14,8 @@ dotenv.config();
 const app: Express = express();
 const port = process.env.PORT || 2020;
 app.use((req, res, next) => {
-  (req as any).rawBody = '';
-  req.on('data', (chunk: Buffer) => {
+  (req as any).rawBody = "";
+  req.on("data", (chunk: Buffer) => {
     (req as any).rawBody += chunk.toString();
   });
   next();
@@ -26,9 +26,9 @@ app.use(express.urlencoded({ extended: true })); // Ensure form-data is parsed p
 app.use(morgan("dev"));
 app.use(
   cors({
-    origin: "http://localhost:2020",
+    origin: ["http://localhost:2020", "https://simple-hostel.vercel.app/"],
     credentials: true,
-  })
+  }),
 );
 app.get("/", (req: Request, res: Response) => {
   res.send("Express + TypeScript Server");
@@ -62,13 +62,11 @@ const startServer = async () => {
     const err = error as ErrorResponse;
     throw new HttpException(
       err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Failed to start server"
+      err.message || "Failed to start server",
     );
-  }finally {
+  } finally {
     await prisma.$disconnect(); // Ensure Prisma client disconnects
   }
-
-  
 };
 
 startServer(); // Start the server
