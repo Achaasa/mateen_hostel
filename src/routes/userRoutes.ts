@@ -26,7 +26,7 @@ userRouter.post(
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   validatePayload("User"), // Assuming you have validation logic for user payload
 
-  signUpUser
+  signUpUser,
 );
 
 // Get all users
@@ -34,7 +34,7 @@ userRouter.get(
   "/get",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN"]),
-  getAllUsers
+  getAllUsers,
 ); // Only accessible by SuperAdmin
 
 // Get user by email
@@ -42,7 +42,7 @@ userRouter.get(
   "/email",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
-  getUserByEmail
+  getUserByEmail,
 );
 
 // Get user by ID
@@ -52,17 +52,18 @@ userRouter.get(
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   validateHostelAccess,
 
-  getUserById
+  getUserById,
 );
 
 // Update user
 userRouter.put(
   "/update/:userId",
+  authenticateJWT,
   validatePayload("User"),
   upload.single("photo"),
   validateHostelAccess,
 
-  updateUser
+  updateUser,
 );
 
 // Delete user
@@ -72,7 +73,7 @@ userRouter.delete(
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   validateHostelAccess,
 
-  deleteUser
+  deleteUser,
 );
 
 // User login
@@ -89,6 +90,6 @@ userRouter.get(
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   validateHostelAccess,
 
-  usersForHostel
+  usersForHostel,
 );
 export default userRouter;
