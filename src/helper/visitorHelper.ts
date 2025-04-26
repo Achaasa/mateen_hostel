@@ -13,7 +13,7 @@ export const addVisitor = async (visitorData: Visitor) => {
     const validateVisitor = visitorSchema.safeParse(visitorData);
     if (!validateVisitor.success) {
       const errors = validateVisitor.error.issues.map(
-        ({ message, path }) => `${path}: ${message}`
+        ({ message, path }) => `${path}: ${message}`,
       );
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
@@ -49,7 +49,9 @@ export const addVisitor = async (visitorData: Visitor) => {
 // Get All Visitors
 export const getAllVisitors = async (): Promise<Visitor[]> => {
   try {
-    const visitors = await prisma.visitor.findMany();
+    const visitors = await prisma.visitor.findMany({
+      include: { resident: true },
+    });
     return visitors;
   } catch (error) {
     throw formatPrismaError(error);
@@ -61,6 +63,7 @@ export const getVisitorById = async (visitorId: string): Promise<Visitor> => {
   try {
     const visitor = await prisma.visitor.findUnique({
       where: { id: visitorId },
+      include: { resident: true },
     });
 
     if (!visitor) {
@@ -76,14 +79,14 @@ export const getVisitorById = async (visitorId: string): Promise<Visitor> => {
 // Update a Visitor
 export const updateVisitor = async (
   visitorId: string,
-  visitorData: { name: string; email: string; phone: string }
+  visitorData: { name: string; email: string; phone: string },
 ): Promise<Visitor> => {
   try {
     // Validate the visitor data using the schema
     const validateVisitor = updateVisitorSchema.safeParse(visitorData);
     if (!validateVisitor.success) {
       const errors = validateVisitor.error.issues.map(
-        ({ message, path }) => `${path}: ${message}`
+        ({ message, path }) => `${path}: ${message}`,
       );
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
@@ -110,7 +113,7 @@ export const updateVisitor = async (
 
 // Delete a Visitor
 export const deleteVisitor = async (
-  visitorId: string
+  visitorId: string,
 ): Promise<{ message: string }> => {
   try {
     const visitor = await prisma.visitor.findUnique({
@@ -151,7 +154,7 @@ export const checkoutVisitor = async (visitorId: string) => {
     if (visitor.status === VisitorStatus.CHECKED_OUT) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        "Visitor is already checked out"
+        "Visitor is already checked out",
       );
     }
 
@@ -175,6 +178,7 @@ export const getVisitorsForHostel = async (hostelId: string) => {
   try {
     const visitors = await prisma.visitor.findMany({
       where: { resident: { room: { hostelId } } },
+      include: { resident: true },
     });
     return visitors;
   } catch (error) {
