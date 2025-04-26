@@ -64,7 +64,7 @@ visitorRouter.put(
   visitorController.checkoutVisitorController
 );
 visitorRouter.get(
-  "/hoste/:hostelId",
+  "/hostel/:hostelId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   validateHostelAccess,
