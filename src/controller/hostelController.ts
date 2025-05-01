@@ -12,30 +12,32 @@ import { formatPrismaError } from "../utils/formatPrisma";
 
 // Add a Hostel
 export const addHostelController = async (req: Request, res: Response) => {
-  const photo = req.file ? req.file.path : undefined;
+  const photos = req.files ? req.files : [];
   const hostelData: Hostel = req.body satisfies HostelRequestDto;
-  const picture = {
-    imageUrl: "",
-    imageKey: "",
-  };
+  const pictures = [];
 
-  if (photo) {
-    const uploaded = await cloudinary.uploader.upload(photo, {
-      folder: "hostel/",
-    });
-    if (uploaded) {
-      picture.imageUrl = uploaded.secure_url;
-      picture.imageKey = uploaded.public_id;
-    }
-  }
   try {
-    const newHostel = await hostelHelper.addHostel(hostelData, picture);
+    if (photos && Array.isArray(photos) && photos.length) {
+      for (const photo of photos) {
+        const uploaded = await cloudinary.uploader.upload(photo.path, {
+          folder: "hostel/",
+        });
+
+        if (uploaded) {
+          pictures.push({
+            imageUrl: uploaded.secure_url,
+            imageKey: uploaded.public_id,
+          });
+        }
+      }
+    }
+    const newHostel = await hostelHelper.addHostel(hostelData, pictures);
 
     res.status(HttpStatus.CREATED).json({
       message: "Hostel created successfully",
       data: newHostel,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -50,7 +52,7 @@ export const getAllHostelsController = async (req: Request, res: Response) => {
       message: "Hostels fetched successfully",
       data: hostels,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -67,7 +69,7 @@ export const getHostelByIdController = async (req: Request, res: Response) => {
       message: "Hostel fetched successfully",
       data: hostel,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -76,36 +78,39 @@ export const getHostelByIdController = async (req: Request, res: Response) => {
 // Update a Hostel
 export const updateHostelController = async (req: Request, res: Response) => {
   const { hostelId } = req.params;
-  const hostelData: Hostel = req.body satisfies UpdateHostelRequestDto; // Again, assuming you're handling file uploads
-  const photo = req.file ? req.file.path : undefined;
-  const picture = {
-    imageUrl: "",
-    imageKey: "",
-  };
-  console.log(hostelData);
+  const hostelData: Partial<Hostel> = req.body;
+  const photos = req.files as Express.Multer.File[] | undefined;
+  const pictures = [];
+
   try {
-    if (photo) {
-      const uploaded = await cloudinary.uploader.upload(photo, {
-        folder: "hostel/",
-      });
-      if (uploaded) {
-        picture.imageUrl = uploaded.secure_url;
-        picture.imageKey = uploaded.public_id;
+    if (photos && photos.length > 0) {
+      // Loop over the photos and upload each one to Cloudinary
+      for (const photo of photos) {
+        const uploaded = await cloudinary.uploader.upload(photo.path, {
+          folder: "hostels/",
+        });
+
+        if (uploaded) {
+          pictures.push({
+            imageUrl: uploaded.secure_url,
+            imageKey: uploaded.public_id,
+          });
+        }
       }
     }
 
     const updatedHostel = await hostelHelper.updateHostel(
       hostelId,
       hostelData,
-      picture
+      pictures,
     );
 
     res.status(HttpStatus.OK).json({
       message: "Hostel updated successfully",
       data: updatedHostel,
     });
-  }  catch (error) {
-    const err = formatPrismaError(error); // Ensure this function is used
+  } catch (error) {
+    const err = formatPrismaError(error);
     res.status(err.status).json({ message: err.message });
   }
 };
@@ -115,13 +120,13 @@ export const deleteHostelController = async (req: Request, res: Response) => {
   const { hostelId } = req.params;
 
   try {
-    await hostelHelper.deleteHostel(hostelId);
+    const result = await hostelHelper.deleteHostel(hostelId);
 
     res.status(HttpStatus.OK).json({
-      message: "Hostel deleted successfully",
+      message: result.message,
     });
-  }  catch (error) {
-    const err = formatPrismaError(error); // Ensure this function is used
+  } catch (error) {
+    const err = formatPrismaError(error);
     res.status(err.status).json({ message: err.message });
   }
 };
@@ -133,39 +138,36 @@ export const unverifiedHostel = async (req: Request, res: Response) => {
       message: "Hostels fetched successfully",
       data: hostels,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
 };
 
-export const publishHostel=async(req: Request, res: Response)=>{
-try {
-  const { hostelId } = req.params;
-  await hostelHelper.publishHostel(hostelId);
+export const publishHostel = async (req: Request, res: Response) => {
+  try {
+    const { hostelId } = req.params;
+    await hostelHelper.publishHostel(hostelId);
 
-  res.status(HttpStatus.OK).json({
-    message: "Hostel published successfully",
-  });
-  
-}  catch (error) {
-  const err = formatPrismaError(error); // Ensure this function is used
-  res.status(err.status).json({ message: err.message });
-}
+    res.status(HttpStatus.OK).json({
+      message: "Hostel published successfully",
+    });
+  } catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
+  }
 };
 
-
-export const unPublishHostel=async(req: Request, res: Response)=>{
+export const unPublishHostel = async (req: Request, res: Response) => {
   try {
     const { hostelId } = req.params;
     await hostelHelper.unPublishHostel(hostelId);
-  
+
     res.status(HttpStatus.OK).json({
       message: "Hostel unpublished successfully",
     });
-    
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
-  };
+};

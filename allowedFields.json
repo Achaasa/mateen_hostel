@@ -30,8 +30,6 @@
       "manager",
       "email",
       "phone",
-      "imageKey",
-      "imageUrl",
       "ghCard",
       "createdAt",
       "updatedAt",
@@ -169,7 +167,8 @@
       "imageUrl",
       "imageKey",
       "delFlag",
-      "hostelId"
+      "hostelId",
+      "changedPassword"
     ]
   },
   {
@@ -227,6 +226,18 @@
     "fields": [
       "ACTIVE",
       "CHECKED_OUT"
+    ]
+  },
+  {
+    "modelName": "HostelImages",
+    "fields": [
+      "id",
+      "hostelId",
+      "imageUrl",
+      "imageKey",
+      "createdAt",
+      "updatedAt",
+      "delFlag"
     ]
   },
   {

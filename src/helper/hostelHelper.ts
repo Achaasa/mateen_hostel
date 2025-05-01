@@ -8,13 +8,13 @@ import { formatPrismaError } from "../utils/formatPrisma";
 
 export const addHostel = async (
   hostelData: Hostel,
-  picture: { imageUrl: string; imageKey: string }
+  pictures: { imageUrl: string; imageKey: string }[],
 ) => {
   try {
     const validateHostel = hostelSchema.safeParse(hostelData);
     if (!validateHostel.success) {
       const errors = validateHostel.error.issues.map(
-        ({ message, path }) => `${path}: ${message}`
+        ({ message, path }) => `${path}: ${message}`,
       );
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
@@ -25,17 +25,30 @@ export const addHostel = async (
     if (findHostel) {
       throw new HttpException(
         HttpStatus.CONFLICT,
-        "Hostel already registered with this email"
+        "Hostel already registered with this email",
       );
     }
 
     const createdHostel = await prisma.hostel.create({
       data: {
         ...hostelData,
-        imageKey: picture.imageKey,
-        imageUrl: picture.imageUrl,
       },
     });
+    if (!createdHostel) {
+      throw new HttpException(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "error creating hostel",
+      );
+    }
+    const hostelImage = pictures.map((picture) => ({
+      imageUrl: picture.imageUrl,
+      imageKey: picture.imageKey,
+      hostelId: createdHostel.id,
+    }));
+    // insert the images into db
+    if (hostelImage.length > 0) {
+      await prisma.hostelImages.createMany({ data: hostelImage });
+    }
     return createdHostel as Hostel; // Return the created hostel
   } catch (error) {
     throw formatPrismaError(error);
@@ -45,9 +58,15 @@ export const addHostel = async (
 export const getAllHostels = async () => {
   try {
     const hostels = await prisma.hostel.findMany({
-      include: { Rooms: true, Staffs: true, User: true },
+      include: {
+        Rooms: true,
+        Staffs: true,
+        User: true,
+        Amenities: true,
+        HostelImages: true,
+      },
     });
-    return hostels as Hostel[];
+    return hostels;
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -57,7 +76,13 @@ export const getHostelById = async (hostelId: string) => {
   try {
     const hostel = await prisma.hostel.findUnique({
       where: { id: hostelId },
-      include: { Rooms: true, Staffs: true, User: true ,CalendarYear:{where:{isActive:true}}},
+      include: {
+        Rooms: true,
+        Staffs: true,
+        User: true,
+        HostelImages: true,
+        CalendarYear: { where: { isActive: true } },
+      },
     });
     if (!hostel) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
@@ -70,15 +95,31 @@ export const getHostelById = async (hostelId: string) => {
 
 export const deleteHostel = async (hostelId: string) => {
   try {
-    const findHostel = await getHostelById(hostelId);
+    const findHostel = await prisma.hostel.findUnique({
+      where: { id: hostelId },
+      include: { HostelImages: true },
+    });
+
     if (!findHostel) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
     }
 
-    if (findHostel.imageKey) {
-      await cloudinary.uploader.destroy(findHostel.imageKey); // Delete the existing image from cloudinary
+    // Delete all associated images from Cloudinary
+    if (findHostel.HostelImages && findHostel.HostelImages.length > 0) {
+      for (const image of findHostel.HostelImages) {
+        await cloudinary.uploader.destroy(image.imageKey);
+      }
     }
+
+    // Delete all hostel images from database first (due to foreign key constraints)
+    await prisma.hostelImages.deleteMany({
+      where: { hostelId: hostelId },
+    });
+
+    // Finally delete the hostel
     await prisma.hostel.delete({ where: { id: hostelId } });
+
+    return { message: "Hostel and associated images deleted successfully" };
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -87,14 +128,14 @@ export const deleteHostel = async (hostelId: string) => {
 export const updateHostel = async (
   hostelId: string,
   hostelData: Partial<Hostel>,
-  picture?: { imageUrl: string; imageKey: string }
+  pictures: { imageUrl: string; imageKey: string }[],
 ) => {
   try {
     // Validate the hostel data using the schema
     const validateHostel = updateHostelSchema.safeParse(hostelData);
     if (!validateHostel.success) {
       const errors = validateHostel.error.issues.map(
-        ({ message, path }) => `${path}: ${message}`
+        ({ message, path }) => `${path}: ${message}`,
       );
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
@@ -102,35 +143,41 @@ export const updateHostel = async (
     // Find the hostel from the database
     const findHostel = await prisma.hostel.findUnique({
       where: { id: hostelId },
+      include: { HostelImages: true },
     });
+
     if (!findHostel) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
     }
 
-    // Prepare the hostel data for update
-    let updatedHostelData = { ...hostelData }; // Make a copy of hostelData
-
-    // If a picture is provided, update image URL and key
-    if (picture && picture.imageUrl && picture.imageKey) {
-      if (findHostel.imageKey) {
-        // Remove old image from cloud storage
-        await cloudinary.uploader.destroy(findHostel.imageKey);
+    // Delete old images from Cloudinary
+    if (findHostel.HostelImages && findHostel.HostelImages.length > 0) {
+      for (const image of findHostel.HostelImages) {
+        await cloudinary.uploader.destroy(image.imageKey);
       }
-      // Update the hostel data with new image details
-      updatedHostelData = {
-        ...updatedHostelData,
-        imageUrl: picture.imageUrl,
-        imageKey: picture.imageKey,
-      };
     }
+
+    // Remove old images from the database
+    await prisma.hostelImages.deleteMany({
+      where: { hostelId: hostelId },
+    });
 
     // Update hostel in the database with the new data
     const updatedHostel = await prisma.hostel.update({
       where: { id: hostelId },
-      data: updatedHostelData,
+      data: hostelData,
     });
-    console.log("Updated Hostel: ", updatedHostel);
-    // Return the updated hostel object
+
+    // Add new images to database if provided
+    if (pictures.length > 0) {
+      const hostelImages = pictures.map((picture) => ({
+        imageUrl: picture.imageUrl,
+        imageKey: picture.imageKey,
+        hostelId: hostelId,
+      }));
+      await prisma.hostelImages.createMany({ data: hostelImages });
+    }
+
     return updatedHostel;
   } catch (error) {
     throw formatPrismaError(error);
@@ -157,11 +204,14 @@ export const publishHostel = async (hostelId: string) => {
     const isActive = await prisma.calendarYear.findFirst({
       where: {
         hostelId: hostelId,
-        isActive: true
-      }
+        isActive: true,
+      },
     });
     if (!isActive) {
-      throw new HttpException(HttpStatus.BAD_REQUEST, "Calendar year must be active before publishing hostel");
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Calendar year must be active before publishing hostel",
+      );
     }
     await prisma.hostel.update({
       where: { id: hostelId },
