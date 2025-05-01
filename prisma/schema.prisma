@@ -17,12 +17,10 @@ model Hostel {
   name            String
   description     String?
   address         String
-  location        String
+  location        Location
   manager         String
   email           String               @unique
   phone           String
-  imageKey        String
-  imageUrl        String
   ghCard          String
   Rooms           Room[]
   Staffs          Staff[]
@@ -36,6 +34,7 @@ model Hostel {
   CalendarYear    CalendarYear[]
   resident        Resident[]
   historyResident HistoricalResident[]
+  HostelImages    HostelImages[]
 }
 
 model Room {
@@ -133,7 +132,7 @@ model Payment {
   id                   String              @id @default(uuid())
   amount               Float
   date                 DateTime            @default(now())
-  resident             Resident?            @relation(fields: [residentId], references: [id])
+  resident             Resident?           @relation(fields: [residentId], references: [id])
   residentId           String?
   status               String?
   roomId               String?
@@ -161,19 +160,20 @@ model Visitor {
 }
 
 model User {
-  id          String   @id @default(uuid())
-  name        String
-  email       String   @unique
-  password    String
-  phoneNumber String
-  role        UserRole
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  imageUrl    String
-  imageKey    String
-  delFlag     Boolean  @default(false)
-  hostelId    String?
-  hostel      Hostel?  @relation(fields: [hostelId], references: [id])
+  id              String   @id @default(uuid())
+  name            String
+  email           String   @unique
+  password        String
+  phoneNumber     String
+  role            UserRole
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  imageUrl        String
+  imageKey        String
+  delFlag         Boolean  @default(false)
+  hostelId        String?
+  hostel          Hostel?  @relation(fields: [hostelId], references: [id])
+  changedPassword Boolean  @default(false)
 }
 
 model RoomImage {
@@ -230,6 +230,17 @@ enum UserRole {
 enum VisitorStatus {
   ACTIVE
   CHECKED_OUT
+}
+
+model HostelImages {
+  id        String   @id @default(uuid())
+  hostelId  String
+  hostel    Hostel   @relation(fields: [hostelId], references: [id])
+  imageUrl  String
+  imageKey  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  delFlag   Boolean  @default(false)
 }
 
 enum PaymentStatus {

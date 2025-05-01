@@ -12,24 +12,24 @@ const hostelRoute = Router();
 hostelRoute.post(
   "/add",
   validatePayload("Hostel"),
-  upload.single("photo"), // Optional: Assuming you have a validation schema for hostel data
-  hostelController.addHostelController
+  upload.array("photo"), // Optional: Assuming you have a validation schema for hostel data
+  hostelController.addHostelController,
 );
 
 // Get all hostels (GET request)
 hostelRoute.get(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  
 
-  hostelController.getAllHostelsController
+  hostelController.getAllHostelsController,
 );
 // get unverified hostels
 hostelRoute.get(
   "/unverified",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN"]),
-  hostelController.unverifiedHostel
+  hostelController.unverifiedHostel,
 );
 
 // Get a specific hostel by ID (GET request)
@@ -38,7 +38,7 @@ hostelRoute.get(
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   validateHostelAccess,
-  hostelController.getHostelByIdController
+  hostelController.getHostelByIdController,
 );
 
 // Update a hostel by ID (PUT request)
@@ -48,8 +48,8 @@ hostelRoute.put(
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   validateHostelAccess,
-  upload.single("photo"), // Optional: Assuming you have a validation schema for updating a hostel
-  hostelController.updateHostelController
+  upload.array("photos"), // Changed from single to array
+  hostelController.updateHostelController,
 );
 // publish hostel
 hostelRoute.put(
@@ -57,9 +57,8 @@ hostelRoute.put(
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   validateHostelAccess,
-  hostelController.publishHostel
+  hostelController.publishHostel,
 );
-
 
 // unpublish hostel
 hostelRoute.put(
@@ -67,21 +66,21 @@ hostelRoute.put(
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   validateHostelAccess,
-  hostelController.unPublishHostel
+  hostelController.unPublishHostel,
 );
 // Delete a hostel by ID (DELETE request)
 hostelRoute.delete(
   "/delete/:hostelId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN"]),
-  hostelController.deleteHostelController
+  hostelController.deleteHostelController,
 );
 hostelRoute.post(
   "/verify/:hostelId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN"]),
 
-  verifyAndCreateHostelUser
+  verifyAndCreateHostelUser,
 );
 
 export default hostelRoute;
