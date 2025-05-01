@@ -19,7 +19,7 @@ hostelRoute.post(
 // Get all hostels (GET request)
 hostelRoute.get(
   "/get",
-  authenticateJWT,
+  
   
 
   hostelController.getAllHostelsController,
