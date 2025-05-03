@@ -1,6 +1,6 @@
 import { z } from "zod";
-
-const locationEnum = z.enum(["ACCRA", "SUNYANI", "KUMASI"]);
+import { Location } from "@prisma/client";
+const locationEnum = z.enum([...(Object.values(Location) as [string, ...string[]])]);
 // Schema to create a new hostel
 export const hostelSchema = z.object({
   name: z
