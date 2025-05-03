@@ -59,7 +59,9 @@ export const getAllHostels = async () => {
   try {
     const hostels = await prisma.hostel.findMany({
       include: {
-        Rooms: true,
+        Rooms: {
+          include: { Amenities: true, RoomImage: true },
+        },
         Staffs: true,
         User: true,
         Amenities: true,
