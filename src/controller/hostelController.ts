@@ -15,6 +15,7 @@ export const addHostelController = async (req: Request, res: Response) => {
   const photos = req.files ? req.files : [];
   const hostelData: Hostel = req.body satisfies HostelRequestDto;
   const pictures = [];
+  const uploadedImages = []; // Track uploaded images for rollback
 
   try {
     if (photos && Array.isArray(photos) && photos.length) {
@@ -28,9 +29,11 @@ export const addHostelController = async (req: Request, res: Response) => {
             imageUrl: uploaded.secure_url,
             imageKey: uploaded.public_id,
           });
+          uploadedImages.push(uploaded.public_id); // Track the uploaded image keys
         }
       }
     }
+
     const newHostel = await hostelHelper.addHostel(hostelData, pictures);
 
     res.status(HttpStatus.CREATED).json({
@@ -38,7 +41,14 @@ export const addHostelController = async (req: Request, res: Response) => {
       data: newHostel,
     });
   } catch (error) {
-    const err = formatPrismaError(error); // Ensure this function is used
+    // If there's an error, delete all uploaded images from cloudinary
+    if (uploadedImages.length > 0) {
+      for (const imageKey of uploadedImages) {
+        await cloudinary.uploader.destroy(imageKey);
+      }
+    }
+
+    const err = formatPrismaError(error);
     res.status(err.status).json({ message: err.message });
   }
 };
