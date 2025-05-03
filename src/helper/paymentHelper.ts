@@ -11,49 +11,69 @@ import { formatPrismaError } from "../utils/formatPrisma";
 export const initializePayment = async (
   roomId: string,
   residentId: string,
-  initialPayment: number
+  initialPayment: number,
 ) => {
-   // check for active calendar
-   const activeCalendar = await prisma.calendarYear.findFirst({
-    where: { isActive: true },
-  });
   try {
-    // Check if the resident and room exist
-    const room = await prisma.room.findUnique({ where: { id: roomId } });
-  //  checking for residentId since we made it optional in the prisma schema
-    if(!residentId){
-      throw new HttpException(HttpStatus.BAD_REQUEST, "Resident ID is required.")
-   }
-    const resident = await prisma.resident.findUnique({
-      where: { id: residentId },
+    // 1. Ensure active calendar exists
+    const activeCalendar = await prisma.calendarYear.findFirst({
+      where: { isActive: true },
     });
-    console.log({
-      room: `${roomId}, resident: ${residentId} payment:${initialPayment}`,
-    });
+
+    if (!activeCalendar) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "No active calendar year found.",
+      );
+    }
+
+    // 2. Validate input
+    if (!residentId) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Resident ID is required.",
+      );
+    }
+
+    // 3. Fetch room and resident
+    const [room, resident] = await Promise.all([
+      prisma.room.findUnique({ where: { id: roomId } }),
+      prisma.resident.findUnique({ where: { id: residentId } }),
+    ]);
 
     if (!room) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
     }
 
     if (!resident) {
-      throw new HttpException(HttpStatus.NOT_FOUND, "resident not found.");
+      throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
     }
-    const roomPrice = room.price;
 
-    if (initialPayment < roomPrice * 0.7) {
+    // 4. Check if room is full
+    if (room.currentResidentCount >= room.maxCap) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        "Initial payment must be at least 70% of the room price."
+        "Room is already full. Please select a different room.",
       );
     }
 
-    // Create a Paystack transaction
+    // 5. Enforce 70% minimum payment
+    const roomPrice = room.price;
+    const minPayment = roomPrice * 0.7;
+
+    if (initialPayment < minPayment) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        `Initial payment must be at least 70% of the room price (GHS ${minPayment}).`,
+      );
+    }
+
+    // 6. Initialize Paystack transaction
     const paymentResponse = await paystack.initializeTransaction(
       resident.email,
-      initialPayment
+      initialPayment,
     );
 
-    // Save payment as "PENDING"
+    // 7. Save pending payment
     await prisma.payment.create({
       data: {
         amount: initialPayment,
@@ -62,29 +82,33 @@ export const initializePayment = async (
         status: "PENDING",
         reference: paymentResponse.data.reference,
         method: paymentResponse.data.payment_method,
-        calendarYearId:activeCalendar?.id as string
-
+        calendarYearId: activeCalendar.id,
       },
     });
 
-    return { authorizationUrl: paymentResponse.data.authorization_url, reference:paymentResponse.data.reference };
+    return {
+      authorizationUrl: paymentResponse.data.authorization_url,
+      reference: paymentResponse.data.reference,
+    };
 
   } catch (error) {
     throw formatPrismaError(error);
   }
 };
 
+
 export const confirmPayment = async (reference: string) => {
   try {
+    // Step 1: Verify transaction via Paystack
     const verificationResponse = await paystack.verifyTransaction(reference);
-
     if (verificationResponse.data.status !== "success") {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        "Payment verification failed."
+        "Payment verification failed.",
       );
     }
 
+    // Step 2: Get the payment record
     const paymentRecord = await prisma.payment.findUnique({
       where: { reference },
     });
@@ -92,58 +116,87 @@ export const confirmPayment = async (reference: string) => {
     if (!paymentRecord) {
       throw new HttpException(
         HttpStatus.NOT_FOUND,
-        "Payment record not found."
+        "Payment record not found.",
       );
     }
-    const { roomId ,residentId} = paymentRecord;
+
+    const { roomId, residentId } = paymentRecord;
+
     if (!roomId) {
-      throw new Error("Room ID is not in the payment record");
+      throw new Error("Room ID is not in the payment record.");
     }
-    if(!residentId){
-      throw new HttpException(HttpStatus.NOT_FOUND, "There is no resident id in the record.");
+
+    if (!residentId) {
+      throw new HttpException(
+        HttpStatus.NOT_FOUND,
+        "There is no resident ID in the payment record.",
+      );
     }
-    const room = await prisma.room.findUnique({ where: { id: roomId } });
-    if (!room) {
-      throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
-    }
-    const debt = room.price - paymentRecord.amount;
-    const resident = await prisma.resident.update({
-      where: { id: residentId },
-      data: {
-        roomAssigned: true,
-        roomId,
-        amountPaid: paymentRecord.amount,
-        roomPrice: room.price,
-        balanceOwed: debt, // update balance owed
-      },
+
+    // Step 3: Perform all updates in a single transaction
+    const updatedResident = await prisma.$transaction(async (tx) => {
+      const room = await tx.room.findUnique({ where: { id: roomId } });
+      if (!room) {
+        throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
+      }
+
+      const debt = room.price - paymentRecord.amount;
+
+      // Update resident with payment and room details
+      const resident = await tx.resident.update({
+        where: { id: residentId },
+        data: {
+          roomAssigned: true,
+          roomId,
+          amountPaid: paymentRecord.amount,
+          roomPrice: room.price,
+          balanceOwed: debt,
+        },
+      });
+
+      // Update the payment record with status and method
+      await tx.payment.update({
+        where: { id: paymentRecord.id },
+        data: {
+          status: verificationResponse.data.status,
+          method: verificationResponse.data.channel,
+        },
+      });
+
+      // Count current number of residents in the room
+      const currentResidentsCount = await tx.resident.count({
+        where: { roomId },
+      });
+
+      // Update room's current resident count
+      const updatedRoom = await tx.room.update({
+        where: { id: roomId },
+        data: { currentResidentCount: currentResidentsCount },
+      });
+
+      // If room is now full, mark it as OCCUPIED
+      if (updatedRoom.currentResidentCount >= updatedRoom.maxCap) {
+        await tx.room.update({
+          where: { id: roomId },
+          data: { status: "OCCUPIED" },
+        });
+      }
+
+      return resident;
     });
-    const currentResidentsCount = await prisma.resident.count({where:{id:roomId}})
-    
-    await prisma.payment.update({
-      where: { id: paymentRecord.id },
-      data: {
-        status: verificationResponse.data.status,
-        method: verificationResponse.data.channel,
-      },
-    });
- 
-    await prisma.room.update({
-      where: { id: roomId },
-      data: { currentResidentCount: currentResidentsCount + 1 },
-    });
-    return resident;
+
+    return updatedResident;
+
   } catch (error) {
     throw formatPrismaError(error);
   }
 };
 
 
-
-
 export const initializeTopUpPayment = async (
   roomId: string,
   residentId: string,
-  initialPayment: number
+  initialPayment: number,
 ) => {
   try {
     // check for active calendar
@@ -172,7 +225,7 @@ export const initializeTopUpPayment = async (
     if (!roomPrice) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        "Room price not set for the resident."
+        "Room price not set for the resident.",
       );
     }
 
@@ -181,14 +234,14 @@ export const initializeTopUpPayment = async (
     if (initialPayment > debtbal) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        "Amount you want to pay must be less than or equal to what you owe."
+        "Amount you want to pay must be less than or equal to what you owe.",
       );
     }
 
     // Create a Paystack transaction
     const paymentResponse = await paystack.initializeTransaction(
       resident.email,
-      initialPayment
+      initialPayment,
     );
 
     // Save payment as "PENDING"
@@ -200,7 +253,7 @@ export const initializeTopUpPayment = async (
         status: "PENDING",
         reference: paymentResponse.data.reference,
         method: paymentResponse.data.channel, // Adjust method to use 'channel'
-        calendarYearId:activeCalendar?.id as string
+        calendarYearId: activeCalendar?.id as string,
       },
     });
 
@@ -217,7 +270,7 @@ export const TopUpPayment = async (reference: string) => {
     if (verificationResponse.data.status !== "success") {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        "Payment verification failed."
+        "Payment verification failed.",
       );
     }
 
@@ -228,16 +281,19 @@ export const TopUpPayment = async (reference: string) => {
     if (!paymentRecord) {
       throw new HttpException(
         HttpStatus.NOT_FOUND,
-        "Payment record not found."
+        "Payment record not found.",
       );
     }
 
-    const { roomId ,residentId} = paymentRecord;
+    const { roomId, residentId } = paymentRecord;
     if (!roomId) {
       throw new Error("Room ID is not in the payment record");
     }
-    if(!residentId){
-      throw new HttpException(HttpStatus.NOT_FOUND, "There is no resident id in the record.");
+    if (!residentId) {
+      throw new HttpException(
+        HttpStatus.NOT_FOUND,
+        "There is no resident id in the record.",
+      );
     }
 
     const findResident = await prisma.resident.findUnique({
@@ -249,7 +305,7 @@ export const TopUpPayment = async (reference: string) => {
     if (findResident.roomPrice === null) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        "Room price is missing for this resident."
+        "Room price is missing for this resident.",
       );
     }
     // Use the resident's original room price for calculations
@@ -278,10 +334,6 @@ export const TopUpPayment = async (reference: string) => {
     throw formatPrismaError(error);
   }
 };
-
-
-
-
 
 export const getAllPayments = async () => {
   try {
