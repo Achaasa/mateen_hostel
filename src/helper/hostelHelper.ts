@@ -66,6 +66,16 @@ export const getAllHostels = async () => {
         User: true,
         Amenities: true,
         HostelImages: true,
+        CalendarYear: {
+          where: { isActive: true }, //  Only fetch the active year
+          select: {
+            id: true,
+            name: true,
+            isActive: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
       },
     });
     return hostels;
@@ -83,7 +93,16 @@ export const getHostelById = async (hostelId: string) => {
         Staffs: true,
         User: true,
         HostelImages: true,
-        CalendarYear: { where: { isActive: true } },
+        CalendarYear: {
+          where: { isActive: true }, //  Only fetch the active year
+          select: {
+            id: true,
+            name: true,
+            isActive: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
       },
     });
     if (!hostel) {
