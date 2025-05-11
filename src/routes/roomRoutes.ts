@@ -97,9 +97,7 @@ roomRouter.post(
 
 roomRouter.get(
   "/hostel/:hostelId",
-  authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
-  validateHostelAccess,
+  
 
   roomController.roomsForHostel
 );
