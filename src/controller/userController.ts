@@ -11,6 +11,7 @@ import { jwtDecode } from "jwt-decode";
 import { getHostelById } from "../helper/hostelHelper";
 import prisma from "../utils/prisma";
 import { formatPrismaError } from "../utils/formatPrisma";
+import { clearAllData } from "../helper/adminHelper";
 
 // User registration function
 export const signUpUser = async (

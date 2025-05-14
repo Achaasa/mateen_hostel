@@ -13,19 +13,25 @@ import { UserPayload } from "../utils/jsonwebtoken";
 import { formatPrismaError } from "../utils/formatPrisma";
 export const createUser = async (
   UserData: User,
-  picture: { imageUrl: string; imageKey: string }
+  picture: { imageUrl: string; imageKey: string },
 ) => {
   try {
     const validateUser = userSchema.safeParse(UserData);
     if (!validateUser.success) {
       const errors = validateUser.error.issues.map(
-        ({ message, path }) => `${path}: ${message}`
+        ({ message, path }) => `${path}: ${message}`,
       );
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
 
     const { email } = UserData;
-    const findUser = await prisma.user.findUnique({ where: { email } });
+    // Check for existing non-deleted user
+    const findUser = await prisma.user.findFirst({
+      where: {
+        email,
+        delFlag: false,
+      },
+    });
     if (findUser) {
       throw new HttpException(HttpStatus.CONFLICT, "Email already exists");
     }
@@ -37,6 +43,7 @@ export const createUser = async (
         password: hashedPassword,
         imageKey: picture.imageKey,
         imageUrl: picture.imageUrl,
+        delFlag: false, // Explicitly set delFlag to false for new users
       },
     });
     const { password, ...restOfUser } = newUser;
@@ -48,7 +55,12 @@ export const createUser = async (
 
 export const getUsers = async () => {
   try {
-    const users = await prisma.user.findMany({ include: { hostel: true } });
+    const users = await prisma.user.findMany({
+      where: {
+        delFlag: false, // Only get non-deleted users
+      },
+      include: { hostel: true },
+    });
     return users as User[];
   } catch (error) {
     throw formatPrismaError(error);
@@ -58,7 +70,7 @@ export const getUsers = async () => {
 export const getUserById = async (id: string) => {
   try {
     const user = await prisma.user.findUnique({
-      where: { id },
+      where: { id,delFlag: false }, // Only get non-deleted users
       include: { hostel: true },
     });
     if (!user) {
@@ -73,8 +85,11 @@ export const getUserById = async (id: string) => {
 
 export const getUserByEmail = async (email: string) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const user = await prisma.user.findFirst({
+      where: {
+        email,
+        delFlag: false, // Only get non-deleted users
+      },
       include: { hostel: true },
     });
     return user;
@@ -90,7 +105,13 @@ export const deleteUser = async (id: string) => {
       throw new HttpException(HttpStatus.NOT_FOUND, "User does not exist");
     }
 
-    await prisma.user.delete({ where: { id } });
+    // Instead of deleting, update the delFlag to true
+    await prisma.user.update({
+      where: { id },
+      data: { delFlag: true },
+    });
+
+    return { message: "User soft deleted successfully" };
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -99,13 +120,13 @@ export const deleteUser = async (id: string) => {
 export const updateUser = async (
   id: string,
   UserData: Partial<User>,
-  picture?: { imageUrl: string; imageKey: string }
+  picture?: { imageUrl: string; imageKey: string },
 ) => {
   try {
     const validateUser = updateUserSchema.safeParse(UserData);
     if (!validateUser.success) {
       const errors = validateUser.error.issues.map(
-        ({ message, path }) => `${path}: ${message}`
+        ({ message, path }) => `${path}: ${message}`,
       );
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
@@ -130,10 +151,11 @@ export const updateUser = async (
       if (!hashedpassword) {
         throw new HttpException(
           HttpStatus.INTERNAL_SERVER_ERROR,
-          "Error Hashing Password"
+          "Error Hashing Password",
         );
       }
       UserData.password = hashedpassword;
+      UserData.changedPassword = true;
     }
     const { role, ...restOfUser } = UserData;
     const updatedUser = await prisma.user.update({
@@ -155,11 +177,11 @@ export const verifyAndcreateHostelUser = async (hostelId: string) => {
     }
     // 2. Check if the hostel manager email already exists
     const { email, isVerifeid } = hostel;
-    const findUser = await prisma.user.findUnique({ where: { email } });
+    const findUser = await prisma.user.findFirst({ where: { email ,delFlag:false} });
     if (findUser || isVerifeid) {
       throw new HttpException(
         HttpStatus.CONFLICT,
-        "Email already exists or is verified"
+        "Email already exists or is verified",
       );
     }
 
@@ -234,12 +256,20 @@ export const getUserProfileHelper = async (authHeader: string) => {
   }
 };
 
-
-
 export const getAllUsersForHostel = async (hostelId: string) => {
   try {
     const Users = await prisma.user.findMany({
-      where:  { hostelId } ,
+      where: {
+        hostelId,
+        delFlag: false, // Only get non-deleted users
+      },
+      include: {
+        hostel: {
+          where: {
+            delFlag: false, // Only include non-deleted hostels
+          },
+        },
+      },
     });
     return Users;
   } catch (error) {

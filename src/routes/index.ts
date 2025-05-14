@@ -9,6 +9,7 @@ import StaffRouter from "./staffRoutes";
 import userRouter from "./userRoutes";
 import calendarYearRoute from "./calendarYearRouter";
 import exportRouter from "./exportRoutes";
+import adminRouter from "./adminRouter";
 
 const mainRouter = Router();
 
@@ -22,4 +23,5 @@ mainRouter.use("/staffs", StaffRouter);
 mainRouter.use("/users", userRouter);
 mainRouter.use("/calendar", calendarYearRoute);
 mainRouter.use("/exports", exportRouter);
+mainRouter.use("/admin", adminRouter)
 export default mainRouter;

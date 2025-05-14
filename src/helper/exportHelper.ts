@@ -54,9 +54,15 @@ export const residentCsv = async (hostelId: string) => {
 export const roomCsv = async (hostelId: string) => {
   try {
     const rooms = await prisma.room.findMany({
-      where: { delFlag: false, hostelId }, // Add your conditions to filter data
+      where: {
+        delFlag: false,
+        hostelId,
+        hostel: {
+          delFlag: false, // Only get rooms for non-deleted hostels
+        },
+      },
       include: {
-        hostel: true, // Include related hostel data
+        hostel: true,
       },
     });
 

@@ -23,18 +23,21 @@ export const getAllRooms = async () => {
 export const updateRoom = async (
   roomId: string,
   roomData: Partial<Room>,
-  pictures: { imageUrl: string; imageKey: string }[]
+  pictures: { imageUrl: string; imageKey: string }[],
 ) => {
   try {
     const room = await prisma.room.findUnique({
       where: { id: roomId },
-      include: { RoomImage: true,Resident:true },
+      include: { RoomImage: true, Resident: true },
     });
     if (!room) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Room not found");
     }
     if (roomData.maxCap && room.Resident.length > roomData.maxCap) {
-      throw new HttpException(HttpStatus.BAD_REQUEST, "Cannot update maxCap as it is less than the number of residents in the room");
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Cannot update maxCap as it is less than the number of residents in the room",
+      );
     }
 
     // Delete old images from Cloudinary
@@ -88,6 +91,21 @@ export const deleteRoom = async (roomId: string) => {
     for (const image of room.RoomImage) {
       await cloudinary.uploader.destroy(image.imageKey); // Delete image from Cloudinary
     }
+    // Check for active residents assigned to this room
+    const activeResidents = await prisma.resident.findMany({
+      where: {
+        roomId: room.id,
+        delFlag: false,
+        roomAssigned: true,
+      },
+    });
+
+    if (activeResidents.length > 0) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Cannot delete room because it has active residents assigned",
+      );
+    }
 
     // Remove the images from the database
     await prisma.roomImage.deleteMany({
@@ -129,7 +147,7 @@ export const getRoomById = async (roomId: string) => {
 export const createRoom = async (
   roomData: Room,
   pictures: { imageUrl: string; imageKey: string }[],
-  amenitiesIds?: string[]
+  amenitiesIds?: string[],
 ) => {
   try {
     // Calculate total price if amenities are provided
@@ -156,7 +174,7 @@ export const createRoom = async (
       // Sum up the prices of the selected amenities
       const totalAmenitiesPrice = amenities.reduce(
         (total, amenity) => total + parseFloat(amenity.price.toString()),
-        0
+        0,
       );
       totalPrice += totalAmenitiesPrice;
     }
@@ -170,7 +188,7 @@ export const createRoom = async (
         maxCap: roomData.maxCap,
         hostelId: roomData.hostelId,
         price: totalPrice,
-        gender:roomData.gender,
+        gender: roomData.gender,
         description: roomData.description,
         type: roomData.type,
         status: roomData.status,
@@ -184,7 +202,7 @@ export const createRoom = async (
     if (!newRoom) {
       throw new HttpException(
         HttpStatus.INTERNAL_SERVER_ERROR,
-        "Error adding room"
+        "Error adding room",
       );
     }
 
@@ -193,12 +211,12 @@ export const createRoom = async (
       imageKey: picture.imageKey,
       roomId: newRoom.id,
     }));
-    
+
     // Ensure the images are inserted into the database
     if (roomImages.length > 0) {
       await prisma.roomImage.createMany({ data: roomImages });
     }
-    
+
     return newRoom;
   } catch (error) {
     throw formatPrismaError(error);
@@ -227,7 +245,7 @@ export const getAvailableRooms = async () => {
 
 export const addAmenitiesToRoom = async (
   roomId: string,
-  amenitiesIds: string[]
+  amenitiesIds: string[],
 ) => {
   try {
     // Check if the room exists
@@ -248,7 +266,7 @@ export const addAmenitiesToRoom = async (
     // Calculate the total price of the amenities to be added
     const totalAmenitiesPrice = amenitiesToAdd.reduce(
       (total, amenity) => total + amenity.price,
-      0
+      0,
     );
 
     // Update the room price and connect the new amenities
@@ -270,7 +288,7 @@ export const addAmenitiesToRoom = async (
 
 export const removeAmenitiesFromRoom = async (
   roomId: string,
-  amenitiesIds: string[]
+  amenitiesIds: string[],
 ) => {
   try {
     // Check if the room exists
@@ -291,7 +309,7 @@ export const removeAmenitiesFromRoom = async (
     // Calculate the total price of the amenities to be removed
     const totalAmenitiesPrice = amenitiesToRemove.reduce(
       (total, amenity) => total + amenity.price,
-      0
+      0,
     );
 
     // Update the room price and disconnect the amenities
@@ -314,8 +332,20 @@ export const removeAmenitiesFromRoom = async (
 export const getAllRoomsForHostel = async (hostelId: string) => {
   try {
     const rooms = await prisma.room.findMany({
-      where: { hostelId },
-      include: { RoomImage: true, Resident: true, Amenities: true },
+      where: {
+        hostelId,
+        delFlag: false, // Only get non-deleted rooms
+      },
+      include: {
+        RoomImage: true,
+        Resident: true,
+        Amenities: true,
+        hostel: {
+          select: {
+            delFlag: false, // Only include non-deleted hostels
+          },
+        },
+      },
     });
     return rooms as Room[];
   } catch (error) {
@@ -323,14 +353,12 @@ export const getAllRoomsForHostel = async (hostelId: string) => {
   }
 };
 
-
-
 export const updateRoomAll = async (
   roomId: string,
   roomData: Partial<Room>,
   pictures: { imageUrl: string; imageKey: string }[],
   addAmenitiesIds?: string[],
-  removeAmenitiesIds?: string[]
+  removeAmenitiesIds?: string[],
 ) => {
   console.log("roomData: " + JSON.stringify(roomData, null, 2));
   console.log(`addAmenitiesIds ${addAmenitiesIds}`);
@@ -349,7 +377,7 @@ export const updateRoomAll = async (
     if (roomData.maxCap && room.Resident.length > roomData.maxCap) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        "Cannot update maxCap as it is less than the number of residents in the room"
+        "Cannot update maxCap as it is less than the number of residents in the room",
       );
     }
 
@@ -362,7 +390,10 @@ export const updateRoomAll = async (
         where: { id: { in: addAmenitiesIds } },
         select: { price: true },
       });
-      totalAddedPrice = addedAmenities.reduce((sum, amenity) => sum + amenity.price, 0);
+      totalAddedPrice = addedAmenities.reduce(
+        (sum, amenity) => sum + amenity.price,
+        0,
+      );
     }
 
     if (removeAmenitiesIds && removeAmenitiesIds.length > 0) {
@@ -370,7 +401,10 @@ export const updateRoomAll = async (
         where: { id: { in: removeAmenitiesIds } },
         select: { price: true },
       });
-      totalRemovedPrice = removedAmenities.reduce((sum, amenity) => sum + amenity.price, 0);
+      totalRemovedPrice = removedAmenities.reduce(
+        (sum, amenity) => sum + amenity.price,
+        0,
+      );
     }
 
     // Calculate the new room price
@@ -404,7 +438,9 @@ export const updateRoomAll = async (
       data: {
         ...roomData,
         price: updatedPrice,
-        Amenities: Object.keys(updateAmenities).length ? updateAmenities : undefined,
+        Amenities: Object.keys(updateAmenities).length
+          ? updateAmenities
+          : undefined,
       },
       include: {
         Amenities: true,
@@ -428,4 +464,3 @@ export const updateRoomAll = async (
     throw formatPrismaError(error);
   }
 };
-

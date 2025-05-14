@@ -19,7 +19,7 @@ model Hostel {
   address         String
   location        Location
   manager         String
-  email           String               @unique
+  email           String               
   phone           String
   ghCard          String
   Rooms           Room[]
@@ -162,7 +162,7 @@ model Visitor {
 model User {
   id              String   @id @default(uuid())
   name            String
-  email           String   @unique
+  email           String   
   password        String
   phoneNumber     String
   role            UserRole
