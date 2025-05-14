@@ -8,13 +8,13 @@ import { formatPrismaError } from "../utils/formatPrisma";
 
 export const addStaff = async (
   StaffData: Staff,
-  picture: { passportUrl: string; passportKey: string }
+  picture: { passportUrl: string; passportKey: string },
 ) => {
   try {
     const validateStaff = StaffSchema.safeParse(StaffData);
     if (!validateStaff.success) {
       const errors = validateStaff.error.issues.map(
-        ({ message, path }) => `${path}: ${message}`
+        ({ message, path }) => `${path}: ${message}`,
       );
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
@@ -25,7 +25,7 @@ export const addStaff = async (
     if (findStaff) {
       throw new HttpException(
         HttpStatus.CONFLICT,
-        "Staff already registered with this email"
+        "Staff already registered with this email",
       );
     }
 
@@ -44,7 +44,18 @@ export const addStaff = async (
 
 export const getAllStaffs = async () => {
   try {
-    const Staffs = await prisma.staff.findMany({ include: { hostel: true } });
+    const Staffs = await prisma.staff.findMany({
+      where: {
+        delFlag: false, // Only get non-deleted staff
+      },
+      include: {
+        hostel: {
+          select: {
+            delFlag: false, // Only include non-deleted hostels
+          },
+        },
+      },
+    });
     return Staffs as Staff[];
   } catch (error) {
     throw formatPrismaError(error);
@@ -53,9 +64,17 @@ export const getAllStaffs = async () => {
 
 export const getStaffById = async (StaffId: string) => {
   try {
-    const Staff = await prisma.staff.findUnique({
-      where: { id: StaffId },
-      include: { hostel: true },
+    const Staff = await prisma.staff.findFirst({
+      where: {
+        id: StaffId,
+        delFlag: false,
+        hostel: {
+          delFlag: false, // Only get staff from non-deleted hostels
+        },
+      },
+      include: {
+        hostel: true,
+      },
     });
     if (!Staff) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Staff not found");
@@ -82,14 +101,14 @@ export const deleteStaff = async (StaffId: string) => {
 export const updateStaff = async (
   StaffId: string,
   StaffData: Partial<Staff>,
-  picture?: { passportUrl: string; passportKey: string }
+  picture?: { passportUrl: string; passportKey: string },
 ) => {
   try {
     // Validate the Staff data using the schema
     const validateStaff = updateStaffSchema.safeParse(StaffData);
     if (!validateStaff.success) {
       const errors = validateStaff.error.issues.map(
-        ({ message, path }) => `${path}: ${message}`
+        ({ message, path }) => `${path}: ${message}`,
       );
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
@@ -132,11 +151,10 @@ export const updateStaff = async (
   }
 };
 
-
 export const getAllStaffForHostel = async (hostelId: string) => {
   try {
     const staffs = await prisma.staff.findMany({
-      where:  { hostelId } ,
+      where: { hostelId },
     });
     return staffs;
   } catch (error) {

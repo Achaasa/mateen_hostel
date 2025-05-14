@@ -19,8 +19,12 @@ export const addHostel = async (
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
 
-    const findHostel = await prisma.hostel.findUnique({
-      where: { email: hostelData.email },
+    // Check for existing hostel including soft-deleted ones
+    const findHostel = await prisma.hostel.findFirst({
+      where: {
+        email: hostelData.email,
+        delFlag: false, // Only check against non-deleted hostels
+      },
     });
     if (findHostel) {
       throw new HttpException(
@@ -32,6 +36,7 @@ export const addHostel = async (
     const createdHostel = await prisma.hostel.create({
       data: {
         ...hostelData,
+        delFlag: false, // Explicitly set delFlag to false for new hostels
       },
     });
     if (!createdHostel) {
@@ -49,7 +54,7 @@ export const addHostel = async (
     if (hostelImage.length > 0) {
       await prisma.hostelImages.createMany({ data: hostelImage });
     }
-    return createdHostel as Hostel; // Return the created hostel
+    return createdHostel as Hostel;
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -58,6 +63,9 @@ export const addHostel = async (
 export const getAllHostels = async () => {
   try {
     const hostels = await prisma.hostel.findMany({
+      where: {
+        delFlag: false, // Only get non-deleted hostels
+      },
       include: {
         Rooms: {
           include: { Amenities: true, RoomImage: true },
@@ -67,7 +75,7 @@ export const getAllHostels = async () => {
         Amenities: true,
         HostelImages: true,
         CalendarYear: {
-          where: { isActive: true }, //  Only fetch the active year
+          where: { isActive: true },
           select: {
             id: true,
             name: true,
@@ -87,14 +95,17 @@ export const getAllHostels = async () => {
 export const getHostelById = async (hostelId: string) => {
   try {
     const hostel = await prisma.hostel.findUnique({
-      where: { id: hostelId },
+      where: {
+        id: hostelId,
+        delFlag: false, // Only get non-deleted hostels
+      },
       include: {
         Rooms: true,
         Staffs: true,
         User: true,
         HostelImages: true,
         CalendarYear: {
-          where: { isActive: true }, //  Only fetch the active year
+          where: { isActive: true },
           select: {
             id: true,
             name: true,
@@ -125,22 +136,13 @@ export const deleteHostel = async (hostelId: string) => {
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
     }
 
-    // Delete all associated images from Cloudinary
-    if (findHostel.HostelImages && findHostel.HostelImages.length > 0) {
-      for (const image of findHostel.HostelImages) {
-        await cloudinary.uploader.destroy(image.imageKey);
-      }
-    }
-
-    // Delete all hostel images from database first (due to foreign key constraints)
-    await prisma.hostelImages.deleteMany({
-      where: { hostelId: hostelId },
+    //  update the delFlag to true
+    await prisma.hostel.update({
+      where: { id: hostelId },
+      data: { delFlag: true },
     });
 
-    // Finally delete the hostel
-    await prisma.hostel.delete({ where: { id: hostelId } });
-
-    return { message: "Hostel and associated images deleted successfully" };
+    return { message: "Hostel soft deleted successfully" };
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -208,7 +210,10 @@ export const updateHostel = async (
 export const getUnverifiedHostel = async () => {
   try {
     const unverifiedHostel = await prisma.hostel.findMany({
-      where: { isVerifeid: false },
+      where: {
+        isVerifeid: false,
+        delFlag: false, // Only get non-deleted hostels
+      },
     });
     return unverifiedHostel;
   } catch (error) {
@@ -218,7 +223,12 @@ export const getUnverifiedHostel = async () => {
 
 export const publishHostel = async (hostelId: string) => {
   try {
-    const hostel = await prisma.hostel.findUnique({ where: { id: hostelId } });
+    const hostel = await prisma.hostel.findUnique({
+      where: {
+        id: hostelId,
+        delFlag: false, // Only get non-deleted hostels
+      },
+    });
     if (!hostel) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
     }
@@ -245,7 +255,12 @@ export const publishHostel = async (hostelId: string) => {
 
 export const unPublishHostel = async (hostelId: string) => {
   try {
-    const hostel = await prisma.hostel.findUnique({ where: { id: hostelId } });
+    const hostel = await prisma.hostel.findUnique({
+      where: {
+        id: hostelId,
+        delFlag: false, // Only get non-deleted hostels
+      },
+    });
     if (!hostel) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
     }

@@ -167,7 +167,9 @@ export const deleteResident = async (residentId: string) => {
             CalendarYear: { connect: { id: findResident.calendarYearId } },
             amountPaid: findResident.amountPaid,
             roomPrice: findResident.roomPrice ?? 0,
-            Hostel: findResident.hostelId ? { connect: { id: findResident.hostelId } } : undefined,
+            Hostel: findResident.hostelId
+              ? { connect: { id: findResident.hostelId } }
+              : undefined,
             residentName: findResident.name,
             residentEmail: findResident.email,
             residentPhone: findResident.phone,
@@ -255,16 +257,25 @@ export const getAllresidentsForHostel = async (hostelId: string) => {
   try {
     const residents = await prisma.resident.findMany({
       where: {
+        delFlag: false, // Only get non-deleted residents
         OR: [
-          // Condition 1: Residents with rooms, where room's hostelId matches the provided hostelId
-          { room: { hostelId } },
-
-          // Condition 2: Residents without a room assigned, where they are directly associated with the hostelId
-          { hostelId: hostelId }, // Assuming we have a `hostelId` field in the resident record itself
+          {
+            room: {
+              hostelId,
+              hostel: {
+                delFlag: false, // Only get residents from non-deleted hostels
+              },
+            },
+          },
+          { hostelId: hostelId },
         ],
       },
       include: {
-        room: true, // Include room data, null for residents without rooms
+        room: {
+          where: {
+            delFlag: false, // Only include non-deleted rooms
+          },
+        },
       },
     });
     return residents;

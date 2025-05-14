@@ -15,18 +15,20 @@ export const addAmenity = async (amenityData: Amenities) => {
     const validateAmenity = amenitiesSchema.safeParse(amenityData);
     if (!validateAmenity.success) {
       const errors = validateAmenity.error.issues.map(
-        ({ message, path }) => `${path}: ${message}`
+        ({ message, path }) => `${path}: ${message}`,
       );
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
-    const hostel=await prisma.hostel.findUnique({where:{id:amenityData.hostelId}})
-    if(!hostel){
-      throw new HttpException(HttpStatus.NOT_FOUND, "hostel does not exist")
+    const hostel = await prisma.hostel.findUnique({
+      where: { id: amenityData.hostelId },
+    });
+    if (!hostel) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "hostel does not exist");
     }
-
+    const hostelId = hostel.id;
     // Check if amenity already exists (if needed)
     const existingAmenity = await prisma.amenities.findFirst({
-      where: { name: amenityData.name },
+      where: { name: amenityData.name, hostelId },
     });
     if (existingAmenity) {
       throw new HttpException(HttpStatus.CONFLICT, "Amenity already exists");
@@ -38,7 +40,7 @@ export const addAmenity = async (amenityData: Amenities) => {
     });
 
     return createdAmenity;
-  }catch (error) {
+  } catch (error) {
     throw formatPrismaError(error);
   }
 };
@@ -73,14 +75,14 @@ export const getAmenityById = async (amenityId: string): Promise<Amenities> => {
 // Update an Amenity
 export const updateAmenity = async (
   amenityId: string,
-  amenityData: Partial<Amenities>
+  amenityData: Partial<Amenities>,
 ) => {
   try {
     // Validate the amenity data using the schema
     const validateAmenity = updateAmenitiesSchema.safeParse(amenityData);
     if (!validateAmenity.success) {
       const errors = validateAmenity.error.issues.map(
-        ({ message, path }) => `${path}: ${message}`
+        ({ message, path }) => `${path}: ${message}`,
       );
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
@@ -107,7 +109,7 @@ export const updateAmenity = async (
 
 // Delete Amenity
 export const deleteAmenity = async (
-  amenityId: string
+  amenityId: string,
 ): Promise<{ message: string }> => {
   try {
     const amenity = await prisma.amenities.findUnique({
@@ -129,11 +131,15 @@ export const deleteAmenity = async (
   }
 };
 
-
 export const getAllAmenitiesForHostel = async (hostelId: string) => {
   try {
     const rooms = await prisma.amenities.findMany({
-      where:  { hostelId } ,
+      where: {
+        hostelId,
+        hostel: {
+          delFlag: false, // Only get amenities for non-deleted hostels
+        },
+      },
     });
     return rooms;
   } catch (error) {

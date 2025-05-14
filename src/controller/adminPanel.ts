@@ -3,6 +3,10 @@ import * as bcrypt from "../utils/bcrypt";
 import { ErrorResponse } from "../utils/types";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
+import { clearAllData } from "../helper/adminHelper";
+import { formatPrismaError } from "../utils/formatPrisma";
+import { Request, Response, NextFunction } from "express";
+
 
 export const createAdminUser = async () => {
   const adminEmail = String(process.env.ADMIN_EMAIL);
@@ -10,7 +14,7 @@ export const createAdminUser = async () => {
 
   // Check if admin user exists
   try {
-    const existingAdmin = await prisma.user.findUnique({
+    const existingAdmin = await prisma.user.findFirst({
       where: { email: adminEmail },
     });
 
@@ -45,3 +49,15 @@ export const createAdminUser = async () => {
     await prisma.$disconnect(); // Ensure Prisma client disconnects
   }
 };
+
+export const clearDatabase = async (req: Request, res: Response) => {
+  try {
+    await clearAllData();
+    res.status(HttpStatus.OK).json({
+      message: "Database cleared successfully",
+    });
+  }  catch (error) {
+      const err = formatPrismaError(error); // Ensure this function is used
+      res.status(err.status).json({ message: err.message });
+    }
+  };

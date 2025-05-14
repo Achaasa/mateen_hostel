@@ -177,8 +177,20 @@ export const checkoutVisitor = async (visitorId: string) => {
 export const getVisitorsForHostel = async (hostelId: string) => {
   try {
     const visitors = await prisma.visitor.findMany({
-      where: { resident: { room: { hostelId } } },
-      include: { resident: true },
+      where: {
+        resident: {
+          delFlag: false,
+          room: {
+            hostelId,
+            hostel: {
+              delFlag: false,
+            },
+          },
+        },
+      },
+      include: {
+        resident: true,
+      },
     });
     return visitors;
   } catch (error) {
