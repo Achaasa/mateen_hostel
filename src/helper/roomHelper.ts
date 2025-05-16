@@ -8,10 +8,19 @@ import { formatPrismaError } from "../utils/formatPrisma";
 export const getAllRooms = async () => {
   try {
     const rooms = await prisma.room.findMany({
+      where: {
+        delFlag: false,
+        hostel: {
+          is: {
+            delFlag: false,
+          },
+        },
+      },
       include: {
         Amenities: true, // Include the amenities in the response
         RoomImage: true,
         Resident: true,
+        hostel: true, // Include hostel if needed
       },
     });
     return rooms;
@@ -19,6 +28,7 @@ export const getAllRooms = async () => {
     throw formatPrismaError(error);
   }
 };
+
 
 export const updateRoom = async (
   roomId: string,
@@ -125,12 +135,21 @@ export const deleteRoom = async (roomId: string) => {
 
 export const getRoomById = async (roomId: string) => {
   try {
-    const room = await prisma.room.findUnique({
-      where: { id: roomId },
+    const room = await prisma.room.findFirst({
+      where: {
+        id: roomId,
+        delFlag: false, // Room is not deleted
+        hostel: {
+          is: {
+            delFlag: false, // Hostel is not deleted
+          },
+        },
+      },
       include: {
         Amenities: true, // Include the amenities for the room
         RoomImage: true, // Include the room images for the room
         Resident: true,
+        hostel: true,
       },
     });
 
@@ -143,6 +162,7 @@ export const getRoomById = async (roomId: string) => {
     throw formatPrismaError(error);
   }
 };
+
 
 export const createRoom = async (
   roomData: Room,
@@ -229,6 +249,11 @@ export const getAvailableRooms = async () => {
     const availableRooms = await prisma.room.findMany({
       where: {
         status: "AVAILABLE",
+        hostel: {
+          is: {
+            delFlag: false,
+          },
+        },
       },
       include: {
         Amenities: true, // Include related amenities if needed
@@ -334,24 +359,27 @@ export const getAllRoomsForHostel = async (hostelId: string) => {
     const rooms = await prisma.room.findMany({
       where: {
         hostelId,
-        delFlag: false, // Only get non-deleted rooms
+        delFlag: false,
+        hostel: {
+          is: {
+            delFlag: false,
+          },
+        },
       },
       include: {
         RoomImage: true,
         Resident: true,
         Amenities: true,
-        hostel: {
-          select: {
-            delFlag: false, // Only include non-deleted hostels
-          },
-        },
+        hostel: true, // Include hostel details if needed
       },
     });
+
     return rooms as Room[];
   } catch (error) {
     throw formatPrismaError(error);
   }
 };
+
 
 export const updateRoomAll = async (
   roomId: string,
