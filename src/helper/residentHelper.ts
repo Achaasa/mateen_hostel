@@ -75,13 +75,39 @@ export const register = async (residentData: Resident) => {
 export const getAllResident = async () => {
   try {
     const residents = await prisma.resident.findMany({
-      include: { room: true },
+      where: {
+        OR: [
+          {
+            room: null, // Include residents without a room
+          },
+          {
+            room: {
+              is: {
+                hostel: {
+                  is: {
+                    delFlag: false, // Only include residents whose room's hostel is not deleted
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        room: {
+          include: {
+            hostel: true, // Optional: include hostel info
+          },
+        },
+      },
     });
+
     return residents as Resident[];
   } catch (error) {
     throw formatPrismaError(error);
   }
 };
+
 
 export const getResidentById = async (residentId: string) => {
   try {

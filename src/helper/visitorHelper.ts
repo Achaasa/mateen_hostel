@@ -176,22 +176,33 @@ export const checkoutVisitor = async (visitorId: string) => {
 
 export const getVisitorsForHostel = async (hostelId: string) => {
   try {
+    // First, ensure the hostel exists and is not deleted
+    const hostel = await prisma.hostel.findUnique({
+      where: { id: hostelId, delFlag: false },
+    });
+    
+    if (!hostel) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
+    }
+
+    // Now, query for visitors whose resident's room is in the specified hostel and is not deleted
     const visitors = await prisma.visitor.findMany({
       where: {
         resident: {
-          delFlag: false,
+          delFlag: false, // Resident should not be deleted
           room: {
-            hostelId,
+            hostelId, // Ensure the room belongs to the given hostel
             hostel: {
-              delFlag: false,
+              delFlag: false, // Ensure the hostel is not deleted
             },
           },
         },
       },
       include: {
-        resident: true,
+        resident: true, // Include resident details
       },
     });
+
     return visitors;
   } catch (error) {
     throw formatPrismaError(error);

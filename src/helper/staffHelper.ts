@@ -44,23 +44,25 @@ export const addStaff = async (
 
 export const getAllStaffs = async () => {
   try {
-    const Staffs = await prisma.staff.findMany({
+    const staffs = await prisma.staff.findMany({
       where: {
         delFlag: false, // Only get non-deleted staff
-      },
-      include: {
         hostel: {
-          select: {
-            delFlag: false, // Only include non-deleted hostels
+          is: {
+            delFlag: false, // Only include staff whose hostel is not deleted
           },
         },
       },
+      include: {
+        hostel: true, // Include hostel info if needed
+      },
     });
-    return Staffs as Staff[];
+    return staffs as Staff[];
   } catch (error) {
     throw formatPrismaError(error);
   }
 };
+
 
 export const getStaffById = async (StaffId: string) => {
   try {

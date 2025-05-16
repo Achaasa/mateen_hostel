@@ -96,7 +96,7 @@ roomRouter.post(
 );
 
 roomRouter.get(
-  "/hostel/:hostelId",
+  "/get/hostel/:hostelId",
   
 
   roomController.roomsForHostel
