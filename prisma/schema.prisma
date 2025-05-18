@@ -19,7 +19,7 @@ model Hostel {
   address         String
   location        Location
   manager         String
-  email           String               
+  email           String
   phone           String
   ghCard          String
   Rooms           Room[]
@@ -35,6 +35,8 @@ model Hostel {
   resident        Resident[]
   historyResident HistoricalResident[]
   HostelImages    HostelImages[]
+  logoUrl         String?
+  logoKey         String?
 }
 
 model Room {
@@ -162,7 +164,7 @@ model Visitor {
 model User {
   id              String   @id @default(uuid())
   name            String
-  email           String   
+  email           String
   password        String
   phoneNumber     String
   role            UserRole

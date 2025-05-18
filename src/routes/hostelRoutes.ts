@@ -12,15 +12,16 @@ const hostelRoute = Router();
 hostelRoute.post(
   "/add",
   validatePayload("Hostel"),
-  upload.array("photo"), // Optional: Assuming you have a validation schema for hostel data
+  upload.fields([
+    { name: "logo", maxCount: 1 },
+    { name: "photos", maxCount: 10 },
+  ]),
   hostelController.addHostelController,
 );
 
 // Get all hostels (GET request)
 hostelRoute.get(
   "/get",
-  
-  
 
   hostelController.getAllHostelsController,
 );
@@ -48,7 +49,10 @@ hostelRoute.put(
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   validateHostelAccess,
-  upload.array("photos"), // Changed from single to array
+  upload.fields([
+    { name: "logo", maxCount: 1 },
+    { name: "photos", maxCount: 10 },
+  ]),
   hostelController.updateHostelController,
 );
 // publish hostel
