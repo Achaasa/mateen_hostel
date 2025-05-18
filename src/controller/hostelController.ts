@@ -12,16 +12,36 @@ import { formatPrismaError } from "../utils/formatPrisma";
 
 // Add a Hostel
 export const addHostelController = async (req: Request, res: Response) => {
-  const photos = req.files ? req.files : [];
+  const files = req.files as { [fieldname: string]: Express.Multer.File[] };
   const hostelData: Hostel = req.body satisfies HostelRequestDto;
   const pictures = [];
-  const uploadedImages = []; // Track uploaded images for rollback
+  const uploadedImages = [];
+  let logoInfo = null;
 
   try {
-    if (photos && Array.isArray(photos) && photos.length) {
-      for (const photo of photos) {
+    // Handle logo upload
+    if (files.logo && files.logo[0]) {
+      const uploadedLogo = await cloudinary.uploader.upload(
+        files.logo[0].path,
+        {
+          folder: "hostel/logos/",
+        },
+      );
+
+      if (uploadedLogo) {
+        logoInfo = {
+          logoUrl: uploadedLogo.secure_url,
+          logoKey: uploadedLogo.public_id,
+        };
+        uploadedImages.push(uploadedLogo.public_id);
+      }
+    }
+
+    // Handle photos upload
+    if (files.photos && files.photos.length > 0) {
+      for (const photo of files.photos) {
         const uploaded = await cloudinary.uploader.upload(photo.path, {
-          folder: "hostel/",
+          folder: "hostel/photos/",
         });
 
         if (uploaded) {
@@ -29,12 +49,16 @@ export const addHostelController = async (req: Request, res: Response) => {
             imageUrl: uploaded.secure_url,
             imageKey: uploaded.public_id,
           });
-          uploadedImages.push(uploaded.public_id); // Track the uploaded image keys
+          uploadedImages.push(uploaded.public_id);
         }
       }
     }
 
-    const newHostel = await hostelHelper.addHostel(hostelData, pictures);
+    const newHostel = await hostelHelper.addHostel(
+      hostelData,
+      pictures,
+      logoInfo,
+    );
 
     res.status(HttpStatus.CREATED).json({
       message: "Hostel created successfully",
@@ -89,15 +113,33 @@ export const getHostelByIdController = async (req: Request, res: Response) => {
 export const updateHostelController = async (req: Request, res: Response) => {
   const { hostelId } = req.params;
   const hostelData: Partial<Hostel> = req.body;
-  const photos = req.files as Express.Multer.File[] | undefined;
+  const files = req.files as { [fieldname: string]: Express.Multer.File[] };
   const pictures = [];
+  let logoInfo = null;
 
   try {
-    if (photos && photos.length > 0) {
-      // Loop over the photos and upload each one to Cloudinary
-      for (const photo of photos) {
+    // Handle logo upload
+    if (files.logo && files.logo[0]) {
+      const uploadedLogo = await cloudinary.uploader.upload(
+        files.logo[0].path,
+        {
+          folder: "hostel/logos/",
+        },
+      );
+
+      if (uploadedLogo) {
+        logoInfo = {
+          logoUrl: uploadedLogo.secure_url,
+          logoKey: uploadedLogo.public_id,
+        };
+      }
+    }
+
+    // Handle photos upload
+    if (files.photos && files.photos.length > 0) {
+      for (const photo of files.photos) {
         const uploaded = await cloudinary.uploader.upload(photo.path, {
-          folder: "hostels/",
+          folder: "hostel/photos/",
         });
 
         if (uploaded) {
@@ -113,6 +155,7 @@ export const updateHostelController = async (req: Request, res: Response) => {
       hostelId,
       hostelData,
       pictures,
+      logoInfo,
     );
 
     res.status(HttpStatus.OK).json({

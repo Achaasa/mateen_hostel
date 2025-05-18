@@ -90,12 +90,10 @@ export const initializePayment = async (
       authorizationUrl: paymentResponse.data.authorization_url,
       reference: paymentResponse.data.reference,
     };
-
   } catch (error) {
     throw formatPrismaError(error);
   }
 };
-
 
 export const confirmPayment = async (reference: string) => {
   try {
@@ -186,12 +184,10 @@ export const confirmPayment = async (reference: string) => {
     });
 
     return updatedResident;
-
   } catch (error) {
     throw formatPrismaError(error);
   }
 };
-
 
 export const initializeTopUpPayment = async (
   roomId: string,
@@ -326,7 +322,10 @@ export const TopUpPayment = async (reference: string) => {
 
     await prisma.payment.update({
       where: { id: paymentRecord.id },
-      data: { status: "CONFIRMED", method: verificationResponse.data.channel },
+      data: {
+        status: verificationResponse.data.status,
+        method: verificationResponse.data.channel,
+      },
     });
 
     return resident;
