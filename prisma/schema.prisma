@@ -1,6 +1,5 @@
 generator erd {
   provider = "prisma-erd-generator"
-  // The directory where the ERD will be generated
 }
 
 generator client {
@@ -17,56 +16,54 @@ model Hostel {
   name            String
   description     String?
   address         String
-  location        Location
   manager         String
   email           String
   phone           String
   ghCard          String
-  Rooms           Room[]
-  Staffs          Staff[]
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
   isVerifeid      Boolean              @default(false)
   delFlag         Boolean              @default(false)
-  Amenities       Amenities[]
-  User            User[]
   state           HostelState          @default(UNPUBLISHED)
+  location        Location
+  logoKey         String?
+  logoUrl         String?
+  Amenities       Amenities[]
   CalendarYear    CalendarYear[]
-  resident        Resident[]
   historyResident HistoricalResident[]
   HostelImages    HostelImages[]
-  logoUrl         String?
-  logoKey         String?
+  resident        Resident[]
+  Rooms           Room[]
+  Staffs          Staff[]
+  User            User[]
 }
 
 model Room {
-  id     String  @id @default(uuid())
-  number String
-  block  String?
-  floor  String?
-  maxCap Int
-
-  hostel               Hostel               @relation(fields: [hostelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  id                   String               @id @default(uuid())
+  number               String
+  block                String?
+  floor                String?
+  maxCap               Int
   hostelId             String
-  Amenities            Amenities[]          @relation("RoomAmenities")
-  Resident             Resident[]
   price                Float
   description          String
   type                 RoomType
   status               RoomStatus
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
-  currentResidentCount Int                  @default(0)
   delFlag              Boolean              @default(false)
-  RoomImage            RoomImage[]
   gender               RoomGender
+  currentResidentCount Int                  @default(0)
   HistoricalResident   HistoricalResident[]
+  Resident             Resident[]
+  hostel               Hostel               @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+  RoomImage            RoomImage[]
+  Amenities            Amenities[]          @relation("RoomAmenities")
+  Payments             Payment[]
 }
 
 model Staff {
   id                String        @id @default(uuid())
-  role              String
-  hostel            Hostel        @relation(fields: [hostelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   hostelId          String
   firstName         String
   middleName        String?
@@ -80,72 +77,73 @@ model Staff {
   religion          Religion
   email             String        @unique
   residence         String
-  qualification     String
   block             String
   dateOfAppointment DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   passportUrl       String
   passportKey       String
   delFlag           Boolean       @default(false)
+  role              String
+  qualification     String
+  hostel            Hostel        @relation(fields: [hostelId], references: [id], onDelete: Cascade)
 }
 
 model Amenities {
   id        String   @id @default(uuid())
   name      String
   price     Float
-  rooms     Room[]   @relation("RoomAmenities")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   hostelId  String
-  hostel    Hostel   @relation(fields: [hostelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  hostel    Hostel   @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+  rooms     Room[]   @relation("RoomAmenities")
 }
 
 model Resident {
-  id                    String @id @default(uuid())
+  id                    String       @id @default(uuid())
   name                  String
   studentId             String
   course                String
   phone                 String
-  email                 String @unique
+  email                 String       @unique
   emergencyContactName  String
   emergencyContactPhone String
-  relationship          String //relationship with emergency contact
-
-  room           Room?        @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  roomId         String?
-  payments       Payment[]
-  Visitor        Visitor[]
-  gender         Gender
-  roomAssigned   Boolean      @default(false)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  //tracking payments 
-  amountPaid     Float        @default(0) // Total amount paid so far
-  balanceOwed    Float? // Remaining balance, calculated in logic
-  roomPrice      Float?
-  delFlag        Boolean      @default(false)
-  CalendarYear   CalendarYear @relation(fields: [calendarYearId], references: [id])
-  calendarYearId String
-  Hostel         Hostel?      @relation(fields: [hostelId], references: [id])
-  hostelId       String?
+  relationship          String
+  roomId                String?
+  gender                Gender
+  roomAssigned          Boolean      @default(false)
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+  amountPaid            Float        @default(0)
+  balanceOwed           Float?
+  roomPrice             Float?
+  delFlag               Boolean      @default(false)
+  calendarYearId        String
+  hostelId              String?
+  payments              Payment[]
+  CalendarYear          CalendarYear @relation(fields: [calendarYearId], references: [id])
+  Hostel                Hostel?      @relation(fields: [hostelId], references: [id])
+  room                  Room?        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  Visitor               Visitor[]
 }
 
 model Payment {
   id                   String              @id @default(uuid())
   amount               Float
   date                 DateTime            @default(now())
-  resident             Resident?           @relation(fields: [residentId], references: [id])
   residentId           String?
   status               String?
   roomId               String?
-  reference            String              @unique // Paystack payment reference
+  reference            String              @unique
   method               String?
   updatedAt            DateTime            @updatedAt
   delFlag              Boolean             @default(false)
-  CalendarYear         CalendarYear        @relation(fields: [calendarYearId], references: [id])
   calendarYearId       String
-  HistoricalResident   HistoricalResident? @relation(fields: [historicalResidentId], references: [id])
   historicalResidentId String?
+  CalendarYear         CalendarYear        @relation(fields: [calendarYearId], references: [id])
+  HistoricalResident   HistoricalResident? @relation(fields: [historicalResidentId], references: [id])
+  resident             Resident?           @relation(fields: [residentId], references: [id])
+  room                 Room?               @relation(fields: [roomId], references: [id])
 }
 
 model Visitor {
@@ -153,12 +151,12 @@ model Visitor {
   name       String
   email      String
   phone      String
-  resident   Resident      @relation(fields: [residentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   residentId String
   timeIn     DateTime      @default(now())
   timeOut    DateTime?
   status     VisitorStatus
   updatedAt  DateTime      @updatedAt
+  resident   Resident      @relation(fields: [residentId], references: [id], onDelete: Cascade)
 }
 
 model User {
@@ -174,54 +172,65 @@ model User {
   imageKey        String
   delFlag         Boolean  @default(false)
   hostelId        String?
-  hostel          Hostel?  @relation(fields: [hostelId], references: [id])
   changedPassword Boolean  @default(false)
+  hostel          Hostel?  @relation(fields: [hostelId], references: [id])
 }
 
 model RoomImage {
   id        String   @id @default(uuid())
   roomId    String
-  room      Room     @relation(fields: [roomId], references: [id])
   imageUrl  String
   imageKey  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   delFlag   Boolean  @default(false)
+  room      Room     @relation(fields: [roomId], references: [id])
 }
 
 model CalendarYear {
   id                 String               @id @default(uuid())
-  name               String               @unique // e.g., "Fall 2023"
+  name               String               @unique
   startDate          DateTime
   endDate            DateTime?
-  isActive           Boolean              @default(false) // Indicates if this is the current semester
-  Residents          Resident[]
-  Payments           Payment[]
+  isActive           Boolean              @default(false)
   hostelId           String
-  hostel             Hostel               @relation(fields: [hostelId], references: [id])
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
+  hostel             Hostel               @relation(fields: [hostelId], references: [id])
   HistoricalResident HistoricalResident[]
+  Payments           Payment[]
+  Residents          Resident[]
 }
 
 model HistoricalResident {
   id             String       @id @default(uuid())
-  residentId     String // Keep as a reference but not a relation
-  residentName   String
-  residentEmail  String
-  residentPhone  String
-  residentCourse String
-  room           Room         @relation(fields: [roomId], references: [id])
+  residentId     String
   roomId         String
-  CalendarYear   CalendarYear @relation(fields: [calendarYearId], references: [id])
   calendarYearId String
   amountPaid     Float
   roomPrice      Float
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
-  Hostel         Hostel?      @relation(fields: [hostelId], references: [id])
   hostelId       String?
+  residentCourse String
+  residentEmail  String
+  residentName   String
+  residentPhone  String
+  CalendarYear   CalendarYear @relation(fields: [calendarYearId], references: [id])
+  Hostel         Hostel?      @relation(fields: [hostelId], references: [id])
+  room           Room         @relation(fields: [roomId], references: [id])
   payments       Payment[]
+}
+
+model HostelImages {
+  id        String   @id @default(uuid())
+  hostelId  String
+  imageUrl  String
+  imageKey  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  delFlag   Boolean  @default(false)
+  hostel    Hostel   @relation(fields: [hostelId], references: [id])
 }
 
 enum UserRole {
@@ -232,17 +241,6 @@ enum UserRole {
 enum VisitorStatus {
   ACTIVE
   CHECKED_OUT
-}
-
-model HostelImages {
-  id        String   @id @default(uuid())
-  hostelId  String
-  hostel    Hostel   @relation(fields: [hostelId], references: [id])
-  imageUrl  String
-  imageKey  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  delFlag   Boolean  @default(false)
 }
 
 enum PaymentStatus {

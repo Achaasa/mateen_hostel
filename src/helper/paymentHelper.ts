@@ -1,12 +1,18 @@
-// src/helpers/residentHelpers.ts
-
 import prisma from "../utils/prisma";
-import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
-import { Payment, Resident } from "@prisma/client";
-import { ErrorResponse } from "../utils/types";
-import paystack from "../utils/paystack";
+import HttpException from "../utils/http-error";
 import { formatPrismaError } from "../utils/formatPrisma";
+import { Room, Resident, Payment } from "@prisma/client";
+import paystack from "../utils/paystack";
+import { ErrorResponse } from "../utils/types";
+// import Decimal from "decimal.js";
+
+interface OrphanedPaymentResolution {
+  paymentId: string;
+  resolution: 'linked_to_historical' | 'linked_to_resident' | 'marked_invalid' | 'deleted';
+  details: string;
+}
+// Payment Processing Functions
 
 export const initializePayment = async (
   roomId: string,
@@ -14,82 +20,54 @@ export const initializePayment = async (
   initialPayment: number,
 ) => {
   try {
-    // 1. Ensure active calendar exists
-    const activeCalendar = await prisma.calendarYear.findFirst({
-      where: { isActive: true },
-    });
+    return await prisma.$transaction(async (tx) => {
+      const resident = await tx.resident.findUnique({
+        where: { id: residentId, delFlag: false },
+      });
+      
+      if (!resident) {
+        throw new HttpException(HttpStatus.NOT_FOUND, "Active resident not found");
+      }
 
-    if (!activeCalendar) {
-      throw new HttpException(
-        HttpStatus.BAD_REQUEST,
-        "No active calendar year found.",
+      const room = await tx.room.findUnique({
+        where: { id: roomId },
+        include: { hostel: true },
+      });
+
+      if (!room) {
+        throw new HttpException(HttpStatus.NOT_FOUND, "Room not found");
+      }
+
+      const activeCalendar = await tx.calendarYear.findFirst({
+        where: { isActive: true, hostelId: room.hostelId },
+      });
+
+      if (!activeCalendar) {
+        throw new HttpException(HttpStatus.BAD_REQUEST, "No active calendar year found");
+      }
+
+      const paymentResponse = await paystack.initializeTransaction(
+        resident.email,
+        initialPayment,
       );
-    }
 
-    // 2. Validate input
-    if (!residentId) {
-      throw new HttpException(
-        HttpStatus.BAD_REQUEST,
-        "Resident ID is required.",
-      );
-    }
+      const payment = await tx.payment.create({
+        data: {
+          amount: initialPayment,
+          residentId,
+          roomId,
+          status: "PENDING",
+          reference: paymentResponse.data.reference,
+          method: paymentResponse.data.payment_method,
+          calendarYearId: activeCalendar.id,
+        },
+      });
 
-    // 3. Fetch room and resident
-    const [room, resident] = await Promise.all([
-      prisma.room.findUnique({ where: { id: roomId } }),
-      prisma.resident.findUnique({ where: { id: residentId } }),
-    ]);
-
-    if (!room) {
-      throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
-    }
-
-    if (!resident) {
-      throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
-    }
-
-    // 4. Check if room is full
-    if (room.currentResidentCount >= room.maxCap) {
-      throw new HttpException(
-        HttpStatus.BAD_REQUEST,
-        "Room is already full. Please select a different room.",
-      );
-    }
-
-    // 5. Enforce 70% minimum payment
-    const roomPrice = room.price;
-    const minPayment = roomPrice * 0.7;
-
-    if (initialPayment < minPayment) {
-      throw new HttpException(
-        HttpStatus.BAD_REQUEST,
-        `Initial payment must be at least 70% of the room price (GHS ${minPayment}).`,
-      );
-    }
-
-    // 6. Initialize Paystack transaction
-    const paymentResponse = await paystack.initializeTransaction(
-      resident.email,
-      initialPayment,
-    );
-
-    // 7. Save pending payment
-    await prisma.payment.create({
-      data: {
-        amount: initialPayment,
-        residentId,
-        roomId,
-        status: "PENDING",
+      return {
+        authorizationUrl: paymentResponse.data.authorization_url,
         reference: paymentResponse.data.reference,
-        method: paymentResponse.data.payment_method,
-        calendarYearId: activeCalendar.id,
-      },
+      };
     });
-
-    return {
-      authorizationUrl: paymentResponse.data.authorization_url,
-      reference: paymentResponse.data.reference,
-    };
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -97,62 +75,81 @@ export const initializePayment = async (
 
 export const confirmPayment = async (reference: string) => {
   try {
-    // Step 1: Verify transaction via Paystack
     const verificationResponse = await paystack.verifyTransaction(reference);
     if (verificationResponse.data.status !== "success") {
-      throw new HttpException(
-        HttpStatus.BAD_REQUEST,
-        "Payment verification failed.",
-      );
+      throw new HttpException(HttpStatus.BAD_REQUEST, "Payment verification failed.");
     }
 
-    // Step 2: Get the payment record
     const paymentRecord = await prisma.payment.findUnique({
       where: { reference },
+      include: { resident: true, HistoricalResident: true },
     });
 
     if (!paymentRecord) {
-      throw new HttpException(
-        HttpStatus.NOT_FOUND,
-        "Payment record not found.",
-      );
+      throw new HttpException(HttpStatus.NOT_FOUND, "Payment record not found.");
     }
 
-    const { roomId, residentId } = paymentRecord;
+    const { roomId, residentId, historicalResidentId } = paymentRecord;
 
     if (!roomId) {
-      throw new Error("Room ID is not in the payment record.");
+      throw new HttpException(HttpStatus.BAD_REQUEST, "Room ID is missing in the payment record.");
     }
 
-    if (!residentId) {
+    if (!residentId && !historicalResidentId) {
       throw new HttpException(
-        HttpStatus.NOT_FOUND,
-        "There is no resident ID in the payment record.",
+        HttpStatus.BAD_REQUEST,
+        "Payment must have either a residentId or historicalResidentId.",
       );
     }
 
-    // Step 3: Perform all updates in a single transaction
+    if (historicalResidentId) {
+      await prisma.payment.update({
+        where: { id: paymentRecord.id },
+        data: {
+          status: verificationResponse.data.status,
+          method: verificationResponse.data.channel,
+        },
+      });
+      return { message: "Payment confirmed for historical resident." };
+    }
+
     const updatedResident = await prisma.$transaction(async (tx) => {
       const room = await tx.room.findUnique({ where: { id: roomId } });
       if (!room) {
         throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
       }
 
-      const debt = room.price - paymentRecord.amount;
+      const resident = await tx.resident.findUnique({
+        where: { id: residentId! },
+        include: { room: true },
+      });
+      if (!resident) {
+        throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
+      }
 
-      // Update resident with payment and room details
-      const resident = await tx.resident.update({
-        where: { id: residentId },
+      const totalPaid = (resident.amountPaid ?? 0) + (paymentRecord.amount);
+      const roomPrice = resident.roomPrice ?? room.price;
+      const debt = roomPrice - totalPaid;
+      let balanceOwed: number | null = null;
+
+      if (debt > 0) {
+        const paymentPercentage = (totalPaid / roomPrice) * 100;
+        if (paymentPercentage >= 70) {
+          balanceOwed = Number(debt.toFixed(2));
+        }
+      }
+
+      const updatedResident = await tx.resident.update({
+        where: { id: residentId! },
         data: {
           roomAssigned: true,
           roomId,
-          amountPaid: paymentRecord.amount,
-          roomPrice: room.price,
-          balanceOwed: debt,
+          amountPaid: Number(totalPaid.toFixed(2)),
+          roomPrice: Number(roomPrice.toFixed(2)),
+          balanceOwed,
         },
       });
 
-      // Update the payment record with status and method
       await tx.payment.update({
         where: { id: paymentRecord.id },
         data: {
@@ -161,18 +158,15 @@ export const confirmPayment = async (reference: string) => {
         },
       });
 
-      // Count current number of residents in the room
       const currentResidentsCount = await tx.resident.count({
         where: { roomId },
       });
 
-      // Update room's current resident count
       const updatedRoom = await tx.room.update({
         where: { id: roomId },
         data: { currentResidentCount: currentResidentsCount },
       });
 
-      // If room is now full, mark it as OCCUPIED
       if (updatedRoom.currentResidentCount >= updatedRoom.maxCap) {
         await tx.room.update({
           where: { id: roomId },
@@ -180,7 +174,7 @@ export const confirmPayment = async (reference: string) => {
         });
       }
 
-      return resident;
+      return updatedResident;
     });
 
     return updatedResident;
@@ -195,65 +189,66 @@ export const initializeTopUpPayment = async (
   initialPayment: number,
 ) => {
   try {
-    // check for active calendar
-    const activeCalendar = await prisma.calendarYear.findFirst({
-      where: { isActive: true },
-    });
-    // Check if the resident and room exist
-    const room = await prisma.room.findUnique({ where: { id: roomId } });
-    const resident = await prisma.resident.findUnique({
-      where: { id: residentId },
-    });
-    console.log({
-      room: `${roomId}, resident: ${residentId} payment:${initialPayment}`,
-    });
+    return await prisma.$transaction(async (tx) => {
+      const room = await tx.room.findUnique({
+        where: { id: roomId },
+        include: { hostel: true },
+      });
 
-    if (!room) {
-      throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
-    }
+      if (!room) {
+        throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
+      }
 
-    if (!resident) {
-      throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
-    }
+      const activeCalendar = await tx.calendarYear.findFirst({
+        where: { isActive: true, hostelId: room.hostelId },
+      });
 
-    const { roomPrice } = resident;
+      if (!activeCalendar) {
+        throw new HttpException(HttpStatus.BAD_REQUEST, "No active calendar year found.");
+      }
 
-    if (!roomPrice) {
-      throw new HttpException(
-        HttpStatus.BAD_REQUEST,
-        "Room price not set for the resident.",
+      const resident = await tx.resident.findUnique({
+        where: { id: residentId },
+      });
+
+      if (!resident) {
+        throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
+      }
+
+      const { roomPrice } = resident;
+
+      if (!roomPrice) {
+        throw new HttpException(HttpStatus.BAD_REQUEST, "Room price not set for the resident.");
+      }
+
+      const debtbal = roomPrice - (resident.amountPaid ?? 0);
+
+      if (initialPayment > debtbal) {
+        throw new HttpException(
+          HttpStatus.BAD_REQUEST,
+          "Amount you want to pay must be less than or equal to what you owe.",
+        );
+      }
+
+      const paymentResponse = await paystack.initializeTransaction(
+        resident.email,
+        initialPayment,
       );
-    }
 
-    const debtbal = roomPrice - resident.amountPaid;
+      await tx.payment.create({
+        data: {
+          amount: initialPayment,
+          residentId,
+          roomId,
+          status: "PENDING",
+          reference: paymentResponse.data.reference,
+          method: paymentResponse.data.channel,
+          calendarYearId: activeCalendar.id,
+        },
+      });
 
-    if (initialPayment > debtbal) {
-      throw new HttpException(
-        HttpStatus.BAD_REQUEST,
-        "Amount you want to pay must be less than or equal to what you owe.",
-      );
-    }
-
-    // Create a Paystack transaction
-    const paymentResponse = await paystack.initializeTransaction(
-      resident.email,
-      initialPayment,
-    );
-
-    // Save payment as "PENDING"
-    await prisma.payment.create({
-      data: {
-        amount: initialPayment,
-        residentId,
-        roomId,
-        status: "PENDING",
-        reference: paymentResponse.data.reference,
-        method: paymentResponse.data.channel, // Adjust method to use 'channel'
-        calendarYearId: activeCalendar?.id as string,
-      },
+      return paymentResponse.data.authorization_url;
     });
-
-    return paymentResponse.data.authorization_url;
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -264,59 +259,70 @@ export const TopUpPayment = async (reference: string) => {
     const verificationResponse = await paystack.verifyTransaction(reference);
 
     if (verificationResponse.data.status !== "success") {
-      throw new HttpException(
-        HttpStatus.BAD_REQUEST,
-        "Payment verification failed.",
-      );
+      throw new HttpException(HttpStatus.BAD_REQUEST, "Payment verification failed.");
     }
 
     const paymentRecord = await prisma.payment.findUnique({
       where: { reference },
+      include: { resident: true, HistoricalResident: true },
     });
 
     if (!paymentRecord) {
-      throw new HttpException(
-        HttpStatus.NOT_FOUND,
-        "Payment record not found.",
-      );
+      throw new HttpException(HttpStatus.NOT_FOUND, "Payment record not found.");
     }
 
-    const { roomId, residentId } = paymentRecord;
+    const { roomId, residentId, historicalResidentId } = paymentRecord;
+
     if (!roomId) {
-      throw new Error("Room ID is not in the payment record");
-    }
-    if (!residentId) {
-      throw new HttpException(
-        HttpStatus.NOT_FOUND,
-        "There is no resident id in the record.",
-      );
+      throw new HttpException(HttpStatus.BAD_REQUEST, "Room ID is missing in the payment record.");
     }
 
-    const findResident = await prisma.resident.findUnique({
-      where: { id: residentId },
-    });
-    if (!findResident) {
-      throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
-    }
-    if (findResident.roomPrice === null) {
+    if (!residentId && !historicalResidentId) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        "Room price is missing for this resident.",
+        "Payment must have either a residentId or historicalResidentId.",
       );
     }
-    // Use the resident's original room price for calculations
-    const roomPrice = findResident.roomPrice;
-    const totalPaid = findResident.amountPaid + paymentRecord.amount;
 
-    // Calculate the remaining debt based on the original room price
+    if (historicalResidentId) {
+      await prisma.payment.update({
+        where: { id: paymentRecord.id },
+        data: {
+          status: verificationResponse.data.status,
+          method: verificationResponse.data.channel,
+        },
+      });
+      return { message: "Top-up payment confirmed for historical resident." };
+    }
+
+    const resident = await prisma.resident.findUnique({
+      where: { id: residentId! },
+    });
+    if (!resident) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
+    }
+    if (resident.roomPrice === null) {
+      throw new HttpException(HttpStatus.BAD_REQUEST, "Room price is missing for this resident.");
+    }
+
+    const roomPrice = resident.roomPrice;
+    const totalPaid = (resident.amountPaid ?? 0) + (paymentRecord.amount);
     const debt = roomPrice - totalPaid;
+    let balanceOwed: number | null = null;
 
-    const resident = await prisma.resident.update({
-      where: { id: residentId },
+    if (debt > 0) {
+      const paymentPercentage = (totalPaid / roomPrice) * 100;
+      if (paymentPercentage >= 70) {
+        balanceOwed = Number(debt.toFixed(2));
+      }
+    }
+
+    const updatedResident = await prisma.resident.update({
+      where: { id: residentId! },
       data: {
         roomAssigned: true,
-        amountPaid: totalPaid, // Update the total amount paid
-        balanceOwed: debt > 0 ? debt : 0, // Ensure balance owed doesn't go below 0
+        amountPaid: Number(totalPaid.toFixed(2)),
+        balanceOwed,
       },
     });
 
@@ -328,7 +334,7 @@ export const TopUpPayment = async (reference: string) => {
       },
     });
 
-    return resident;
+    return updatedResident;
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -381,3 +387,135 @@ export const getPaymentsByReference = async (reference: string) => {
     throw formatPrismaError(error);
   }
 };
+
+
+// export const fixOrphanedPayments = async (): Promise<OrphanedPaymentResolution[]> => {
+//   try {
+//     const orphanedPayments = await prisma.payment.findMany({
+//       where: {
+//         residentId: null,
+//         historicalResidentId: null,
+//         delFlag: false,
+//       },
+//       include: {
+//         room: {
+//           include: {
+//             resident: true,
+//             hostel: true,
+//           },
+//         },
+//         CalendarYear: true,
+//       },
+//     });
+
+//     const resolutions: OrphanedPaymentResolution[] = [];
+
+//     for (const payment of orphanedPayments) {
+//       try {
+//         await prisma.$transaction(async (tx) => {
+//           // Case 1: Payment has a room with a current resident
+//           if (payment.room?.resident?.id) {
+//             await tx.payment.update({
+//               where: { id: payment.id },
+//               data: { residentId: payment.room.resident.id },
+//             });
+//             resolutions.push({
+//               paymentId: payment.id,
+//               resolution: 'linked_to_resident',
+//               details: `Linked to current resident ${payment.room.resident.id}`,
+//             });
+//             return;
+//           }
+
+//           // Case 2: Payment has a room and calendar year - try to find historical resident
+//           if (payment.roomId && payment.calendarYearId) {
+//             const historicalResident = await tx.historicalResident.findFirst({
+//               where: {
+//                 roomId: payment.roomId,
+//                 calendarYearId: payment.calendarYearId,
+//               },
+//             });
+
+//             if (historicalResident) {
+//               await tx.payment.update({
+//                 where: { id: payment.id },
+//                 data: { historicalResidentId: historicalResident.id },
+//               });
+//               resolutions.push({
+//                 paymentId: payment.id,
+//                 resolution: 'linked_to_historical',
+//                 details: `Linked to historical resident ${historicalResident.id}`,
+//               });
+//               return;
+//             }
+//           }
+
+//           // Case 3: Payment is older than 6 months and unverified
+//           const sixMonthsAgo = new Date();
+//           sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+//           if (payment.date < sixMonthsAgo && payment.status === 'PENDING') {
+//             await tx.payment.update({
+//               where: { id: payment.id },
+//               data: { status: 'INVALID' },
+//             });
+//             resolutions.push({
+//               paymentId: payment.id,
+//               resolution: 'marked_invalid',
+//               details: 'Old unverified payment marked as invalid',
+//             });
+//             return;
+//           }
+
+//           // Case 4: Payment is a duplicate (same amount, room, calendar year, within 5 minutes)
+//           const possibleDuplicates = await tx.payment.findMany({
+//             where: {
+//               id: { not: payment.id },
+//               amount: payment.amount,
+//               roomId: payment.roomId,
+//               calendarYearId: payment.calendarYearId,
+//               date: {
+//                 gte: new Date(payment.date.getTime() - 5 * 60000),
+//                 lte: new Date(payment.date.getTime() + 5 * 60000),
+//               },
+//             },
+//           });
+
+//           if (possibleDuplicates.length > 0) {
+//             await tx.payment.update({
+//               where: { id: payment.id },
+//               data: { delFlag: true },
+//             });
+//             resolutions.push({
+//               paymentId: payment.id,
+//               resolution: 'deleted',
+//               details: 'Identified as duplicate payment and marked as deleted',
+//             });
+//             return;
+//           }
+
+//           // Case 5: Cannot resolve - mark as invalid
+//           await tx.payment.update({
+//             where: { id: payment.id },
+//             data: { status: 'INVALID' },
+//           });
+//           resolutions.push({
+//             paymentId: payment.id,
+//             resolution: 'marked_invalid',
+//             details: 'Could not resolve orphaned payment',
+//           });
+//         });
+//       } catch (error: any) {
+//         resolutions.push({
+//           paymentId: payment.id,
+//           resolution: 'marked_invalid',
+//           details: `Failed to fix: ${error.message}`,
+//         });
+//       }
+//     }
+
+//     return resolutions;
+//   } catch (error) {
+//     throw formatPrismaError(error);
+//   }
+// };
