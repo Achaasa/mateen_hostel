@@ -22,4 +22,12 @@ analyticsRouter.get(
   analyticsController.getSystemAnalytics,
 );
 
+// Get disbursement summary (SUPER_ADMIN only)
+analyticsRouter.get(
+  "/get/disbursement-summary",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN"]),
+  analyticsController.getHostelDisbursementSummaryController,
+);
+
 export default analyticsRouter;

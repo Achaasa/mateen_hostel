@@ -22,15 +22,32 @@ paymentRouter.get("/confirm", handlePaymentConfirmation);
 
 paymentRouter.post("/topup", initializeTopUpPaymentControler);
 paymentRouter.post("/topup/confirm", TopUpPaymentController);
-paymentRouter.use(authenticateJWT);
 paymentRouter.get(
   "/get",
+  authenticateJWT,
   authorizeRole(["SUPER_ADMIN"]),
   getAllPaymentController,
 );
-paymentRouter.use(authorizeRole(["ADMIN", "SUPER_ADMIN"]));
-paymentRouter.use(validateHostelAccess);
-paymentRouter.get("/get/:paymentId", getPaymentByIdController);
-paymentRouter.get("/get/ref/:reference", getPaymentByReferenceController);
-paymentRouter.get("/get/hostel/:hostelId", getPaymentsForHostelController);
+
+paymentRouter.get(
+  "/get/:paymentId",
+  authenticateJWT,
+  authorizeRole(["ADMIN", "SUPER_ADMIN"]),
+  validateHostelAccess,
+  getPaymentByIdController,
+);
+paymentRouter.get(
+  "/get/ref/:reference",
+  authenticateJWT,
+  authorizeRole(["ADMIN", "SUPER_ADMIN"]),
+  validateHostelAccess,
+  getPaymentByReferenceController,
+);
+paymentRouter.get(
+  "/get/hostel/:hostelId",
+  authenticateJWT,
+  authorizeRole(["ADMIN", "SUPER_ADMIN"]),
+  validateHostelAccess,
+  getPaymentsForHostelController,
+);
 export default paymentRouter;

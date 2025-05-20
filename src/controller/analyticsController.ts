@@ -31,3 +31,19 @@ export const getSystemAnalytics = async (req: Request, res: Response) => {
     res.status(err.status).json({ message: err.message });
   }
 };
+
+export const getHostelDisbursementSummaryController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const summary = await analyticsHelper.getHostelDisbursementSummary();
+    res.status(HttpStatus.OK).json({
+      message: "Hostel disbursement summary generated successfully",
+      data: summary,
+    });
+  } catch (error) {
+    const err = formatPrismaError(error);
+    res.status(err.status).json({ message: err.message });
+  }
+};
