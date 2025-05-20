@@ -389,133 +389,133 @@ export const getPaymentsByReference = async (reference: string) => {
 };
 
 
-// export const fixOrphanedPayments = async (): Promise<OrphanedPaymentResolution[]> => {
-//   try {
-//     const orphanedPayments = await prisma.payment.findMany({
-//       where: {
-//         residentId: null,
-//         historicalResidentId: null,
-//         delFlag: false,
-//       },
-//       include: {
-//         room: {
-//           include: {
-//             resident: true,
-//             hostel: true,
-//           },
-//         },
-//         CalendarYear: true,
-//       },
-//     });
+export const fixOrphanedPayments = async (): Promise<OrphanedPaymentResolution[]> => {
+  try {
+    const orphanedPayments = await prisma.payment.findMany({
+      where: {
+        residentId: null,
+        historicalResidentId: null,
+        delFlag: false,
+      },
+      include: {
+        room: {
+          include: {
+            Resident: true,
+            hostel: true,
+          },
+        },
+        CalendarYear: true,
+      },
+    });
 
-//     const resolutions: OrphanedPaymentResolution[] = [];
+    const resolutions: OrphanedPaymentResolution[] = [];
 
-//     for (const payment of orphanedPayments) {
-//       try {
-//         await prisma.$transaction(async (tx) => {
-//           // Case 1: Payment has a room with a current resident
-//           if (payment.room?.resident?.id) {
-//             await tx.payment.update({
-//               where: { id: payment.id },
-//               data: { residentId: payment.room.resident.id },
-//             });
-//             resolutions.push({
-//               paymentId: payment.id,
-//               resolution: 'linked_to_resident',
-//               details: `Linked to current resident ${payment.room.resident.id}`,
-//             });
-//             return;
-//           }
+    for (const payment of orphanedPayments) {
+      try {
+        await prisma.$transaction(async (tx) => {
+          // Case 1: Payment has a room with a current resident
+          if (payment.room?.Resident?.[0]?.id) {
+            await tx.payment.update({
+              where: { id: payment.id },
+              data: { residentId: payment.room.Resident[0].id },
+            });
+            resolutions.push({
+              paymentId: payment.id,
+              resolution: 'linked_to_resident',
+              details: `Linked to current resident ${payment.room.Resident[0].id}`,
+            });
+            return;
+          }
 
-//           // Case 2: Payment has a room and calendar year - try to find historical resident
-//           if (payment.roomId && payment.calendarYearId) {
-//             const historicalResident = await tx.historicalResident.findFirst({
-//               where: {
-//                 roomId: payment.roomId,
-//                 calendarYearId: payment.calendarYearId,
-//               },
-//             });
+          // Case 2: Payment has a room and calendar year - try to find historical resident
+          if (payment.roomId && payment.calendarYearId) {
+            const historicalResident = await tx.historicalResident.findFirst({
+              where: {
+                roomId: payment.roomId,
+                calendarYearId: payment.calendarYearId,
+              },
+            });
 
-//             if (historicalResident) {
-//               await tx.payment.update({
-//                 where: { id: payment.id },
-//                 data: { historicalResidentId: historicalResident.id },
-//               });
-//               resolutions.push({
-//                 paymentId: payment.id,
-//                 resolution: 'linked_to_historical',
-//                 details: `Linked to historical resident ${historicalResident.id}`,
-//               });
-//               return;
-//             }
-//           }
+            if (historicalResident) {
+              await tx.payment.update({
+                where: { id: payment.id },
+                data: { historicalResidentId: historicalResident.id },
+              });
+              resolutions.push({
+                paymentId: payment.id,
+                resolution: 'linked_to_historical',
+                details: `Linked to historical resident ${historicalResident.id}`,
+              });
+              return;
+            }
+          }
 
-//           // Case 3: Payment is older than 6 months and unverified
-//           const sixMonthsAgo = new Date();
-//           sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+          // Case 3: Payment is older than 6 months and unverified
+          const sixMonthsAgo = new Date();
+          sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-//           if (payment.date < sixMonthsAgo && payment.status === 'PENDING') {
-//             await tx.payment.update({
-//               where: { id: payment.id },
-//               data: { status: 'INVALID' },
-//             });
-//             resolutions.push({
-//               paymentId: payment.id,
-//               resolution: 'marked_invalid',
-//               details: 'Old unverified payment marked as invalid',
-//             });
-//             return;
-//           }
+          if (payment.date < sixMonthsAgo && payment.status === 'PENDING') {
+            await tx.payment.update({
+              where: { id: payment.id },
+              data: { status: 'INVALID' },
+            });
+            resolutions.push({
+              paymentId: payment.id,
+              resolution: 'marked_invalid',
+              details: 'Old unverified payment marked as invalid',
+            });
+            return;
+          }
 
-//           // Case 4: Payment is a duplicate (same amount, room, calendar year, within 5 minutes)
-//           const possibleDuplicates = await tx.payment.findMany({
-//             where: {
-//               id: { not: payment.id },
-//               amount: payment.amount,
-//               roomId: payment.roomId,
-//               calendarYearId: payment.calendarYearId,
-//               date: {
-//                 gte: new Date(payment.date.getTime() - 5 * 60000),
-//                 lte: new Date(payment.date.getTime() + 5 * 60000),
-//               },
-//             },
-//           });
+          // Case 4: Payment is a duplicate (same amount, room, calendar year, within 5 minutes)
+          const possibleDuplicates = await tx.payment.findMany({
+            where: {
+              id: { not: payment.id },
+              amount: payment.amount,
+              roomId: payment.roomId,
+              calendarYearId: payment.calendarYearId,
+              date: {
+                gte: new Date(payment.date.getTime() - 5 * 60000),
+                lte: new Date(payment.date.getTime() + 5 * 60000),
+              },
+            },
+          });
 
-//           if (possibleDuplicates.length > 0) {
-//             await tx.payment.update({
-//               where: { id: payment.id },
-//               data: { delFlag: true },
-//             });
-//             resolutions.push({
-//               paymentId: payment.id,
-//               resolution: 'deleted',
-//               details: 'Identified as duplicate payment and marked as deleted',
-//             });
-//             return;
-//           }
+          if (possibleDuplicates.length > 0) {
+            await tx.payment.update({
+              where: { id: payment.id },
+              data: { delFlag: true },
+            });
+            resolutions.push({
+              paymentId: payment.id,
+              resolution: 'deleted',
+              details: 'Identified as duplicate payment and marked as deleted',
+            });
+            return;
+          }
 
-//           // Case 5: Cannot resolve - mark as invalid
-//           await tx.payment.update({
-//             where: { id: payment.id },
-//             data: { status: 'INVALID' },
-//           });
-//           resolutions.push({
-//             paymentId: payment.id,
-//             resolution: 'marked_invalid',
-//             details: 'Could not resolve orphaned payment',
-//           });
-//         });
-//       } catch (error: any) {
-//         resolutions.push({
-//           paymentId: payment.id,
-//           resolution: 'marked_invalid',
-//           details: `Failed to fix: ${error.message}`,
-//         });
-//       }
-//     }
+          // Case 5: Cannot resolve - mark as invalid
+          await tx.payment.update({
+            where: { id: payment.id },
+            data: { status: 'INVALID' },
+          });
+          resolutions.push({
+            paymentId: payment.id,
+            resolution: 'marked_invalid',
+            details: 'Could not resolve orphaned payment',
+          });
+        });
+      } catch (error: any) {
+        resolutions.push({
+          paymentId: payment.id,
+          resolution: 'marked_invalid',
+          details: `Failed to fix: ${error.message}`,
+        });
+      }
+    }
 
-//     return resolutions;
-//   } catch (error) {
-//     throw formatPrismaError(error);
-//   }
-// };
+    return resolutions;
+  } catch (error) {
+    throw formatPrismaError(error);
+  }
+};
