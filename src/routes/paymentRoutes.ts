@@ -11,6 +11,7 @@ import {
   getPaymentByIdController,
   getPaymentByReferenceController,
   getPaymentsForHostelController,
+  fixOrphanedPaymentsController,
 } from "../controller/paymentController";
 import { handlePaystackWebhook } from "../utils/payStackWebhook";
 
@@ -49,5 +50,11 @@ paymentRouter.get(
   authorizeRole(["ADMIN", "SUPER_ADMIN"]),
   validateHostelAccess,
   getPaymentsForHostelController,
+);
+paymentRouter.post(
+  "/fix-orphaned-payments",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN"]),
+  fixOrphanedPaymentsController,
 );
 export default paymentRouter;

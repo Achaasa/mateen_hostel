@@ -1,3 +1,0 @@
--- AlterTable
-ALTER TABLE "Room" ALTER COLUMN "block" DROP NOT NULL,
-ALTER COLUMN "floor" DROP NOT NULL;

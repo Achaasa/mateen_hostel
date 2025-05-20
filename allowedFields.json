@@ -2,8 +2,7 @@
   {
     "modelName": "erd",
     "fields": [
-      "provider",
-      "Unnamed Field"
+      "provider"
     ]
   },
   {
@@ -26,7 +25,6 @@
       "name",
       "description",
       "address",
-      "location",
       "manager",
       "email",
       "phone",
@@ -36,8 +34,9 @@
       "isVerifeid",
       "delFlag",
       "state",
-      "logoUrl",
-      "logoKey"
+      "location",
+      "logoKey",
+      "logoUrl"
     ]
   },
   {
@@ -55,16 +54,15 @@
       "status",
       "createdAt",
       "updatedAt",
-      "currentResidentCount",
       "delFlag",
-      "gender"
+      "gender",
+      "currentResidentCount"
     ]
   },
   {
     "modelName": "Staff",
     "fields": [
       "id",
-      "role",
       "hostelId",
       "firstName",
       "middleName",
@@ -78,13 +76,14 @@
       "religion",
       "email",
       "residence",
-      "qualification",
       "block",
       "dateOfAppointment",
       "updatedAt",
       "passportUrl",
       "passportKey",
-      "delFlag"
+      "delFlag",
+      "role",
+      "qualification"
     ]
   },
   {
@@ -115,7 +114,6 @@
       "roomAssigned",
       "createdAt",
       "updatedAt",
-      "Unnamed Field",
       "amountPaid",
       "balanceOwed",
       "roomPrice",
@@ -203,17 +201,29 @@
     "fields": [
       "id",
       "residentId",
-      "residentName",
-      "residentEmail",
-      "residentPhone",
-      "residentCourse",
       "roomId",
       "calendarYearId",
       "amountPaid",
       "roomPrice",
       "createdAt",
       "updatedAt",
-      "hostelId"
+      "hostelId",
+      "residentCourse",
+      "residentEmail",
+      "residentName",
+      "residentPhone"
+    ]
+  },
+  {
+    "modelName": "HostelImages",
+    "fields": [
+      "id",
+      "hostelId",
+      "imageUrl",
+      "imageKey",
+      "createdAt",
+      "updatedAt",
+      "delFlag"
     ]
   },
   {
@@ -228,18 +238,6 @@
     "fields": [
       "ACTIVE",
       "CHECKED_OUT"
-    ]
-  },
-  {
-    "modelName": "HostelImages",
-    "fields": [
-      "id",
-      "hostelId",
-      "imageUrl",
-      "imageKey",
-      "createdAt",
-      "updatedAt",
-      "delFlag"
     ]
   },
   {
