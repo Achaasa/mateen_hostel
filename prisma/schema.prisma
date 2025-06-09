@@ -22,7 +22,7 @@ model Hostel {
   ghCard          String
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
-  isVerifeid      Boolean              @default(false)
+  isVerified      Boolean              @default(false)
   delFlag         Boolean              @default(false)
   state           HostelState          @default(UNPUBLISHED)
   location        Location
@@ -55,11 +55,11 @@ model Room {
   gender               RoomGender
   currentResidentCount Int                  @default(0)
   HistoricalResident   HistoricalResident[]
+  Payments             Payment[]
   Resident             Resident[]
   hostel               Hostel               @relation(fields: [hostelId], references: [id], onDelete: Cascade)
   RoomImage            RoomImage[]
   Amenities            Amenities[]          @relation("RoomAmenities")
-  Payments             Payment[]
 }
 
 model Staff {
@@ -125,6 +125,7 @@ model Resident {
   Hostel                Hostel?      @relation(fields: [hostelId], references: [id])
   room                  Room?        @relation(fields: [roomId], references: [id], onDelete: Cascade)
   Visitor               Visitor[]
+  accessCode            String?
 }
 
 model Payment {

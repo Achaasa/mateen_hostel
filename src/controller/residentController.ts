@@ -13,7 +13,7 @@ import { formatPrismaError } from "../utils/formatPrisma";
 // Register a Resident
 export const registerResidentController = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   const residentData: Resident = req.body satisfies ResidentRequestDto; // Get resident data from the request body
 
@@ -23,7 +23,7 @@ export const registerResidentController = async (
       message: "Resident registered successfully",
       data: newResident,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -32,7 +32,7 @@ export const registerResidentController = async (
 // Get All Residents
 export const getAllResidentsController = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const residents = await residentHelper.getAllResident();
@@ -40,7 +40,7 @@ export const getAllResidentsController = async (
       message: "Residents fetched successfully",
       data: residents,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -49,7 +49,7 @@ export const getAllResidentsController = async (
 // Get Resident by ID
 export const getResidentByIdController = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   const { residentId } = req.params;
 
@@ -59,7 +59,7 @@ export const getResidentByIdController = async (
       message: "Resident fetched successfully ID",
       data: resident,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -68,7 +68,7 @@ export const getResidentByIdController = async (
 // Get Resident by Email
 export const getResidentByEmailController = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   const { email } = req.params;
 
@@ -78,7 +78,7 @@ export const getResidentByEmailController = async (
       message: "Resident fetched successfully email",
       data: resident,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -92,13 +92,13 @@ export const updateResidentController = async (req: Request, res: Response) => {
   try {
     const updatedResident = await residentHelper.updateResident(
       residentId,
-      residentData
+      residentData,
     );
     res.status(HttpStatus.OK).json({
       message: "Resident updated successfully",
       data: updatedResident,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -113,7 +113,7 @@ export const deleteResidentController = async (req: Request, res: Response) => {
     res.status(HttpStatus.OK).json({
       message: "Resident deleted successfully",
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -129,7 +129,7 @@ export const getAlldebtors = async (req: Request, res: Response) => {
     res
       .status(HttpStatus.OK)
       .json({ message: "debtors fetched successfully", data: debtors });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -138,7 +138,7 @@ export const getAlldebtors = async (req: Request, res: Response) => {
 export const getDebtorsForHostel = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { hostelId } = req.params;
   try {
@@ -146,7 +146,7 @@ export const getDebtorsForHostel = async (
     res
       .status(HttpStatus.OK)
       .json({ message: "debors fected successfully", data: debtors });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -155,7 +155,7 @@ export const getDebtorsForHostel = async (
 export const getAllresidentsForHostel = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { hostelId } = req.params;
   try {
@@ -163,32 +163,34 @@ export const getAllresidentsForHostel = async (
     res
       .status(HttpStatus.OK)
       .json({ message: "residents fecthed successfully", data: residents });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
 };
 export const addResidentFromHostelController = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   const residentData: Resident = req.body satisfies ResidentRequestDto; // Get resident data from the request body
 
   try {
-    const newResident = await residentHelper.addResidentFromHostel(residentData);
+    const newResident = await residentHelper.addResidentFromHostel(
+      residentData,
+    );
     res.status(HttpStatus.CREATED).json({
       message: "Resident registered successfully",
       data: newResident,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
 };
 
-
 export const assignRoomToResidentController = async (
-  req: Request,res: Response
+  req: Request,
+  res: Response,
 ) => {
   const { residentId } = req.params;
   const { roomId } = req.body;
@@ -196,14 +198,32 @@ export const assignRoomToResidentController = async (
   try {
     const updatedResident = await residentHelper.assignRoomToResident(
       residentId,
-      roomId
+      roomId,
     );
     res.status(HttpStatus.OK).json({
       message: "Room assigned to resident successfully",
       data: updatedResident,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
-}
+};
+
+export const verifyResidentCodeController = async (
+  req: Request,
+  res: Response,
+) => {
+  const { code } = req.body;
+
+  try {
+    const verifiedResident = await residentHelper.verifyResidentCode(code);
+    res.status(HttpStatus.OK).json({
+      message: "Resident code verified successfully",
+      data: verifiedResident,
+    });
+  } catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
+  }
+};

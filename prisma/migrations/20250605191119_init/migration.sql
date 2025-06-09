@@ -49,7 +49,7 @@ CREATE TABLE "Hostel" (
     "ghCard" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "isVerifeid" BOOLEAN NOT NULL DEFAULT false,
+    "isVerified" BOOLEAN NOT NULL DEFAULT false,
     "delFlag" BOOLEAN NOT NULL DEFAULT false,
     "state" "HostelState" NOT NULL DEFAULT 'UNPUBLISHED',
     "location" "Location" NOT NULL,

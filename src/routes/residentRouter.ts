@@ -11,6 +11,7 @@ import {
   getDebtorsForHostel,
   addResidentFromHostelController,
   assignRoomToResidentController,
+  verifyResidentCodeController,
 } from "../controller/residentController"; // Assuming your controller file is named residentController
 import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
 import { validatePayload } from "../middleware/validate-payload";
@@ -95,5 +96,12 @@ residentRouter.put(
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   assignRoomToResidentController,
+);
+
+residentRouter.get(
+  "/verify",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  verifyResidentCodeController,
 );
 export default residentRouter;

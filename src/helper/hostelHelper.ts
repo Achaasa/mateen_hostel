@@ -223,7 +223,7 @@ export const getUnverifiedHostel = async () => {
   try {
     const unverifiedHostel = await prisma.hostel.findMany({
       where: {
-        isVerifeid: false,
+        isVerified: false,
         delFlag: false, // Only get non-deleted hostels
       },
     });

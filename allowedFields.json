@@ -31,7 +31,7 @@
       "ghCard",
       "createdAt",
       "updatedAt",
-      "isVerifeid",
+      "isVerified",
       "delFlag",
       "state",
       "location",
@@ -119,7 +119,8 @@
       "roomPrice",
       "delFlag",
       "calendarYearId",
-      "hostelId"
+      "hostelId",
+      "accessCode"
     ]
   },
   {
