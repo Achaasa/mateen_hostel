@@ -389,3 +389,20 @@ export const assignRoomToResident = async (
     throw formatPrismaError(error);
   }
 };
+
+export const verifyResidentCode = async (code: string   ) => {
+  try {
+    const resident = await prisma.resident.findFirst({
+      where: { accessCode:code },
+    });
+    if (!resident) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Resident code not found.");
+    }
+    if (resident.accessCode !== code) {
+      throw new HttpException(HttpStatus.BAD_REQUEST, "Invalid code.");
+    }
+  }
+ catch (error) {
+  throw formatPrismaError(error);
+}
+}

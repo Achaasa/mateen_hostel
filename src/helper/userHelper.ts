@@ -11,6 +11,7 @@ import { sendEmail } from "../utils/nodeMailer";
 import { jwtDecode } from "jwt-decode";
 import { UserPayload } from "../utils/jsonwebtoken";
 import { formatPrismaError } from "../utils/formatPrisma";
+import { generateAdminWelcomeEmail } from "../services/generateAdminEmail";
 export const createUser = async (
   UserData: User,
   picture: { imageUrl: string; imageKey: string },
@@ -176,9 +177,9 @@ export const verifyAndcreateHostelUser = async (hostelId: string) => {
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
     }
     // 2. Check if the hostel manager email already exists
-    const { email, isVerifeid } = hostel;
+    const { email, isVerified  } = hostel;
     const findUser = await prisma.user.findFirst({ where: { email ,delFlag:false} });
-    if (findUser || isVerifeid) {
+    if (findUser || isVerified ) {
       throw new HttpException(
         HttpStatus.CONFLICT,
         "Email already exists or is verified",
@@ -187,7 +188,7 @@ export const verifyAndcreateHostelUser = async (hostelId: string) => {
 
     const verifyHostel = await prisma.hostel.update({
       where: { id: hostelId },
-      data: { isVerifeid: true },
+      data: { isVerified: true },
     });
 
     // 3. Generate a password for the user
@@ -208,7 +209,8 @@ export const verifyAndcreateHostelUser = async (hostelId: string) => {
     });
 
     // 5. Send the generated credentials to the email
-    await sendEmail(email, generatedPassword);
+    const htmlContent = generateAdminWelcomeEmail(email, generatedPassword);
+    await sendEmail(email, 'Your Hostel Admin Account', htmlContent);
 
     // 6. Return the user without password
     const { password, ...restOfUser } = newUser;

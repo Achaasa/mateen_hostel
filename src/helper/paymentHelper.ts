@@ -5,6 +5,9 @@ import { formatPrismaError } from "../utils/formatPrisma";
 import { Room, Resident, Payment } from "@prisma/client";
 import paystack from "../utils/paystack";
 import { ErrorResponse } from "../utils/types";
+import { generateAlphanumericCode } from "../utils/codeGenerator";
+import { generateCodeEmail } from "../services/generatePaymentCode";
+import { sendEmail } from "../utils/nodeMailer";
 // import Decimal from "decimal.js";
 
 interface OrphanedPaymentResolution {
@@ -173,10 +176,20 @@ export const confirmPayment = async (reference: string) => {
           data: { status: "OCCUPIED" },
         });
       }
+      // 1. Generate code
+const code = generateAlphanumericCode(); // Or use the numeric version if preferred
+
+// 2. Save code to resident
+await tx.resident.update({
+  where: { id: residentId! },
+  data: { accessCode: code }, // ensure `accessCode` field exists in your schema
+});
 
       return updatedResident;
     });
-
+    const htmlContent = generateCodeEmail(updatedResident.name, updatedResident.accessCode!);
+    await sendEmail(updatedResident.email, '🎉 Your Hostel Access Code', htmlContent);
+    
     return updatedResident;
   } catch (error) {
     throw formatPrismaError(error);
