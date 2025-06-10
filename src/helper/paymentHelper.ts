@@ -12,7 +12,11 @@ import { sendEmail } from "../utils/nodeMailer";
 
 interface OrphanedPaymentResolution {
   paymentId: string;
-  resolution: 'linked_to_historical' | 'linked_to_resident' | 'marked_invalid' | 'deleted';
+  resolution:
+    | "linked_to_historical"
+    | "linked_to_resident"
+    | "marked_invalid"
+    | "deleted";
   details: string;
 }
 // Payment Processing Functions
@@ -27,9 +31,12 @@ export const initializePayment = async (
       const resident = await tx.resident.findUnique({
         where: { id: residentId, delFlag: false },
       });
-      
+
       if (!resident) {
-        throw new HttpException(HttpStatus.NOT_FOUND, "Active resident not found");
+        throw new HttpException(
+          HttpStatus.NOT_FOUND,
+          "Active resident not found",
+        );
       }
 
       const room = await tx.room.findUnique({
@@ -46,7 +53,10 @@ export const initializePayment = async (
       });
 
       if (!activeCalendar) {
-        throw new HttpException(HttpStatus.BAD_REQUEST, "No active calendar year found");
+        throw new HttpException(
+          HttpStatus.BAD_REQUEST,
+          "No active calendar year found",
+        );
       }
 
       const paymentResponse = await paystack.initializeTransaction(
@@ -78,9 +88,20 @@ export const initializePayment = async (
 
 export const confirmPayment = async (reference: string) => {
   try {
+    // generate alphanumeric code for access
+    const code = generateAlphanumericCode();
+    if (!code) {
+      throw new HttpException(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Failed to generate access code.",
+      );
+    }
     const verificationResponse = await paystack.verifyTransaction(reference);
     if (verificationResponse.data.status !== "success") {
-      throw new HttpException(HttpStatus.BAD_REQUEST, "Payment verification failed.");
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Payment verification failed.",
+      );
     }
 
     const paymentRecord = await prisma.payment.findUnique({
@@ -89,13 +110,19 @@ export const confirmPayment = async (reference: string) => {
     });
 
     if (!paymentRecord) {
-      throw new HttpException(HttpStatus.NOT_FOUND, "Payment record not found.");
+      throw new HttpException(
+        HttpStatus.NOT_FOUND,
+        "Payment record not found.",
+      );
     }
 
     const { roomId, residentId, historicalResidentId } = paymentRecord;
 
     if (!roomId) {
-      throw new HttpException(HttpStatus.BAD_REQUEST, "Room ID is missing in the payment record.");
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Room ID is missing in the payment record.",
+      );
     }
 
     if (!residentId && !historicalResidentId) {
@@ -130,7 +157,7 @@ export const confirmPayment = async (reference: string) => {
         throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
       }
 
-      const totalPaid = (resident.amountPaid ?? 0) + (paymentRecord.amount);
+      const totalPaid = (resident.amountPaid ?? 0) + paymentRecord.amount;
       const roomPrice = resident.roomPrice ?? room.price;
       const debt = roomPrice - totalPaid;
       let balanceOwed: number | null = null;
@@ -142,6 +169,7 @@ export const confirmPayment = async (reference: string) => {
         }
       }
 
+      // Update resident WITH accessCode in the SAME operation
       const updatedResident = await tx.resident.update({
         where: { id: residentId! },
         data: {
@@ -150,6 +178,7 @@ export const confirmPayment = async (reference: string) => {
           amountPaid: Number(totalPaid.toFixed(2)),
           roomPrice: Number(roomPrice.toFixed(2)),
           balanceOwed,
+          accessCode: code, // Set the generated access code
         },
       });
 
@@ -176,20 +205,19 @@ export const confirmPayment = async (reference: string) => {
           data: { status: "OCCUPIED" },
         });
       }
-      // 1. Generate code
-const code = generateAlphanumericCode(); // Or use the numeric version if preferred
-
-// 2. Save code to resident
-await tx.resident.update({
-  where: { id: residentId! },
-  data: { accessCode: code }, // ensure `accessCode` field exists in your schema
-});
 
       return updatedResident;
     });
-    const htmlContent = generateCodeEmail(updatedResident.name, updatedResident.accessCode!);
-    await sendEmail(updatedResident.email, '🎉 Your Hostel Access Code', htmlContent);
-    
+    const htmlContent = generateCodeEmail(
+      updatedResident.name,
+      updatedResident.accessCode!,
+    );
+    await sendEmail(
+      updatedResident.email,
+      "🎉 Your Hostel Access Code",
+      htmlContent,
+    );
+
     return updatedResident;
   } catch (error) {
     throw formatPrismaError(error);
@@ -217,7 +245,10 @@ export const initializeTopUpPayment = async (
       });
 
       if (!activeCalendar) {
-        throw new HttpException(HttpStatus.BAD_REQUEST, "No active calendar year found.");
+        throw new HttpException(
+          HttpStatus.BAD_REQUEST,
+          "No active calendar year found.",
+        );
       }
 
       const resident = await tx.resident.findUnique({
@@ -231,7 +262,10 @@ export const initializeTopUpPayment = async (
       const { roomPrice } = resident;
 
       if (!roomPrice) {
-        throw new HttpException(HttpStatus.BAD_REQUEST, "Room price not set for the resident.");
+        throw new HttpException(
+          HttpStatus.BAD_REQUEST,
+          "Room price not set for the resident.",
+        );
       }
 
       const debtbal = roomPrice - (resident.amountPaid ?? 0);
@@ -269,25 +303,44 @@ export const initializeTopUpPayment = async (
 
 export const TopUpPayment = async (reference: string) => {
   try {
-    const verificationResponse = await paystack.verifyTransaction(reference);
-
-    if (verificationResponse.data.status !== "success") {
-      throw new HttpException(HttpStatus.BAD_REQUEST, "Payment verification failed.");
+    // Generate alphanumeric access code
+    const code = generateAlphanumericCode();
+    if (!code) {
+      throw new HttpException(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Failed to generate access code.",
+      );
     }
 
+    // Verify transaction with Paystack
+    const verificationResponse = await paystack.verifyTransaction(reference);
+    if (verificationResponse.data.status !== "success") {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Payment verification failed.",
+      );
+    }
+
+    // Fetch payment record
     const paymentRecord = await prisma.payment.findUnique({
       where: { reference },
       include: { resident: true, HistoricalResident: true },
     });
 
     if (!paymentRecord) {
-      throw new HttpException(HttpStatus.NOT_FOUND, "Payment record not found.");
+      throw new HttpException(
+        HttpStatus.NOT_FOUND,
+        "Payment record not found.",
+      );
     }
 
     const { roomId, residentId, historicalResidentId } = paymentRecord;
 
     if (!roomId) {
-      throw new HttpException(HttpStatus.BAD_REQUEST, "Room ID is missing in the payment record.");
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "Room ID is missing in the payment record.",
+      );
     }
 
     if (!residentId && !historicalResidentId) {
@@ -297,6 +350,7 @@ export const TopUpPayment = async (reference: string) => {
       );
     }
 
+    // Handle historical resident separately
     if (historicalResidentId) {
       await prisma.payment.update({
         where: { id: paymentRecord.id },
@@ -308,50 +362,75 @@ export const TopUpPayment = async (reference: string) => {
       return { message: "Top-up payment confirmed for historical resident." };
     }
 
-    const resident = await prisma.resident.findUnique({
-      where: { id: residentId! },
-    });
-    if (!resident) {
-      throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
-    }
-    if (resident.roomPrice === null) {
-      throw new HttpException(HttpStatus.BAD_REQUEST, "Room price is missing for this resident.");
-    }
+    // Transaction for current resident update
+    const updatedResident = await prisma.$transaction(async (tx) => {
+      const resident = await tx.resident.findUnique({
+        where: { id: residentId! },
+      });
 
-    const roomPrice = resident.roomPrice;
-    const totalPaid = (resident.amountPaid ?? 0) + (paymentRecord.amount);
-    const debt = roomPrice - totalPaid;
-    let balanceOwed: number | null = null;
-
-    if (debt > 0) {
-      const paymentPercentage = (totalPaid / roomPrice) * 100;
-      if (paymentPercentage >= 70) {
-        balanceOwed = Number(debt.toFixed(2));
+      if (!resident) {
+        throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
       }
-    }
 
-    const updatedResident = await prisma.resident.update({
-      where: { id: residentId! },
-      data: {
-        roomAssigned: true,
-        amountPaid: Number(totalPaid.toFixed(2)),
-        balanceOwed,
-      },
+      if (resident.roomPrice === null) {
+        throw new HttpException(
+          HttpStatus.BAD_REQUEST,
+          "Room price is missing for this resident.",
+        );
+      }
+
+      const roomPrice = resident.roomPrice;
+      const totalPaid = (resident.amountPaid ?? 0) + paymentRecord.amount;
+      const debt = roomPrice - totalPaid;
+      let balanceOwed: number | null = null;
+
+      if (debt > 0) {
+        const paymentPercentage = (totalPaid / roomPrice) * 100;
+        if (paymentPercentage >= 70) {
+          balanceOwed = Number(debt.toFixed(2));
+        }
+      }
+
+      // Update resident with new payment info
+      const updatedResident = await tx.resident.update({
+        where: { id: residentId! },
+        data: {
+          roomAssigned: true,
+          amountPaid: Number(totalPaid.toFixed(2)),
+          balanceOwed,
+          
+        },
+      });
+
+      // Update payment record
+      await tx.payment.update({
+        where: { id: paymentRecord.id },
+        data: {
+          status: verificationResponse.data.status,
+          method: verificationResponse.data.channel,
+        },
+      });
+
+      return updatedResident;
     });
 
-    await prisma.payment.update({
-      where: { id: paymentRecord.id },
-      data: {
-        status: verificationResponse.data.status,
-        method: verificationResponse.data.channel,
-      },
-    });
+    // Send access code via email
+    const htmlContent = generateCodeEmail(
+      updatedResident.name,
+      updatedResident.accessCode!,
+    );
+    await sendEmail(
+      updatedResident.email,
+      "🎉 Your Hostel Payments",
+      htmlContent,
+    );
 
     return updatedResident;
   } catch (error) {
     throw formatPrismaError(error);
   }
 };
+
 
 export const getAllPayments = async () => {
   try {
@@ -401,8 +480,9 @@ export const getPaymentsByReference = async (reference: string) => {
   }
 };
 
-
-export const fixOrphanedPayments = async (): Promise<OrphanedPaymentResolution[]> => {
+export const fixOrphanedPayments = async (): Promise<
+  OrphanedPaymentResolution[]
+> => {
   try {
     const orphanedPayments = await prisma.payment.findMany({
       where: {
@@ -434,7 +514,7 @@ export const fixOrphanedPayments = async (): Promise<OrphanedPaymentResolution[]
             });
             resolutions.push({
               paymentId: payment.id,
-              resolution: 'linked_to_resident',
+              resolution: "linked_to_resident",
               details: `Linked to current resident ${payment.room.Resident[0].id}`,
             });
             return;
@@ -456,7 +536,7 @@ export const fixOrphanedPayments = async (): Promise<OrphanedPaymentResolution[]
               });
               resolutions.push({
                 paymentId: payment.id,
-                resolution: 'linked_to_historical',
+                resolution: "linked_to_historical",
                 details: `Linked to historical resident ${historicalResident.id}`,
               });
               return;
@@ -467,15 +547,15 @@ export const fixOrphanedPayments = async (): Promise<OrphanedPaymentResolution[]
           const sixMonthsAgo = new Date();
           sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-          if (payment.date < sixMonthsAgo && payment.status === 'PENDING') {
+          if (payment.date < sixMonthsAgo && payment.status === "PENDING") {
             await tx.payment.update({
               where: { id: payment.id },
-              data: { status: 'INVALID' },
+              data: { status: "INVALID" },
             });
             resolutions.push({
               paymentId: payment.id,
-              resolution: 'marked_invalid',
-              details: 'Old unverified payment marked as invalid',
+              resolution: "marked_invalid",
+              details: "Old unverified payment marked as invalid",
             });
             return;
           }
@@ -501,8 +581,8 @@ export const fixOrphanedPayments = async (): Promise<OrphanedPaymentResolution[]
             });
             resolutions.push({
               paymentId: payment.id,
-              resolution: 'deleted',
-              details: 'Identified as duplicate payment and marked as deleted',
+              resolution: "deleted",
+              details: "Identified as duplicate payment and marked as deleted",
             });
             return;
           }
@@ -510,18 +590,18 @@ export const fixOrphanedPayments = async (): Promise<OrphanedPaymentResolution[]
           // Case 5: Cannot resolve - mark as invalid
           await tx.payment.update({
             where: { id: payment.id },
-            data: { status: 'INVALID' },
+            data: { status: "INVALID" },
           });
           resolutions.push({
             paymentId: payment.id,
-            resolution: 'marked_invalid',
-            details: 'Could not resolve orphaned payment',
+            resolution: "marked_invalid",
+            details: "Could not resolve orphaned payment",
           });
         });
       } catch (error: any) {
         resolutions.push({
           paymentId: payment.id,
-          resolution: 'marked_invalid',
+          resolution: "marked_invalid",
           details: `Failed to fix: ${error.message}`,
         });
       }
