@@ -185,74 +185,90 @@ export const userLogIn = async (
     const { email, password } = req.body;
     const authHeader = req.header("Authorization");
     console.log("Authorization header:", authHeader);
-    const token = authHeader?.split(" ")[1]?.trim();
-    // Extract token from Authorization header
 
+    const token = authHeader?.split(" ")[1]?.trim();
+
+    // If a token is present, attempt token-based login
     if (token) {
       try {
-        // Decode and validate token
         const decoded = jwtDecode<UserPayload & { exp: number }>(token);
-
         const currentTime = Date.now() / 1000;
+
         if (decoded.exp && decoded.exp > currentTime) {
-          // Token is valid, proceed to fetch user
           const user = await userHelper.getUserById(decoded.id);
           if (user) {
-            // Token is valid, send successful response
             res.status(HttpStatus.OK).json({
               message: "success logging in",
               userId: user.id,
               token,
             });
+            return;
           } else {
-            // Token is valid but user does not exist anymore
-            throw new HttpException(HttpStatus.NOT_FOUND, "User not found");
+            res.status(HttpStatus.NOT_FOUND).json({
+              message: "User not found",
+            });
+            return;
           }
         } else {
-          // Token has expired
           res.status(HttpStatus.UNAUTHORIZED).json({
             message: "Token expired. Please log in again.",
           });
+          return;
         }
       } catch (err) {
-        console.error("Invalid or expired token: ", err);
+        console.error("Invalid or expired token:", err);
         res.status(HttpStatus.UNAUTHORIZED).json({
           message: "Invalid or expired token. Please log in again.",
         });
+        return;
       }
     }
 
-    // If token is not provided or is invalid, attempt to log in with email and password
-    const user = await userHelper.getUserByEmail(email);
-    if (!user) {
-      throw new HttpException(HttpStatus.NOT_FOUND, "User not found");
+    // If no token or invalid token, proceed with email/password login
+    if (!email || !password) {
+      res.status(HttpStatus.BAD_REQUEST).json({
+        message: "Email and password are required",
+      });
+      return;
     }
 
-    // Verify password match
+    const user = await userHelper.getUserByEmail(email);
+    if (!user || !user.password) {
+      res.status(HttpStatus.UNAUTHORIZED).json({
+        message: "Invalid credentials",
+      });
+      return;
+    }
+
     const isMatch = await compare(password, user.password);
     if (!isMatch) {
-      throw new HttpException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+      res.status(HttpStatus.UNAUTHORIZED).json({
+        message: "Invalid credentials",
+      });
+      return;
     }
 
-    // Generate a new JWT token for the user
-    console.log("Login - User ID:", user.id);
     const newToken = signToken({
       id: user.id,
       role: user.role,
       hostelId: user.hostel?.id,
     });
 
-    // Successful login, return the user ID and new token
     res.status(HttpStatus.OK).json({
       userId: user.id,
       message: "login successful",
       token: newToken,
     });
-  }  catch (error) {
-    const err = formatPrismaError(error); // Ensure this function is used
+    return;
+  } catch (error) {
+    console.error("Login error:", error);
+    const err = formatPrismaError(error);
     res.status(err.status).json({ message: err.message });
+    return;
   }
 };
+
+
 
 // Get user profile
 export const getUserProfile = async (
