@@ -176,6 +176,7 @@ export const verifyAndCreateHostelUser = async (
 };
 
 // User login function
+
 export const userLogIn = async (
   req: Request,
   res: Response,
@@ -183,15 +184,21 @@ export const userLogIn = async (
 ): Promise<void> => {
   try {
     const { email, password } = req.body;
+
     const authHeader = req.header("Authorization");
     console.log("Authorization header:", authHeader);
 
-    const token = authHeader?.split(" ")[1]?.trim();
+    const token =
+      authHeader?.startsWith("Bearer ") &&
+      authHeader.split(" ")[1]?.trim();
 
-    // If a token is present, attempt token-based login
-    if (token) {
+    const isTokenValid =
+      token && token !== "null" && token !== "undefined" && token.length > 10;
+
+    // Token-based login flow
+    if (isTokenValid) {
       try {
-        const decoded = jwtDecode<UserPayload & { exp: number }>(token);
+        const decoded = jwtDecode<UserPayload & { exp: number }>(token!);
         const currentTime = Date.now() / 1000;
 
         if (decoded.exp && decoded.exp > currentTime) {
@@ -224,7 +231,7 @@ export const userLogIn = async (
       }
     }
 
-    // If no token or invalid token, proceed with email/password login
+    // Fallback: Email/password login
     if (!email || !password) {
       res.status(HttpStatus.BAD_REQUEST).json({
         message: "Email and password are required",
