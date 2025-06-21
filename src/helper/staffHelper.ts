@@ -5,6 +5,10 @@ import { Staff } from "@prisma/client";
 import { StaffSchema, updateStaffSchema } from "../zodSchema/staffSchema";
 import cloudinary from "../utils/cloudinary";
 import { formatPrismaError } from "../utils/formatPrisma";
+import { generateAdminWelcomeEmail } from "../services/generateAdminEmail";
+import { sendEmail } from "../utils/nodeMailer";
+import { generatePassword } from "../utils/generatepass";
+import { hashPassword } from "../utils/bcrypt";
 
 export const addStaff = async (
   StaffData: Staff,
@@ -36,6 +40,52 @@ export const addStaff = async (
         passportUrl: picture.passportUrl,
       },
     });
+
+    if (createdStaff.type === "ADMIN") {
+      const fullName = [
+        createdStaff.firstName,
+        createdStaff.middleName,
+        createdStaff.lastName,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const generatedPassword = generatePassword();
+      const findUser = await prisma.user.findFirst({
+        where: { email: createdStaff.email, delFlag: false },
+      });
+      if (findUser) {
+        throw new HttpException(
+          HttpStatus.CONFLICT,
+          "User already exists with this email",
+        );
+      }
+      // 4. Create the user account
+      const newUser = await prisma.user.create({
+        data: {
+          email: createdStaff.email, // Using staff's email as the user's email
+          name: fullName, // Using manager's name as the user's name
+          password: await hashPassword(generatedPassword), // Hash the generated password
+          phoneNumber: createdStaff.phoneNumber,
+          role: "ADMIN",
+          imageKey: createdStaff.passportKey, // Use the staff's passport key
+          imageUrl: createdStaff.passportUrl,
+          hostelId: createdStaff.hostelId, // Associate with the same hostel
+        },
+      });
+      try {
+        const htmlContent = generateAdminWelcomeEmail(
+          createdStaff.email,
+          generatedPassword,
+        );
+        await sendEmail(
+          createdStaff.email,
+          "Your Hostel Admin Account",
+          htmlContent,
+        );
+      } catch (emailError) {
+        console.error("Failed to send welcome email:", emailError);
+      }
+    }
     return createdStaff as Staff; // Return the created Staff
   } catch (error) {
     throw formatPrismaError(error);
@@ -62,7 +112,6 @@ export const getAllStaffs = async () => {
     throw formatPrismaError(error);
   }
 };
-
 
 export const getStaffById = async (StaffId: string) => {
   try {
