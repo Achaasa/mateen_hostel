@@ -83,7 +83,8 @@
       "passportKey",
       "delFlag",
       "role",
-      "qualification"
+      "qualification",
+      "type"
     ]
   },
   {
@@ -346,6 +347,13 @@
     "fields": [
       "PUBLISHED",
       "UNPUBLISHED"
+    ]
+  },
+  {
+    "modelName": "StaffType",
+    "fields": [
+      "ADMIN",
+      "OTHERS"
     ]
   }
 ]

@@ -86,6 +86,7 @@ model Staff {
   role              String
   qualification     String
   hostel            Hostel        @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+  type              StaffType @default(OTHERS)
 }
 
 model Amenities {
@@ -327,4 +328,9 @@ enum RoomGender {
 enum HostelState {
   PUBLISHED
   UNPUBLISHED
+}
+
+enum StaffType {
+  ADMIN
+  OTHERS
 }
