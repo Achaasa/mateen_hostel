@@ -12,6 +12,7 @@ import { jwtDecode } from "jwt-decode";
 import { UserPayload } from "../utils/jsonwebtoken";
 import { formatPrismaError } from "../utils/formatPrisma";
 import { generateAdminWelcomeEmail } from "../services/generateAdminEmail";
+import { generateResetPasswordEmail } from "../services/generateResetPasswword";
 export const createUser = async (
   UserData: User,
   picture: { imageUrl: string; imageKey: string },
@@ -71,7 +72,7 @@ export const getUsers = async () => {
 export const getUserById = async (id: string) => {
   try {
     const user = await prisma.user.findUnique({
-      where: { id,delFlag: false }, // Only get non-deleted users
+      where: { id, delFlag: false }, // Only get non-deleted users
       include: { hostel: true },
     });
     if (!user) {
@@ -177,9 +178,11 @@ export const verifyAndcreateHostelUser = async (hostelId: string) => {
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
     }
     // 2. Check if the hostel manager email already exists
-    const { email, isVerified  } = hostel;
-    const findUser = await prisma.user.findFirst({ where: { email ,delFlag:false} });
-    if (findUser || isVerified ) {
+    const { email, isVerified } = hostel;
+    const findUser = await prisma.user.findFirst({
+      where: { email, delFlag: false },
+    });
+    if (findUser || isVerified) {
       throw new HttpException(
         HttpStatus.CONFLICT,
         "Email already exists or is verified",
@@ -210,7 +213,7 @@ export const verifyAndcreateHostelUser = async (hostelId: string) => {
 
     // 5. Send the generated credentials to the email
     const htmlContent = generateAdminWelcomeEmail(email, generatedPassword);
-    await sendEmail(email, 'Your Hostel Admin Account', htmlContent);
+    await sendEmail(email, "Your Hostel Admin Account", htmlContent);
 
     // 6. Return the user without password
     const { password, ...restOfUser } = newUser;
@@ -274,6 +277,36 @@ export const getAllUsersForHostel = async (hostelId: string) => {
       },
     });
     return Users;
+  } catch (error) {
+    throw formatPrismaError(error);
+  }
+};
+
+export const resetPassword = async (email: string) => {
+  if (!email) {
+    throw new HttpException(HttpStatus.BAD_REQUEST, "Email is required");
+  }
+  try {
+    const user = await prisma.user.findFirst({
+      where: { email, delFlag: false },
+    });
+
+    if (!user) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "User not found");
+    }
+
+    const newPassword = generatePassword();
+    const hashedPassword = await hashPassword(newPassword);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword, changedPassword: false },
+    });
+
+    const htmlContent = generateResetPasswordEmail(email, newPassword);
+    await sendEmail(email, "Password Reset", htmlContent);
+
+    return { message: "Password reset successfully. Check your email." };
   } catch (error) {
     throw formatPrismaError(error);
   }

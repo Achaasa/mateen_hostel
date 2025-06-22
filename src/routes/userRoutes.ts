@@ -9,6 +9,7 @@ import {
   getUserProfile,
   logout,
   usersForHostel,
+  resetUserPassword,
 } from "../controller/userController";
 import upload from "../utils/multer";
 import { validatePayload } from "../middleware/validate-payload";
@@ -92,4 +93,5 @@ userRouter.get(
 
   usersForHostel,
 );
+userRouter.post("/reset-password", resetUserPassword);
 export default userRouter;
