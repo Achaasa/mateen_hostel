@@ -17,7 +17,7 @@ import { clearAllData } from "../helper/adminHelper";
 export const signUpUser = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const userData: User = req.body;
   const photo = req.file ? req.file.path : undefined;
@@ -46,7 +46,7 @@ export const signUpUser = async (
     res
       .status(HttpStatus.OK)
       .json({ message: "User created successfully", user: newUser });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -56,12 +56,12 @@ export const signUpUser = async (
 export const getAllUsers = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const allUsers = await userHelper.getUsers();
     res.status(HttpStatus.OK).json(allUsers);
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -71,7 +71,7 @@ export const getAllUsers = async (
 export const getUserByEmail = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { email } = req.body;
@@ -87,13 +87,13 @@ export const getUserByEmail = async (
 export const getUserById = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { userId } = req.params;
     const user = await userHelper.getUserById(userId);
     res.status(HttpStatus.OK).json(user);
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -103,7 +103,7 @@ export const getUserById = async (
 export const updateUser = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { userId } = req.params;
   const userData: Partial<User> = req.body;
@@ -128,7 +128,7 @@ export const updateUser = async (
     res
       .status(HttpStatus.OK)
       .json({ message: "User updated successfully", user: updatedUser });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -138,7 +138,7 @@ export const updateUser = async (
 export const deleteUser = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { userId } = req.params;
   try {
@@ -146,7 +146,7 @@ export const deleteUser = async (
     res
       .status(HttpStatus.OK)
       .json({ message: `User deleted successfully: ${userId}` });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -156,7 +156,7 @@ export const deleteUser = async (
 export const verifyAndCreateHostelUser = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { hostelId } = req.params;
 
@@ -169,7 +169,7 @@ export const verifyAndCreateHostelUser = async (
       message: "Hostel manager user created and credentials sent to email",
       user: newHostelUser,
     });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -180,7 +180,7 @@ export const verifyAndCreateHostelUser = async (
 export const userLogIn = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const { email, password } = req.body;
@@ -189,8 +189,7 @@ export const userLogIn = async (
     console.log("Authorization header:", authHeader);
 
     const token =
-      authHeader?.startsWith("Bearer ") &&
-      authHeader.split(" ")[1]?.trim();
+      authHeader?.startsWith("Bearer ") && authHeader.split(" ")[1]?.trim();
 
     const isTokenValid =
       token && token !== "null" && token !== "undefined" && token.length > 10;
@@ -275,13 +274,11 @@ export const userLogIn = async (
   }
 };
 
-
-
 // Get user profile
 export const getUserProfile = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const authHeader = req.header("Authorization");
 
@@ -304,12 +301,12 @@ export const getUserProfile = async (
 export const logout = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     setInvalidToken();
     res.status(HttpStatus.OK).json({ message: "Logout successful" });
-  }  catch (error) {
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -318,7 +315,7 @@ export const logout = async (
 export const usersForHostel = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { hostelId } = req.params;
   try {
@@ -326,7 +323,25 @@ export const usersForHostel = async (
     res
       .status(HttpStatus.OK)
       .json({ message: "users fecthed successfully", data: users });
-  }  catch (error) {
+  } catch (error) {
+    const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
+  }
+};
+
+export const resetUserPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const email = req.body.email;
+  try {
+    const result = await userHelper.resetPassword(email);
+    res.status(HttpStatus.OK).json({
+      message: "Password reset link sent to your email",
+      data: result,
+    });
+  } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
