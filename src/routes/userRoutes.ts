@@ -59,9 +59,10 @@ userRouter.get(
 // Update user
 userRouter.put(
   "/update/:userId",
-  authenticateJWT,
-  validatePayload("User"),
+
   upload.single("photo"),
+  validatePayload("User"),
+  authenticateJWT,
   validateHostelAccess,
 
   updateUser,
