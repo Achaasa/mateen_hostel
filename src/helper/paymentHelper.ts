@@ -82,6 +82,7 @@ export const initializePayment = async (
       };
     });
   } catch (error) {
+    console.error("Error initializing payment:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -220,6 +221,7 @@ export const confirmPayment = async (reference: string) => {
 
     return updatedResident;
   } catch (error) {
+    console.error("Error confirming payment:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -297,6 +299,7 @@ export const initializeTopUpPayment = async (
       return paymentResponse.data.authorization_url;
     });
   } catch (error) {
+    console.error("error initializing top up payment:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -398,7 +401,6 @@ export const TopUpPayment = async (reference: string) => {
           roomAssigned: true,
           amountPaid: Number(totalPaid.toFixed(2)),
           balanceOwed,
-          
         },
       });
 
@@ -427,16 +429,17 @@ export const TopUpPayment = async (reference: string) => {
 
     return updatedResident;
   } catch (error) {
+    console.error("Update Hostel Error:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
-
 
 export const getAllPayments = async () => {
   try {
     const payments = await prisma.payment.findMany();
     return payments as Payment[];
   } catch (error) {
+    console.error("error getting payments:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -448,6 +451,7 @@ export const getPaymentsForHostel = async (hostelId: string) => {
     });
     return payments;
   } catch (error) {
+    console.error("error getting payments for hostel:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -462,6 +466,7 @@ export const getPaymentsById = async (paymentId: string) => {
     }
     return payment as Payment;
   } catch (error) {
+    console.error("error getting payment:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -476,6 +481,7 @@ export const getPaymentsByReference = async (reference: string) => {
     }
     return payment as Payment;
   } catch (error) {
+    console.error("error getting payment:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -609,6 +615,7 @@ export const fixOrphanedPayments = async (): Promise<
 
     return resolutions;
   } catch (error) {
+    console.error("error fixing  orphaned payment record:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };

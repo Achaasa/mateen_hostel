@@ -102,12 +102,13 @@ export const getCurrentCalendarYear = async (hostelId: string) => {
     if (!currentYear) {
       throw new HttpException(
         HttpStatus.NOT_FOUND,
-        "No active calendar year found"
+        "No active calendar year found",
       );
     }
 
     return currentYear;
   } catch (error) {
+    console.error("Error getting current calendar year:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -134,13 +135,14 @@ export const getHistoricalCalendarYears = async (hostelId: string) => {
 
     return historicalYears;
   } catch (error) {
+    console.error("Error getting historical calendar year:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
 
 // Get calendar year financial report
 export const getCalendarYearFinancialReport = async (
-  calendarYearId: string
+  calendarYearId: string,
 ) => {
   try {
     const report = await prisma.calendarYear.findUnique({
@@ -156,7 +158,7 @@ export const getCalendarYearFinancialReport = async (
 
     const totalRevenue = report.HistoricalResident.reduce(
       (sum, hist) => sum + hist.amountPaid,
-      0
+      0,
     );
 
     return {
@@ -166,6 +168,7 @@ export const getCalendarYearFinancialReport = async (
         totalRevenue / report.HistoricalResident.length || 0, // Handle division by zero
     };
   } catch (error) {
+    console.error("Error getting  calendar financial year report:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -174,7 +177,7 @@ export const updateCalendarYear = async (
   id: string,
   data: {
     name?: string;
-  }
+  },
 ) => {
   try {
     const updatedYear = await prisma.calendarYear.update({
@@ -188,13 +191,14 @@ export const updateCalendarYear = async (
 
     return updatedYear;
   } catch (error) {
+    console.error("Error updating  calendar year:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
 
 export const deleteCalendarYear = async (
   calendarYearId: string,
-  hostelId: string
+  hostelId: string,
 ) => {
   try {
     // Find the calendar year to delete
@@ -212,7 +216,7 @@ export const deleteCalendarYear = async (
     if (calendarYear.isActive) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        "Cannot delete an active calendar year"
+        "Cannot delete an active calendar year",
       );
     }
 
@@ -239,7 +243,7 @@ export const deleteCalendarYear = async (
   } catch (error) {
     throw new HttpException(
       HttpStatus.INTERNAL_SERVER_ERROR,
-      "Error deleting calendar year"
+      "Error deleting calendar year",
     );
   }
 };
