@@ -130,10 +130,7 @@ const calculateResidentMetrics = (
       const paymentPercentage = new Decimal(resident.amountPaid)
         .div(resident.roomPrice)
         .mul(100);
-      if (
-        paymentPercentage.gte(70) &&
-        paymentPercentage.lt(100)
-      ) {
+      if (paymentPercentage.gte(70) && paymentPercentage.lt(100)) {
         totalDebt = totalDebt.plus(resident.balanceOwed);
         totalDebtors += 1;
       }
@@ -304,6 +301,7 @@ export const generateHostelAnalytics = async (
       },
     };
   } catch (error) {
+    console.error("Error getting Hostel analytics:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -437,89 +435,106 @@ export const generateSystemAnalytics = async (): Promise<SystemAnalytics> => {
       activeCalendarYears,
     };
   } catch (error) {
+    console.error("Error getting system analytics:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
 
 // HOSTEL DISBURSEMENT SUMMARY
-export const getHostelDisbursementSummary = async (): Promise<HostelSummaryResponse> => {
-  try {
-    const hostels = await prisma.hostel.findMany({
-      where: { delFlag: false },
-      select: { id: true, name: true, phone: true, email: true },
-    });
+export const getHostelDisbursementSummary =
+  async (): Promise<HostelSummaryResponse> => {
+    try {
+      const hostels = await prisma.hostel.findMany({
+        where: { delFlag: false },
+        select: { id: true, name: true, phone: true, email: true },
+      });
 
-    const rooms = await prisma.room.findMany({
-      where: { delFlag: false },
-      select: { id: true, hostelId: true },
-    });
-    const roomHostelMap = new Map(rooms.map((r) => [r.id, r.hostelId]));
+      const rooms = await prisma.room.findMany({
+        where: { delFlag: false },
+        select: { id: true, hostelId: true },
+      });
+      const roomHostelMap = new Map(rooms.map((r) => [r.id, r.hostelId]));
 
-    const residents = await prisma.resident.findMany({
-      where: { delFlag: false },
-      select: { id: true, hostelId: true },
-    });
-    const residentHostelMap = new Map(residents.map((r) => [r.id, r.hostelId]));
+      const residents = await prisma.resident.findMany({
+        where: { delFlag: false },
+        select: { id: true, hostelId: true },
+      });
+      const residentHostelMap = new Map(
+        residents.map((r) => [r.id, r.hostelId]),
+      );
 
-    const calendarYears = await prisma.calendarYear.findMany({
-      where: { isActive: true },
-      select: { id: true, hostelId: true },
-    });
-    const calendarYearHostelMap = new Map(
-      calendarYears.map((cy) => [cy.id, cy.hostelId]),
-    );
+      const calendarYears = await prisma.calendarYear.findMany({
+        where: { isActive: true },
+        select: { id: true, hostelId: true },
+      });
+      const calendarYearHostelMap = new Map(
+        calendarYears.map((cy) => [cy.id, cy.hostelId]),
+      );
 
-    const payments = await prisma.payment.findMany({
-      where: {
-        delFlag: false,
-        status: { in: ["success", "CONFIRMED"] },
-      },
-      select: { amount: true, calendarYearId: true, roomId: true, residentId: true, historicalResidentId: true },
-    });
+      const payments = await prisma.payment.findMany({
+        where: {
+          delFlag: false,
+          status: { in: ["success", "CONFIRMED"] },
+        },
+        select: {
+          amount: true,
+          calendarYearId: true,
+          roomId: true,
+          residentId: true,
+          historicalResidentId: true,
+        },
+      });
 
-    const hostelAmountMap = new Map<string, Decimal>();
-    for (const payment of payments) {
-      let hostelId: string | undefined = undefined;
-      if (payment.calendarYearId && calendarYearHostelMap.has(payment.calendarYearId)) {
-        const id = calendarYearHostelMap.get(payment.calendarYearId);
-        if (id !== null && id !== undefined) hostelId = id;
-      } else if (payment.roomId && roomHostelMap.has(payment.roomId)) {
-        const id = roomHostelMap.get(payment.roomId);
-        if (id !== null && id !== undefined) hostelId = id;
-      } else if (payment.residentId && residentHostelMap.has(payment.residentId)) {
-        const id = residentHostelMap.get(payment.residentId);
-        if (id !== null && id !== undefined) hostelId = id;
+      const hostelAmountMap = new Map<string, Decimal>();
+      for (const payment of payments) {
+        let hostelId: string | undefined = undefined;
+        if (
+          payment.calendarYearId &&
+          calendarYearHostelMap.has(payment.calendarYearId)
+        ) {
+          const id = calendarYearHostelMap.get(payment.calendarYearId);
+          if (id !== null && id !== undefined) hostelId = id;
+        } else if (payment.roomId && roomHostelMap.has(payment.roomId)) {
+          const id = roomHostelMap.get(payment.roomId);
+          if (id !== null && id !== undefined) hostelId = id;
+        } else if (
+          payment.residentId &&
+          residentHostelMap.has(payment.residentId)
+        ) {
+          const id = residentHostelMap.get(payment.residentId);
+          if (id !== null && id !== undefined) hostelId = id;
+        }
+        if (hostelId) {
+          hostelAmountMap.set(
+            hostelId,
+            (hostelAmountMap.get(hostelId) ?? new Decimal(0)).plus(
+              payment.amount ?? 0,
+            ),
+          );
+        }
       }
-      if (hostelId) {
-        hostelAmountMap.set(
-          hostelId,
-          (hostelAmountMap.get(hostelId) ?? new Decimal(0)).plus(
-            payment.amount ?? 0,
-          ),
-        );
-      }
+
+      const disbursements: HostelSummary[] = hostels.map((h) => ({
+        hostelId: h.id,
+        name: h.name,
+        phone: h.phone,
+        email: h.email,
+        amountCollected: Number(
+          (hostelAmountMap.get(h.id) ?? new Decimal(0)).toFixed(2),
+        ),
+      }));
+
+      const totalCollected = disbursements.reduce(
+        (sum, h) => new Decimal(sum).plus(h.amountCollected).toNumber(),
+        0,
+      );
+
+      return {
+        totalCollected: Number(new Decimal(totalCollected).toFixed(2)),
+        disbursements,
+      };
+    } catch (error) {
+      console.error("Update Hostel Error:", error); // 👈 Add this line
+      throw formatPrismaError(error);
     }
-
-    const disbursements: HostelSummary[] = hostels.map((h) => ({
-      hostelId: h.id,
-      name: h.name,
-      phone: h.phone,
-      email: h.email,
-      amountCollected: Number(
-        (hostelAmountMap.get(h.id) ?? new Decimal(0)).toFixed(2),
-      ),
-    }));
-
-    const totalCollected = disbursements.reduce(
-      (sum, h) => new Decimal(sum).plus(h.amountCollected).toNumber(),
-      0,
-    );
-
-    return {
-      totalCollected: Number(new Decimal(totalCollected).toFixed(2)),
-      disbursements,
-    };
-  } catch (error) {
-    throw formatPrismaError(error);
-  }
-};
+  };

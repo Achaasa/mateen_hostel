@@ -25,6 +25,7 @@ export const amenitiesCsv = async (hostelId: string) => {
     const csv = parse(modifiedAmenities);
     return csv;
   } catch (error) {
+    console.error("error getting amenities csv:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -48,6 +49,7 @@ export const residentCsv = async (hostelId: string) => {
     const csv = parse(modifiedAmenities);
     return csv;
   } catch (error) {
+    console.error("error generating resident csv:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -77,6 +79,7 @@ export const roomCsv = async (hostelId: string) => {
     const csv = parse(modifiedRooms);
     return csv;
   } catch (error) {
+    console.error("error generating room csv:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -98,6 +101,7 @@ export const visitorCsv = async (hostelId: string) => {
     const csv = parse(modifiedVisitors);
     return csv;
   } catch (error) {
+    console.error("error generating visitors csv:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -119,6 +123,7 @@ export const paymentCsv = async (hostelId: string) => {
     const csv = parse(modifiedPayments);
     return csv;
   } catch (error) {
+    console.error("error generating payments csv:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };

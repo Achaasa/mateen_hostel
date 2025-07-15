@@ -25,10 +25,10 @@ export const getAllRooms = async () => {
     });
     return rooms;
   } catch (error) {
+    console.error("Error getting all rooms:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
-
 
 export const updateRoom = async (
   roomId: string,
@@ -82,6 +82,7 @@ export const updateRoom = async (
 
     return updatedRoom;
   } catch (error) {
+    console.error("Update room Error:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -129,6 +130,7 @@ export const deleteRoom = async (roomId: string) => {
 
     return { message: "Room and associated images deleted successfully" };
   } catch (error) {
+    console.error("Error deleting room:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -159,10 +161,10 @@ export const getRoomById = async (roomId: string) => {
 
     return room;
   } catch (error) {
+    console.error("Error getting room:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
-
 
 export const createRoom = async (
   roomData: Room,
@@ -239,6 +241,7 @@ export const createRoom = async (
 
     return newRoom;
   } catch (error) {
+    console.error("Error creating room:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -264,6 +267,7 @@ export const getAvailableRooms = async () => {
 
     return availableRooms; // Return the list of available rooms
   } catch (error) {
+    console.error("Error getting available rooms:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -307,6 +311,7 @@ export const addAmenitiesToRoom = async (
 
     return updatedRoom;
   } catch (error) {
+    console.error("Error adding amenities:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -350,6 +355,7 @@ export const removeAmenitiesFromRoom = async (
 
     return updatedRoom;
   } catch (error) {
+    console.error("Error removing amenities:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
@@ -376,10 +382,10 @@ export const getAllRoomsForHostel = async (hostelId: string) => {
 
     return rooms as Room[];
   } catch (error) {
+    console.error("Update Hostel Error:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
-
 
 export const updateRoomAll = async (
   roomId: string,
@@ -489,6 +495,7 @@ export const updateRoomAll = async (
 
     return updatedRoom;
   } catch (error) {
+    console.error("Update room Error:", error); // 👈 Add this line
     throw formatPrismaError(error);
   }
 };
