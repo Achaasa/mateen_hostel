@@ -41,7 +41,7 @@ export const addAmenity = async (amenityData: Amenities) => {
 
     return createdAmenity;
   } catch (error) {
-    console.error("Error adding amenity:", error); // 👈 Add this line
+    console.error("Error adding amenity:", error);
     throw formatPrismaError(error);
   }
 };
@@ -52,7 +52,7 @@ export const getAllAmenities = async () => {
     const amenities = await prisma.amenities.findMany();
     return amenities;
   } catch (error) {
-    console.error("Error retrieving Amenities:", error); // 👈 Add this line
+    console.error("Error retrieving Amenities:", error);
     throw formatPrismaError(error);
   }
 };
@@ -70,7 +70,7 @@ export const getAmenityById = async (amenityId: string): Promise<Amenities> => {
 
     return amenity;
   } catch (error) {
-    console.error("Error retrieving Amenity:", error); // 👈 Add this line
+    console.error("Error retrieving Amenity:", error);
     throw formatPrismaError(error);
   }
 };
@@ -106,7 +106,7 @@ export const updateAmenity = async (
 
     return updatedAmenity;
   } catch (error) {
-    console.error("Error updating Amenity:", error); // 👈 Add this line
+    console.error("Error updating Amenity:", error);
     throw formatPrismaError(error);
   }
 };
@@ -131,7 +131,7 @@ export const deleteAmenity = async (
 
     return { message: "Amenity deleted successfully" };
   } catch (error) {
-    console.error("Error deleting Amenity:", error); // 👈 Add this line
+    console.error("Error deleting Amenity:", error);
     throw formatPrismaError(error);
   }
 };
@@ -148,7 +148,7 @@ export const getAllAmenitiesForHostel = async (hostelId: string) => {
     });
     return rooms;
   } catch (error) {
-    console.error("Error retrieving Amenities for hostel:", error); // 👈 Add this line
+    console.error("Error retrieving Amenities for hostel:", error);
     throw formatPrismaError(error);
   }
 };

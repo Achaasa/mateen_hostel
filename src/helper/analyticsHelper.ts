@@ -301,7 +301,7 @@ export const generateHostelAnalytics = async (
       },
     };
   } catch (error) {
-    console.error("Error getting Hostel analytics:", error); // 👈 Add this line
+    console.error("Error getting Hostel analytics:", error);
     throw formatPrismaError(error);
   }
 };
@@ -435,7 +435,7 @@ export const generateSystemAnalytics = async (): Promise<SystemAnalytics> => {
       activeCalendarYears,
     };
   } catch (error) {
-    console.error("Error getting system analytics:", error); // 👈 Add this line
+    console.error("Error getting system analytics:", error);
     throw formatPrismaError(error);
   }
 };
@@ -534,7 +534,7 @@ export const getHostelDisbursementSummary =
         disbursements,
       };
     } catch (error) {
-      console.error("Update Hostel Error:", error); // 👈 Add this line
+      console.error("Update Hostel Error:", error);
       throw formatPrismaError(error);
     }
   };

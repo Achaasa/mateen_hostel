@@ -62,7 +62,7 @@ export const addHostel = async (
 
     return createdHostel;
   } catch (error) {
-    console.error("Adding Hostel Error:", error); // 👈 Add this line
+    console.error("Adding Hostel Error:", error);
     throw formatPrismaError(error);
   }
 };
@@ -95,7 +95,7 @@ export const getAllHostels = async () => {
     });
     return hostels;
   } catch (error) {
-    console.error("Error retrieving hostels:", error); // 👈 Add this line
+    console.error("Error retrieving hostels:", error);
     throw formatPrismaError(error);
   }
 };
@@ -129,7 +129,7 @@ export const getHostelById = async (hostelId: string) => {
     }
     return hostel as Hostel;
   } catch (error) {
-    console.error("Error retrieving hostel:", error); // 👈 Add this line
+    console.error("Error retrieving hostel:", error);
     throw formatPrismaError(error);
   }
 };
@@ -153,7 +153,7 @@ export const deleteHostel = async (hostelId: string) => {
 
     return { message: "Hostel soft deleted successfully" };
   } catch (error) {
-    console.error("Error deleting hostel:", error); // 👈 Add this line
+    console.error("Error deleting hostel:", error);
     throw formatPrismaError(error);
   }
 };
@@ -183,8 +183,7 @@ export const updateHostel = async (
     }
 
     // Handle logo update
-    if (logoInfo) {
-      // Delete old logo if it exists
+    if (logoInfo?.logoUrl && logoInfo?.logoKey) {
       if (findHostel.logoKey) {
         await cloudinary.uploader.destroy(findHostel.logoKey);
       }
@@ -192,9 +191,10 @@ export const updateHostel = async (
       hostelData.logoKey = logoInfo.logoKey;
     }
 
-    // Handle photos update
-    if (findHostel.HostelImages && findHostel.HostelImages.length > 0) {
-      for (const image of findHostel.HostelImages) {
+    // Handle photos update only if new pictures are provided
+    if (pictures.length > 0) {
+      // Delete old images from Cloudinary
+      for (const image of findHostel.HostelImages || []) {
         if (image.imageKey) {
           try {
             await cloudinary.uploader.destroy(image.imageKey);
@@ -207,29 +207,29 @@ export const updateHostel = async (
           }
         }
       }
-    }
 
-    await prisma.hostelImages.deleteMany({
-      where: { hostelId: hostelId },
-    });
+      // Delete image records from database
+      await prisma.hostelImages.deleteMany({
+        where: { hostelId },
+      });
+
+      // Add new image records
+      const hostelImages = pictures.map((picture) => ({
+        imageUrl: picture.imageUrl,
+        imageKey: picture.imageKey,
+        hostelId,
+      }));
+      await prisma.hostelImages.createMany({ data: hostelImages });
+    }
 
     const updatedHostel = await prisma.hostel.update({
       where: { id: hostelId },
       data: hostelData,
     });
 
-    if (pictures.length > 0) {
-      const hostelImages = pictures.map((picture) => ({
-        imageUrl: picture.imageUrl,
-        imageKey: picture.imageKey,
-        hostelId: hostelId,
-      }));
-      await prisma.hostelImages.createMany({ data: hostelImages });
-    }
-
     return updatedHostel;
   } catch (error) {
-    console.error("Update Hostel Error:", error); // 👈 Add this line
+    console.error("Update Hostel Error:", error);
     throw formatPrismaError(error);
   }
 };
@@ -244,7 +244,7 @@ export const getUnverifiedHostel = async () => {
     });
     return unverifiedHostel;
   } catch (error) {
-    console.error("Error retrieving hostels:", error); // 👈 Add this line
+    console.error("Error retrieving hostels:", error);
     throw formatPrismaError(error);
   }
 };
@@ -277,7 +277,7 @@ export const publishHostel = async (hostelId: string) => {
       data: { state: HostelState.PUBLISHED },
     });
   } catch (error) {
-    console.error("Publish Hostel Error:", error); // 
+    console.error("Publish Hostel Error:", error); //
     throw formatPrismaError(error);
   }
 };
@@ -298,7 +298,7 @@ export const unPublishHostel = async (hostelId: string) => {
       data: { state: HostelState.UNPUBLISHED },
     });
   } catch (error) {
-    console.error("Unpublish Hostel Error:", error); // 👈 Add this line
+    console.error("Unpublish Hostel Error:", error);
     throw formatPrismaError(error);
   }
 };
