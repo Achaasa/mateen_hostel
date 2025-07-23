@@ -108,7 +108,7 @@ export const getCurrentCalendarYear = async (hostelId: string) => {
 
     return currentYear;
   } catch (error) {
-    console.error("Error getting current calendar year:", error); // 👈 Add this line
+    console.error("Error getting current calendar year:", error);
     throw formatPrismaError(error);
   }
 };
@@ -135,7 +135,7 @@ export const getHistoricalCalendarYears = async (hostelId: string) => {
 
     return historicalYears;
   } catch (error) {
-    console.error("Error getting historical calendar year:", error); // 👈 Add this line
+    console.error("Error getting historical calendar year:", error);
     throw formatPrismaError(error);
   }
 };
@@ -168,7 +168,7 @@ export const getCalendarYearFinancialReport = async (
         totalRevenue / report.HistoricalResident.length || 0, // Handle division by zero
     };
   } catch (error) {
-    console.error("Error getting  calendar financial year report:", error); // 👈 Add this line
+    console.error("Error getting  calendar financial year report:", error);
     throw formatPrismaError(error);
   }
 };
@@ -191,7 +191,7 @@ export const updateCalendarYear = async (
 
     return updatedYear;
   } catch (error) {
-    console.error("Error updating  calendar year:", error); // 👈 Add this line
+    console.error("Error updating  calendar year:", error);
     throw formatPrismaError(error);
   }
 };
