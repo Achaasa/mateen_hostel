@@ -30,4 +30,13 @@ analyticsRouter.get(
   analyticsController.getHostelDisbursementSummaryController,
 );
 
+// Calendar Year Report
+analyticsRouter.get(
+  "/calendar-year/:hostelId/:calendarYearId",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  validateHostelAccess,
+  analyticsController.generateCalendarYearReportController,
+);
+
 export default analyticsRouter;

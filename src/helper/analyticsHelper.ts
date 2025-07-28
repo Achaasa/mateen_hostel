@@ -53,6 +53,55 @@ export interface HostelSummaryResponse {
   disbursements: HostelSummary[];
 }
 
+interface CalendarYearReport {
+  calendarYearId: string;
+  calendarYearName: string;
+  startDate: Date;
+  endDate: Date | null;
+  isActive: boolean;
+  
+  // Financial Metrics
+  totalRevenue: number;
+  totalExpectedRevenue: number;
+  totalPayments: number;
+  averagePaymentAmount: number;
+  collectionRate: number;
+  
+  // Resident Metrics
+  totalResidents: number;
+  averageRevenuePerResident: number;
+  
+  // Room Metrics
+  totalRooms: number;
+  activeRooms: number;
+  occupiedRooms: number;
+  occupancyRate: number;
+  averageRoomPrice: number;
+  
+  // Historical Data (for completed years)
+  historicalResidents: number;
+  historicalRevenue: number;
+  
+  // Payment Analysis
+  paymentMethods: {
+    method: string;
+    count: number;
+    totalAmount: number;
+  }[];
+  
+  // Monthly Breakdown (for active years)
+  monthlyStats?: {
+    month: string;
+    revenue: number;
+    payments: number;
+    newResidents: number;
+  }[];
+  
+  // Performance Indicators
+  revenueGrowth?: number; // Compared to previous year
+  occupancyGrowth?: number; // Compared to previous year
+}
+
 const VALID_PAYMENT_STATUSES = ["success", "CONFIRMED"] as const;
 
 // Helper: Room metrics
@@ -538,3 +587,302 @@ export const getHostelDisbursementSummary =
       throw formatPrismaError(error);
     }
   };
+
+// CALENDAR YEAR REPORT
+export const generateCalendarYearReport = async (
+  hostelId: string,
+  calendarYearId: string,
+): Promise<CalendarYearReport> => {
+  try {
+    const calendarYear = await prisma.calendarYear.findUnique({
+      where: { 
+        id: calendarYearId,
+        hostelId: hostelId 
+      },
+      include: {
+        Residents: {
+          where: { delFlag: false },
+          include: {
+            room: true,
+            payments: {
+              where: {
+                delFlag: false,
+                status: { in: Array.from(VALID_PAYMENT_STATUSES) }
+              }
+            }
+          }
+        },
+        HistoricalResident: {
+          include: {
+            room: true,
+            payments: {
+              where: {
+                delFlag: false,
+                status: { in: Array.from(VALID_PAYMENT_STATUSES) }
+              }
+            }
+          }
+        },
+        Payments: {
+          where: {
+            delFlag: false,
+            status: { in: Array.from(VALID_PAYMENT_STATUSES) }
+          }
+        }
+      }
+    });
+
+    if (!calendarYear) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Calendar year not found");
+    }
+
+    // Get all rooms for this hostel
+    const rooms = await prisma.room.findMany({
+      where: { 
+        hostelId: hostelId,
+        delFlag: false 
+      }
+    });
+
+    // Calculate financial metrics
+    const currentResidents = calendarYear.Residents;
+    const historicalResidents = calendarYear.HistoricalResident;
+    const allPayments = calendarYear.Payments;
+
+    // Current year financial calculations
+    let totalRevenue = new Decimal(0);
+    let totalExpectedRevenue = new Decimal(0);
+    let totalPayments = 0;
+    let totalPaymentAmount = new Decimal(0);
+
+    // Process current residents
+    currentResidents.forEach((resident) => {
+      const confirmedPayments = resident.payments.filter((payment) =>
+        VALID_PAYMENT_STATUSES.includes(
+          payment.status as (typeof VALID_PAYMENT_STATUSES)[number]
+        )
+      );
+      
+      totalPayments += confirmedPayments.length;
+      totalPaymentAmount = totalPaymentAmount.plus(
+        confirmedPayments.reduce(
+          (sum, payment) => new Decimal(sum).plus(payment.amount ?? 0).toNumber(),
+          0
+        )
+      );
+      
+      totalRevenue = totalRevenue.plus(resident.amountPaid ?? 0);
+      totalExpectedRevenue = totalExpectedRevenue.plus(resident.roomPrice ?? 0);
+    });
+
+    // Process historical residents
+    historicalResidents.forEach((histResident) => {
+      const confirmedPayments = histResident.payments.filter((payment) =>
+        VALID_PAYMENT_STATUSES.includes(
+          payment.status as (typeof VALID_PAYMENT_STATUSES)[number]
+        )
+      );
+      
+      totalPayments += confirmedPayments.length;
+      totalPaymentAmount = totalPaymentAmount.plus(
+        confirmedPayments.reduce(
+          (sum, payment) => new Decimal(sum).plus(payment.amount ?? 0).toNumber(),
+          0
+        )
+      );
+      
+      totalRevenue = totalRevenue.plus(histResident.amountPaid);
+      totalExpectedRevenue = totalExpectedRevenue.plus(histResident.roomPrice);
+    });
+
+    // Process standalone payments
+    allPayments.forEach((payment) => {
+      if (!payment.residentId && !payment.historicalResidentId) {
+        totalPayments += 1;
+        totalPaymentAmount = totalPaymentAmount.plus(payment.amount ?? 0);
+        totalRevenue = totalRevenue.plus(payment.amount ?? 0);
+      }
+    });
+
+    // Calculate derived metrics
+    const totalResidents = currentResidents.length + historicalResidents.length;
+    const collectionRate = Number(totalExpectedRevenue) > 0
+      ? Number(new Decimal(totalRevenue).div(totalExpectedRevenue).mul(100).toFixed(2))
+      : 0;
+    const averagePaymentAmount = totalPayments > 0
+      ? Number(new Decimal(totalPaymentAmount).div(totalPayments).toFixed(2))
+      : 0;
+    const averageRevenuePerResident = totalResidents > 0
+      ? Number(totalRevenue.div(totalResidents).toFixed(2))
+      : 0;
+
+    // Calculate room metrics
+    const roomMetrics = calculateRoomMetrics(rooms);
+
+    // Calculate payment methods breakdown
+    const paymentMethodsMap = new Map<string, { count: number; totalAmount: Decimal }>();
+    allPayments.forEach((payment) => {
+      const method = payment.method || 'Unknown';
+      const existing = paymentMethodsMap.get(method) || { count: 0, totalAmount: new Decimal(0) };
+      paymentMethodsMap.set(method, {
+        count: existing.count + 1,
+        totalAmount: existing.totalAmount.plus(payment.amount ?? 0)
+      });
+    });
+
+    const paymentMethods = Array.from(paymentMethodsMap.entries()).map(([method, data]) => ({
+      method,
+      count: data.count,
+      totalAmount: Number(data.totalAmount.toFixed(2))
+    }));
+
+    // Generate monthly breakdown for active calendar years
+    let monthlyStats: CalendarYearReport['monthlyStats'] = undefined;
+    if (calendarYear.isActive) {
+      monthlyStats = await generateMonthlyBreakdown(calendarYearId, hostelId);
+    }
+
+    // Calculate growth metrics (compare with previous year if available)
+    const previousYear = await prisma.calendarYear.findFirst({
+      where: {
+        hostelId: hostelId,
+        isActive: false,
+        endDate: { lt: calendarYear.startDate }
+      },
+      orderBy: { endDate: 'desc' }
+    });
+
+    let revenueGrowth: number | undefined = undefined;
+    let occupancyGrowth: number | undefined = undefined;
+
+    if (previousYear) {
+      const previousYearReport = await generateCalendarYearReport(hostelId, previousYear.id);
+      revenueGrowth = previousYearReport.totalRevenue > 0
+        ? Number(new Decimal(totalRevenue).div(previousYearReport.totalRevenue).minus(1).mul(100).toFixed(2))
+        : undefined;
+      occupancyGrowth = previousYearReport.occupancyRate > 0
+        ? Number(new Decimal(roomMetrics.occupancyRate).div(previousYearReport.occupancyRate).minus(1).mul(100).toFixed(2))
+        : undefined;
+    }
+
+    return {
+      calendarYearId: calendarYear.id,
+      calendarYearName: calendarYear.name,
+      startDate: calendarYear.startDate,
+      endDate: calendarYear.endDate,
+      isActive: calendarYear.isActive,
+      
+      // Financial Metrics
+      totalRevenue: Number(totalRevenue.toFixed(2)),
+      totalExpectedRevenue: Number(totalExpectedRevenue.toFixed(2)),
+      totalPayments,
+      averagePaymentAmount,
+      collectionRate,
+      
+      // Resident Metrics
+      totalResidents,
+      averageRevenuePerResident,
+      
+      // Room Metrics
+      totalRooms: roomMetrics.totalRooms,
+      activeRooms: roomMetrics.activeRooms,
+      occupiedRooms: roomMetrics.occupiedRooms,
+      occupancyRate: roomMetrics.occupancyRate,
+      averageRoomPrice: roomMetrics.averageRoomPrice,
+      
+      // Historical Data
+      historicalResidents: historicalResidents.length,
+      historicalRevenue: historicalResidents.reduce((sum, hist) => sum + hist.amountPaid, 0),
+      
+      // Payment Analysis
+      paymentMethods,
+      
+      // Monthly Breakdown
+      monthlyStats,
+      
+      // Performance Indicators
+      revenueGrowth,
+      occupancyGrowth
+    };
+
+  } catch (error) {
+    console.error("Error generating calendar year report:", error);
+    throw formatPrismaError(error);
+  }
+};
+
+// Helper function to generate monthly breakdown
+const generateMonthlyBreakdown = async (
+  calendarYearId: string,
+  hostelId: string,
+): Promise<CalendarYearReport["monthlyStats"]> => {
+  try {
+    const payments = await prisma.payment.findMany({
+      where: {
+        calendarYearId: calendarYearId,
+        delFlag: false,
+        status: { in: Array.from(VALID_PAYMENT_STATUSES) },
+      },
+      select: {
+        amount: true,
+        date: true,
+      },
+    });
+
+    const monthlyMap = new Map<
+      string,
+      { revenue: Decimal; payments: number; newResidents: number }
+    >();
+
+    // Initialize all months
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+
+    months.forEach((month) => {
+      monthlyMap.set(month, {
+        revenue: new Decimal(0),
+        payments: 0,
+        newResidents: 0,
+      });
+    });
+
+    // Aggregate payment data by month
+    payments.forEach((payment) => {
+      const month = new Date(payment.date).toLocaleString("en-US", {
+        month: "long",
+      });
+      const existing = monthlyMap.get(month) || {
+        revenue: new Decimal(0),
+        payments: 0,
+        newResidents: 0,
+      };
+      monthlyMap.set(month, {
+        revenue: existing.revenue.plus(payment.amount ?? 0),
+        payments: existing.payments + 1,
+        newResidents: existing.newResidents, // This would need additional logic to track new residents
+      });
+    });
+
+    return Array.from(monthlyMap.entries()).map(([month, data]) => ({
+      month,
+      revenue: Number(data.revenue.toFixed(2)),
+      payments: data.payments,
+      newResidents: data.newResidents,
+    }));
+  } catch (error) {
+    console.error("Error generating monthly breakdown:", error);
+    return [];
+  }
+};
