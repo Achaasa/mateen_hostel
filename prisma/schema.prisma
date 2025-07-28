@@ -7,8 +7,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Hostel {
@@ -86,7 +87,7 @@ model Staff {
   role              String
   qualification     String
   hostel            Hostel        @relation(fields: [hostelId], references: [id], onDelete: Cascade)
-  type              StaffType @default(OTHERS)
+  type              StaffType     @default(OTHERS)
 }
 
 model Amenities {
