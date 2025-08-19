@@ -177,6 +177,20 @@ model User {
   hostelId        String?
   changedPassword Boolean  @default(false)
   hostel          Hostel?  @relation(fields: [hostelId], references: [id])
+  leaves          Leave[]
+}
+
+model Leave {
+  id          String      @id @default(uuid())
+  userId      String
+  startDate   DateTime
+  endDate     DateTime
+  reason      String
+  status      LeaveStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  delFlag     Boolean     @default(false)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model RoomImage {
@@ -334,4 +348,11 @@ enum HostelState {
 enum StaffType {
   ADMIN
   OTHERS
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
 }

@@ -36,33 +36,13 @@ export const generateCodeEmail = (name: string, code?: string): string => {
     <body style="margin: 0; padding: 0; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;">
       <div style="padding: 40px 20px;">
         <div style="
-          max-width: 600px; 
+          min-width: 600px; 
+          max-width: 1200px;
           margin: 0 auto; 
           background: #ffffff; 
-          border-radius: 16px; 
-          box-shadow: 0 10px 30px rgba(0,0,0,0.1);
           overflow: hidden;
         ">
           <!-- Header -->
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0; text-align: center;">
-            <!-- Logo and Brand -->
-            <div style="padding: 20px 0 12px 0; background: rgba(255,255,255,0.1);">
-              <div style="
-                width: 60px;
-                height: 60px;
-                margin: 0 auto 8px auto;
-                background: white;
-                border-radius: 12px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 32px;
-                font-weight: bold;
-              ">
-                F
-              </div>
-              <div style="font-size: 24px; font-weight: 700; color: white; letter-spacing: 1px;">FUSE</div>
-            </div>
             
             <!-- Content Header -->
             <div style="padding: 20px 32px 24px 32px;">
