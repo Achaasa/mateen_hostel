@@ -175,6 +175,20 @@
     ]
   },
   {
+    "modelName": "Leave",
+    "fields": [
+      "id",
+      "userId",
+      "startDate",
+      "endDate",
+      "reason",
+      "status",
+      "createdAt",
+      "updatedAt",
+      "delFlag"
+    ]
+  },
+  {
     "modelName": "RoomImage",
     "fields": [
       "id",
@@ -355,6 +369,15 @@
     "fields": [
       "ADMIN",
       "OTHERS"
+    ]
+  },
+  {
+    "modelName": "LeaveStatus",
+    "fields": [
+      "PENDING",
+      "APPROVED",
+      "REJECTED",
+      "CANCELLED"
     ]
   }
 ]
