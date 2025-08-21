@@ -31,15 +31,14 @@ paymentRouter.get(
 );
 
 paymentRouter.get(
+  "/get/ref/:reference", getPaymentByReferenceController,
+);
+paymentRouter.get(
   "/get/:paymentId",
   authenticateJWT,
   authorizeRole(["ADMIN", "SUPER_ADMIN"]),
   validateHostelAccess,
   getPaymentByIdController,
-);
-paymentRouter.get(
-  "/get/ref/:reference",
-  getPaymentByReferenceController,
 );
 paymentRouter.get(
   "/get/hostel/:hostelId",
