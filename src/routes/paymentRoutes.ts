@@ -39,9 +39,6 @@ paymentRouter.get(
 );
 paymentRouter.get(
   "/get/ref/:reference",
-  authenticateJWT,
-  authorizeRole(["ADMIN", "SUPER_ADMIN"]),
-  validateHostelAccess,
   getPaymentByReferenceController,
 );
 paymentRouter.get(
