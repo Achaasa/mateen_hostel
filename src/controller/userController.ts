@@ -4,7 +4,7 @@ import { HttpStatus } from "../utils/http-status";
 import { ErrorResponse } from "../utils/types";
 import cloudinary from "../utils/cloudinary";
 import * as userHelper from "../helper/userHelper"; // Assuming you have similar helper methods for users
-import { User } from "@prisma/client";
+import type { User } from "@prisma/client";
 import { compare } from "../utils/bcrypt";
 import { setInvalidToken, signToken, UserPayload } from "../utils/jsonwebtoken";
 import { jwtDecode } from "jwt-decode";

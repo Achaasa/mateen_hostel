@@ -10,7 +10,7 @@ const visitorRouter = Router();
 visitorRouter.post(
   "/add",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validatePayload("Visitor"),
   validateHostelAccess,
   visitorController.addVisitorController
@@ -20,7 +20,7 @@ visitorRouter.post(
 visitorRouter.get(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN",]),
+  authorizeRole(["super_admin",]),
   visitorController.getAllVisitorsController
 );
 
@@ -28,7 +28,7 @@ visitorRouter.get(
 visitorRouter.get(
   "/get/:visitorId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   visitorController.getVisitorByIdController
@@ -38,7 +38,7 @@ visitorRouter.get(
 visitorRouter.put(
   "/update/:visitorId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   visitorController.updateVisitorController
@@ -48,7 +48,7 @@ visitorRouter.put(
 visitorRouter.delete(
   "/delete/:visitorId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   visitorController.deleteVisitorController
@@ -58,7 +58,7 @@ visitorRouter.delete(
 visitorRouter.put(
   "/checkout/:visitorId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   visitorController.checkoutVisitorController
@@ -66,7 +66,7 @@ visitorRouter.put(
 visitorRouter.get(
   "/hostel/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   visitorController.visitorForHostel
 );

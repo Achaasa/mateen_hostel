@@ -2,7 +2,6 @@ import { NextFunction, Request, Response } from "express";
 import * as StaffHelper from "../helper/staffHelper"; // Assuming you have your service functions in this file
 import { HttpStatus } from "../utils/http-status";
 import HttpException from "../utils/http-error";
-import { Staff } from "@prisma/client";
 import cloudinary from "../utils/cloudinary";
 import {
   StaffRequestDto,
@@ -14,7 +13,7 @@ import prisma from "../utils/prisma";
 // Add a Staff
 export const addStaffController = async (req: Request, res: Response) => {
   const photo = req.file ? req.file.path : undefined;
-  const StaffData: Staff = req.body satisfies StaffRequestDto;
+  const StaffData: StaffRequestDto = req.body as StaffRequestDto;
   console.log("staff data:", JSON.stringify(StaffData));
 
   const picture = {
@@ -38,11 +37,11 @@ export const addStaffController = async (req: Request, res: Response) => {
         picture.passportKey = uploaded.public_id;
 
         // Optionally, update the staff record with the photo URL and key
-        await prisma.staff.update({
-          where: { email: StaffData.email }, // Make sure to update with the correct identifier
+        await prisma.user.update({
+          where: { email: StaffData.email }, // Update associated user avatar
           data: {
-            passportUrl: picture.passportUrl,
-            passportKey: picture.passportKey,
+            imageUrl: picture.passportUrl,
+            imageKey: picture.passportKey,
           },
         });
       }
@@ -53,7 +52,6 @@ export const addStaffController = async (req: Request, res: Response) => {
       message: "Staff created successfully",
       data: newStaff,
     });
-
   } catch (error) {
     // If anything fails, handle the error, rollback any uploaded photo
     if (photo) {
@@ -72,7 +70,6 @@ export const addStaffController = async (req: Request, res: Response) => {
     res.status(err.status).json({ message: err.message });
   }
 };
-
 
 // Get All Staffs
 export const getAllStaffsController = async (req: Request, res: Response) => {
@@ -109,8 +106,9 @@ export const getStaffByIdController = async (req: Request, res: Response) => {
 // Update a Staff
 export const updateStaffController = async (req: Request, res: Response) => {
   const { staffId } = req.params;
-  const StaffData: Staff = req.body satisfies UpdateStaffRequestDto; // Again, assuming you're handling file uploads
+  const StaffData: UpdateStaffRequestDto = req.body as UpdateStaffRequestDto; 
   const photo = req.file ? req.file.path : undefined;
+
   const picture = {
     passportUrl: "",
     passportKey: "",

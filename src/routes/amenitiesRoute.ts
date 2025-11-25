@@ -17,7 +17,7 @@ amenitiesRoute.post(
 amenitiesRoute.get(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["super_admin"]),
   amenitiesController.getAllAmenitiesController
 );
 
@@ -25,7 +25,7 @@ amenitiesRoute.get(
 amenitiesRoute.get(
   "/get/:amenityId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   amenitiesController.getAmenityByIdController
 );
 
@@ -34,7 +34,7 @@ amenitiesRoute.put(
   "/update/:amenityId",
   validatePayload("Amenities"), // Optional: Assuming you have a validation schema for updating amenities
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   amenitiesController.updateAmenityController
 );
 
@@ -42,14 +42,14 @@ amenitiesRoute.put(
 amenitiesRoute.delete(
   "/delete/:amenityId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN","ADMIN"]),
+  authorizeRole(["super_admin","admin"]),
   amenitiesController.deleteAmenityController
 );
 
 amenitiesRoute.get(
   "/hostel/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN","ADMIN"]),
+  authorizeRole(["super_admin","admin"]),
   amenitiesController.getAmenitiesForHostel
 );
 

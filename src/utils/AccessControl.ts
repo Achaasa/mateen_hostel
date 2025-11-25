@@ -12,8 +12,8 @@ export const validateHostelAccess = async (
 ): Promise<void> => {
   const user = req.user as UserPayload;
 
-  // If the user is a SUPER_ADMIN, allow access to all data
-  if (user.role === "SUPER_ADMIN") {
+  // If the user is a super_admin, allow access to all data
+  if (user.role === "super_admin") {
     return next();
   }
 
@@ -43,8 +43,8 @@ export const validateHostelAccess = async (
       });
       requestedHostelId = room?.hostelId;
     } else if (residentId) {
-      // Fetch hostelId from the resident's room
-      const resident = await prisma.resident.findUnique({
+      // Fetch hostelId from the resident profile's room
+      const resident = await prisma.residentProfile.findUnique({
         where: { id: residentId },
         include: { room: { select: { hostelId: true } } },
       });
@@ -54,15 +54,17 @@ export const validateHostelAccess = async (
       const payment = await prisma.payment.findUnique({
         where: { id: paymentId },
         include: {
-          HistoricalResident: {
+          historicalResident: {
             include: { room: { select: { hostelId: true } } },
           },
-          resident: { include: { room: { select: { hostelId: true } } } },
+          residentProfile: {
+            include: { room: { select: { hostelId: true } } },
+          },
         },
       });
       requestedHostelId =
-        payment?.resident?.room?.hostelId ??
-        payment?.HistoricalResident?.room?.hostelId;
+        payment?.residentProfile?.room?.hostelId ??
+        payment?.historicalResident?.room?.hostelId;
     } else if (visitorId) {
       // Fetch hostelId from the visitor's resident's room
       const visitor = await prisma.visitor.findUnique({
@@ -73,8 +75,8 @@ export const validateHostelAccess = async (
       });
       requestedHostelId = visitor?.resident.room?.hostelId;
     } else if (staffId) {
-      // Fetch hostelId from the staff
-      const staff = await prisma.staff.findUnique({
+      // Fetch hostelId from the staff profile
+      const staff = await prisma.staffProfile.findUnique({
         where: { id: staffId },
         select: { hostelId: true },
       });
@@ -87,12 +89,19 @@ export const validateHostelAccess = async (
       });
       requestedHostelId = amenities?.hostelId;
     } else if (userId) {
-      // Fetch hostelId from the amenities
+      // Derive hostelId from user's profile associations
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { hostelId: true },
+        include: {
+          adminProfile: { select: { hostelId: true } },
+          staffProfile: { select: { hostelId: true } },
+          residentProfile: { select: { hostelId: true } },
+        },
       });
-      requestedHostelId = user?.hostelId;
+      requestedHostelId =
+        user?.adminProfile?.hostelId ??
+        user?.staffProfile?.hostelId ??
+        user?.residentProfile?.hostelId;
     } else if (calendarYearId) {
       // Fetch hostelId from the amenities
       const calender = await prisma.calendarYear.findUnique({
@@ -105,10 +114,10 @@ export const validateHostelAccess = async (
       const payment = await prisma.payment.findUnique({
         where: { reference },
         include: {
-          HistoricalResident: {
+          historicalResident: {
             include: { room: { select: { hostelId: true } } },
           },
-          resident: {
+          residentProfile: {
             include: {
               room: {
                 select: {
@@ -121,8 +130,8 @@ export const validateHostelAccess = async (
       });
 
       requestedHostelId =
-        payment?.resident?.room?.hostelId ??
-        payment?.HistoricalResident?.room?.hostelId;
+        payment?.residentProfile?.room?.hostelId ??
+        payment?.historicalResident?.room?.hostelId;
     }
   }
 

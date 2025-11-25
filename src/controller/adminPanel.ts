@@ -1,5 +1,6 @@
 import prisma from "../utils/prisma";
 import * as bcrypt from "../utils/bcrypt";
+import { Role } from "@prisma/client";
 import { ErrorResponse } from "../utils/types";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
@@ -8,7 +9,7 @@ import { formatPrismaError } from "../utils/formatPrisma";
 import { Request, Response, NextFunction } from "express";
 
 
-export const createAdminUser = async () => {
+export const createSuperAdminUser = async () => {
   const adminEmail = String(process.env.ADMIN_EMAIL);
   const adminPassword = String(process.env.ADMIN_PASSWORD);
 
@@ -21,29 +22,35 @@ export const createAdminUser = async () => {
     if (!existingAdmin) {
       const hashedPassword = await bcrypt.hashPassword(adminPassword);
 
-      // Create the admin user
+      // Create the super admin user together with a SuperAdminProfile
       await prisma.user.create({
         data: {
-          name: "Admin",
-          
+          firstName: "Mateen Kofi",
+          lastName: "Yeboah",
           email: adminEmail,
           password: hashedPassword,
-          phoneNumber: "1234567890", // Set a default or random number
-          role: "SUPER_ADMIN", 
-          imageKey:"",
-          imageUrl:"",
+          phone: "0543983427", // Set a default or random number
+          role: Role.super_admin,
+          imageKey: "",
+          imageUrl: "",
+          superAdminProfile: {
+            create: {
+              title: "Super Admin",
+              phoneNumber: "0543983427",
+            },
+          },
         },
       });
 
-      console.log("Admin user created successfully.");
+      console.log("super admin user created succesfully.");
     } else {
-      console.log("Admin user already exists.");
+      console.log("super admin user already exists.");
     }
   } catch (error) {
     const err = error as ErrorResponse;
     throw new HttpException(
       err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Failed to check for admin"
+      err.message || "Failed to check for super admin"
     );
   } finally {
     await prisma.$disconnect(); // Ensure Prisma client disconnects

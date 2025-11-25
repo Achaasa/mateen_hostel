@@ -11,7 +11,7 @@ const roomRouter = Router();
 roomRouter.get(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["super_admin"]),
   roomController.getAllRoomsController
 );
 
@@ -19,7 +19,7 @@ roomRouter.get(
 roomRouter.get(
   "/get/:roomId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   roomController.getRoomByIdController
@@ -30,7 +30,7 @@ roomRouter.post(
   "/add",
   upload.array("photos"),
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   roomController.addRoomController
@@ -41,7 +41,7 @@ roomRouter.put(
   "/update/:roomId",
   upload.array("photos"),
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   roomController.updateRoomController
@@ -52,7 +52,7 @@ roomRouter.put(
   "/updateall/:roomId",
   upload.array("photos"),
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   roomController.updateRoomControllerAll
@@ -62,7 +62,7 @@ roomRouter.put(
 roomRouter.delete(
   "/delete/:roomId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   roomController.deleteRoomController
@@ -72,7 +72,7 @@ roomRouter.delete(
 roomRouter.get(
   "/available",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   roomController.getAvailableRoomsController
@@ -81,7 +81,7 @@ roomRouter.get(
 roomRouter.post(
   "/:roomId/add",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["super_admin"]),
   validateHostelAccess,
 
   roomController.addAmenitiesToRoomController
@@ -89,7 +89,7 @@ roomRouter.post(
 roomRouter.post(
   "/:roomId/remove",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   roomController.removeAmenitiesFromRoomController

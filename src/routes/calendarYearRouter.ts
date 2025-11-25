@@ -13,7 +13,7 @@ calendarYearRoute.post(
   "/start",
   validatePayload("CalendarYear"), // Assuming you have a validation schema for calendar year data
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]), // Example roles, modify as per your requirements
+  authorizeRole(["super_admin", "admin"]), // Example roles, modify as per your requirements
   calendarYearController.startNewCalendarController
 );
 
@@ -21,7 +21,7 @@ calendarYearRoute.post(
 calendarYearRoute.get(
   "/current/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess, // Assuming this is middleware to check access to the hostel
   calendarYearController.getCurrentCalendarYearController
 );
@@ -30,7 +30,7 @@ calendarYearRoute.get(
 calendarYearRoute.get(
   "/historical/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   calendarYearController.getHistoricalCalendarYearsController
 );
@@ -39,7 +39,7 @@ calendarYearRoute.get(
 calendarYearRoute.get(
   "/financial-report/:calendarYearId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   calendarYearController.getCalendarYearFinancialReportController
 );
@@ -49,7 +49,7 @@ calendarYearRoute.put(
   "/update/:calendarYearId",
   validatePayload("calendarYear"), // Assuming you have a validation schema for updating calendar year data
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   calendarYearController.updateCalendarYearController
 );
@@ -58,7 +58,7 @@ calendarYearRoute.put(
 calendarYearRoute.delete(
   "/delete/:calendarYearId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["super_admin"]),
   validateHostelAccess,
   calendarYearController.deleteCalendarYearController
 );

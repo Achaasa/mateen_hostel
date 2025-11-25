@@ -1,7 +1,7 @@
 import prisma from "../utils/prisma";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
-import { Room, Amenities } from "@prisma/client";
+import { Room, RoomStatus } from "@prisma/client";
 import cloudinary from "../utils/cloudinary";
 import { formatPrismaError } from "../utils/formatPrisma";
 
@@ -9,17 +9,17 @@ export const getAllRooms = async () => {
   try {
     const rooms = await prisma.room.findMany({
       where: {
-        delFlag: false,
+        deletedAt: null,
         hostel: {
           is: {
-            delFlag: false,
+            deletedAt: null,
           },
         },
       },
       include: {
-        Amenities: true, // Include the amenities in the response
-        RoomImage: true,
-        Resident: true,
+        amenities: true, // Include the amenities in the response
+        roomImages: true,
+        residents: true,
         hostel: true, // Include hostel if needed
       },
     });
@@ -38,12 +38,12 @@ export const updateRoom = async (
   try {
     const room = await prisma.room.findUnique({
       where: { id: roomId },
-      include: { RoomImage: true, Resident: true },
+      include: { roomImages: true, residents: true },
     });
     if (!room) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Room not found");
     }
-    if (roomData.maxCap && room.Resident.length > roomData.maxCap) {
+    if (roomData.maxCap && room.residents.length > roomData.maxCap) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
         "Cannot update maxCap as it is less than the number of residents in the room",
@@ -51,8 +51,8 @@ export const updateRoom = async (
     }
 
     // Delete old images from Cloudinary
-    if (room.RoomImage && room.RoomImage.length > 0) {
-      for (const image of room.RoomImage) {
+    if (room.roomImages && room.roomImages.length > 0) {
+      for (const image of room.roomImages) {
         await cloudinary.uploader.destroy(image.imageKey); // Delete image from Cloudinary
       }
     }
@@ -91,7 +91,7 @@ export const deleteRoom = async (roomId: string) => {
   try {
     const room = await prisma.room.findUnique({
       where: { id: roomId },
-      include: { RoomImage: true }, // Include associated images
+      include: { roomImages: true }, // Include associated images
     });
 
     if (!room) {
@@ -99,19 +99,17 @@ export const deleteRoom = async (roomId: string) => {
     }
 
     // Delete images from Cloudinary first
-    for (const image of room.RoomImage) {
+    for (const image of room.roomImages) {
       await cloudinary.uploader.destroy(image.imageKey); // Delete image from Cloudinary
     }
     // Check for active residents assigned to this room
-    const activeResidents = await prisma.resident.findMany({
+    const activeResidents = await prisma.residentProfile.count({
       where: {
         roomId: room.id,
-        delFlag: false,
-        roomAssigned: true,
       },
     });
 
-    if (activeResidents.length > 0) {
+    if (activeResidents > 0) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
         "Cannot delete room because it has active residents assigned",
@@ -140,17 +138,17 @@ export const getRoomById = async (roomId: string) => {
     const room = await prisma.room.findFirst({
       where: {
         id: roomId,
-        delFlag: false, // Room is not deleted
+        deletedAt: null, // Room is not deleted
         hostel: {
           is: {
-            delFlag: false, // Hostel is not deleted
+            deletedAt: null, // Hostel is not deleted
           },
         },
       },
       include: {
-        Amenities: true, // Include the amenities for the room
-        RoomImage: true, // Include the room images for the room
-        Resident: true,
+        amenities: true, // Include the amenities for the room
+        roomImages: true, // Include the room images for the room
+        residents: true,
         hostel: true,
       },
     });
@@ -214,7 +212,7 @@ export const createRoom = async (
         description: roomData.description,
         type: roomData.type,
         status: roomData.status,
-        Amenities: amenitiesIds?.length
+        amenities: amenitiesIds?.length
           ? {
               connect: amenitiesIds.map((id) => ({ id })),
             }
@@ -251,17 +249,17 @@ export const getAvailableRooms = async () => {
     // Fetch rooms with status 'AVAILABLE'
     const availableRooms = await prisma.room.findMany({
       where: {
-        status: "AVAILABLE",
+        status: RoomStatus.available,
         hostel: {
           is: {
-            delFlag: false,
+            deletedAt: null,
           },
         },
       },
       include: {
-        Amenities: true, // Include related amenities if needed
-        RoomImage: true,
-        Resident: true,
+        amenities: true, // Include related amenities if needed
+        roomImages: true,
+        residents: true,
       },
     });
 
@@ -280,7 +278,7 @@ export const addAmenitiesToRoom = async (
     // Check if the room exists
     const room = await prisma.room.findUnique({
       where: { id: roomId },
-      include: { Amenities: true }, // Include current amenities of the room
+      include: { amenities: true }, // Include current amenities of the room
     });
 
     if (!room) {
@@ -303,7 +301,7 @@ export const addAmenitiesToRoom = async (
       where: { id: roomId },
       data: {
         price: room.price + totalAmenitiesPrice,
-        Amenities: {
+        amenities: {
           connect: amenitiesIds.map((id: string) => ({ id })),
         },
       },
@@ -324,7 +322,7 @@ export const removeAmenitiesFromRoom = async (
     // Check if the room exists
     const room = await prisma.room.findUnique({
       where: { id: roomId },
-      include: { Amenities: true }, // Include current amenities of the room
+      include: { amenities: true }, // Include current amenities of the room
     });
 
     if (!room) {
@@ -347,7 +345,7 @@ export const removeAmenitiesFromRoom = async (
       where: { id: roomId },
       data: {
         price: room.price - totalAmenitiesPrice,
-        Amenities: {
+        amenities: {
           disconnect: amenitiesIds.map((id: string) => ({ id })),
         },
       },
@@ -365,17 +363,17 @@ export const getAllRoomsForHostel = async (hostelId: string) => {
     const rooms = await prisma.room.findMany({
       where: {
         hostelId,
-        delFlag: false,
+        deletedAt: null,
         hostel: {
           is: {
-            delFlag: false,
+            deletedAt: null,
           },
         },
       },
       include: {
-        RoomImage: true,
-        Resident: true,
-        Amenities: true,
+        roomImages: true,
+        residents: true,
+        amenities: true,
         hostel: true, // Include hostel details if needed
       },
     });
@@ -401,14 +399,14 @@ export const updateRoomAll = async (
   try {
     const room = await prisma.room.findUnique({
       where: { id: roomId },
-      include: { RoomImage: true, Resident: true, Amenities: true },
+      include: { roomImages: true, residents: true, amenities: true },
     });
 
     if (!room) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Room not found");
     }
 
-    if (roomData.maxCap && room.Resident.length > roomData.maxCap) {
+    if (roomData.maxCap && room.residents.length > roomData.maxCap) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
         "Cannot update maxCap as it is less than the number of residents in the room",
@@ -448,8 +446,8 @@ export const updateRoomAll = async (
     console.log(`Updated Room Price: ${updatedPrice}`);
 
     // Delete old images from Cloudinary
-    if (room.RoomImage && room.RoomImage.length > 0) {
-      for (const image of room.RoomImage) {
+    if (room.roomImages && room.roomImages.length > 0) {
+      for (const image of room.roomImages) {
         await cloudinary.uploader.destroy(image.imageKey);
       }
     }
@@ -458,7 +456,7 @@ export const updateRoomAll = async (
     await prisma.roomImage.deleteMany({ where: { roomId: roomId } });
 
     // Prepare updates for amenities
-    const updateAmenities: any = {};
+    const updateAmenities: { connect?: { id: string }[]; disconnect?: { id: string }[] } = {};
     if (addAmenitiesIds && addAmenitiesIds.length > 0) {
       updateAmenities.connect = addAmenitiesIds.map((id) => ({ id }));
     }
@@ -472,14 +470,15 @@ export const updateRoomAll = async (
       data: {
         ...roomData,
         price: updatedPrice,
-        Amenities: Object.keys(updateAmenities).length
-          ? updateAmenities
-          : undefined,
+        amenities:
+          Object.keys(updateAmenities).length > 0
+            ? updateAmenities
+            : undefined,
       },
       include: {
-        Amenities: true,
-        RoomImage: true,
-        Resident: true,
+        amenities: true,
+        roomImages: true,
+        residents: true,
       },
     });
 

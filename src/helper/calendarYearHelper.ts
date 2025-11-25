@@ -1,12 +1,12 @@
 import prisma from "../utils/prisma";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
-import { RoomStatus } from "@prisma/client";
+import { PaymentStatus, ResidentStatus, RoomStatus } from "@prisma/client";
 import { formatPrismaError } from "../utils/formatPrisma";
 
 export const startNewCalendar = async (hostelId: string, name: string) => {
   try {
-    const transaction = await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx) => {
       await tx.calendarYear.updateMany({
         where: { hostelId, isActive: true },
         data: { isActive: false, endDate: new Date() },
@@ -22,57 +22,60 @@ export const startNewCalendar = async (hostelId: string, name: string) => {
         },
       });
 
-      const residents = await tx.resident.findMany({
+      const residents = await tx.residentProfile.findMany({
         where: {
+          roomId: { not: null },
           room: { hostelId },
-          delFlag: false,
-          roomAssigned: true,
+        },
+        include: {
+          room: true,
+          payments: {
+            where: {
+              deletedAt: null,
+              status: { in: [PaymentStatus.confirmed] },
+            },
+          },
         },
       });
 
-      console.log("Fetched residents:", residents);
-
       for (const resident of residents) {
-        if (resident.roomId) {
-          const historicalResident = await tx.historicalResident.create({
-            data: {
-              residentId: resident.id,
-              room: {
-                connect: { id: resident.roomId },
-              },
-              CalendarYear: {
-                connect: { id: newCalendarYear.id },
-              },
-              amountPaid: resident.amountPaid,
-              roomPrice: resident.roomPrice ?? 0,
-              Hostel: {
-                connect: { id: hostelId },
-              },
-              residentName: resident.name,
-              residentEmail: resident.email,
-              residentPhone: resident.phone,
-              residentCourse: resident.course,
-            },
-          });
+        if (!resident.roomId) continue;
 
-          // Reassign Payments to HistoricalResident
-          await tx.payment.updateMany({
-            where: { residentId: resident.id },
-            data: {
-              residentId: null, // Clear the old reference (now allowed since residentId is optional)
-              historicalResidentId: historicalResident.id, // Set new reference
-            },
-          });
+        const totalPaid = resident.payments.reduce((sum, payment) => {
+          const value = payment.amountPaid ?? payment.amount ?? 0;
+          return sum + value;
+        }, 0);
 
-          await tx.resident.delete({
-            where: { id: resident.id },
-          });
-        }
+        const historicalResident = await tx.historicalResident.create({
+          data: {
+            residentId: resident.id,
+            roomId: resident.roomId,
+            calendarYearId: newCalendarYear.id,
+            amountPaid: totalPaid,
+            roomPrice: resident.room?.price ?? 0,
+          },
+        });
+
+        await tx.payment.updateMany({
+          where: { residentProfileId: resident.id },
+          data: {
+            residentProfileId: null,
+            historicalResidentId: historicalResident.id,
+          },
+        });
+
+        await tx.residentProfile.update({
+          where: { id: resident.id },
+          data: {
+            roomId: null,
+            status: ResidentStatus.checked_out,
+          },
+        });
       }
 
       await tx.room.updateMany({
         where: { hostelId },
-        data: { status: RoomStatus.AVAILABLE },
+        data: { status: RoomStatus.available, currentResidentCount: 0 },
       });
     });
   } catch (error) {
@@ -90,7 +93,7 @@ export const getCurrentCalendarYear = async (hostelId: string) => {
         isActive: true,
       },
       include: {
-        Residents: {
+        residents: {
           include: {
             room: true,
             payments: true,
@@ -122,9 +125,9 @@ export const getHistoricalCalendarYears = async (hostelId: string) => {
         isActive: false,
       },
       include: {
-        HistoricalResident: {
+        historicalResidents: {
           include: {
-            room: true, // Keep room relation, remove resident
+            room: true,
           },
         },
       },
@@ -148,7 +151,7 @@ export const getCalendarYearFinancialReport = async (
     const report = await prisma.calendarYear.findUnique({
       where: { id: calendarYearId },
       include: {
-        HistoricalResident: true, // Include HistoricalResident without resident
+        historicalResidents: true,
       },
     });
 
@@ -156,16 +159,18 @@ export const getCalendarYearFinancialReport = async (
       throw new HttpException(HttpStatus.NOT_FOUND, "Calendar year not found");
     }
 
-    const totalRevenue = report.HistoricalResident.reduce(
+    const totalRevenue = report.historicalResidents.reduce(
       (sum, hist) => sum + hist.amountPaid,
       0,
     );
 
     return {
       totalRevenue,
-      historicalResidents: report.HistoricalResident.length,
+      historicalResidents: report.historicalResidents.length,
       averageRevenuePerResident:
-        totalRevenue / report.HistoricalResident.length || 0, // Handle division by zero
+        report.historicalResidents.length > 0
+          ? totalRevenue / report.historicalResidents.length
+          : 0,
     };
   } catch (error) {
     console.error("Error getting  calendar financial year report:", error);
@@ -184,8 +189,8 @@ export const updateCalendarYear = async (
       where: { id },
       data,
       include: {
-        Residents: true,
-        HistoricalResident: true,
+        residents: true,
+        historicalResidents: true,
       },
     });
 
@@ -205,7 +210,7 @@ export const deleteCalendarYear = async (
     const calendarYear = await prisma.calendarYear.findUnique({
       where: { id: calendarYearId },
       include: {
-        Residents: true, // Include residents if you need to update their records
+        residents: true,
       },
     });
 
@@ -225,7 +230,7 @@ export const deleteCalendarYear = async (
       // Optionally, you can reset room statuses to AVAILABLE if needed
       await tx.room.updateMany({
         where: { hostelId },
-        data: { status: RoomStatus.AVAILABLE },
+        data: { status: RoomStatus.available },
       });
 
       // Delete the calendar year

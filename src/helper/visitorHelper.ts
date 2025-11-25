@@ -29,8 +29,7 @@ export const addVisitor = async (visitorData: Visitor) => {
     const visitorToCreate = existingVisitor
       ? {
           ...visitorData,
-          status: VisitorStatus.ACTIVE, // new visit, status should be ACTIVE
-          timeIn: new Date(), // Set the timeIn to now
+          status: VisitorStatus.active, // new visit, status should be ACTIVE
           residentId: existingVisitor.residentId, // Retain the relation with the resident
         }
       : visitorData; // If the visitor does not exist, create a new one with all details
@@ -151,7 +150,7 @@ export const checkoutVisitor = async (visitorId: string) => {
     }
 
     // If the visitor is already checked out, throw an error
-    if (visitor.status === VisitorStatus.CHECKED_OUT) {
+    if (visitor.status === VisitorStatus.checked_out) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
         "Visitor is already checked out",
@@ -162,8 +161,7 @@ export const checkoutVisitor = async (visitorId: string) => {
     const updatedVisitor = await prisma.visitor.update({
       where: { id: visitorId },
       data: {
-        status: VisitorStatus.CHECKED_OUT,
-        timeOut: new Date(), // Set the timeOut as the current date and time
+        status: VisitorStatus.checked_out ,
       },
     });
 
@@ -178,7 +176,7 @@ export const getVisitorsForHostel = async (hostelId: string) => {
   try {
     // First, ensure the hostel exists and is not deleted
     const hostel = await prisma.hostel.findUnique({
-      where: { id: hostelId, delFlag: false },
+      where: { id: hostelId },
     });
     
     if (!hostel) {
@@ -189,11 +187,10 @@ export const getVisitorsForHostel = async (hostelId: string) => {
     const visitors = await prisma.visitor.findMany({
       where: {
         resident: {
-          delFlag: false, // Resident should not be deleted
           room: {
             hostelId, // Ensure the room belongs to the given hostel
             hostel: {
-              delFlag: false, // Ensure the hostel is not deleted
+              deletedAt: null, // Ensure the hostel is not deleted
             },
           },
         },

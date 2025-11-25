@@ -17159,7 +17159,7 @@
           "kind": "enumValue",
           "name": {
             "kind": "name",
-            "value": "ADMIN",
+            "value": "admin",
             "location": {
               "start": {
                 "offset": 8729,
@@ -17192,7 +17192,7 @@
           "kind": "enumValue",
           "name": {
             "kind": "name",
-            "value": "SUPER_ADMIN",
+            "value": "super_admin",
             "location": {
               "start": {
                 "offset": 8738,
@@ -19436,7 +19436,7 @@
           "kind": "enumValue",
           "name": {
             "kind": "name",
-            "value": "ADMIN",
+            "value": "admin",
             "location": {
               "start": {
                 "offset": 9668,

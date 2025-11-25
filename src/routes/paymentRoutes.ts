@@ -26,7 +26,7 @@ paymentRouter.post("/topup/confirm", TopUpPaymentController);
 paymentRouter.get(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["super_admin"]),
   getAllPaymentController,
 );
 
@@ -36,21 +36,21 @@ paymentRouter.get(
 paymentRouter.get(
   "/get/:paymentId",
   authenticateJWT,
-  authorizeRole(["ADMIN", "SUPER_ADMIN"]),
+  authorizeRole(["admin", "super_admin"]),
   validateHostelAccess,
   getPaymentByIdController,
 );
 paymentRouter.get(
   "/get/hostel/:hostelId",
   authenticateJWT,
-  authorizeRole(["ADMIN", "SUPER_ADMIN"]),
+  authorizeRole(["admin", "super_admin"]),
   validateHostelAccess,
   getPaymentsForHostelController,
 );
 paymentRouter.post(
   "/fix-orphaned-payments",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["super_admin"]),
   fixOrphanedPaymentsController,
 );
 export default paymentRouter;

@@ -2,19 +2,17 @@ import { Request, Response, NextFunction } from "express";
 import jwt, { SignOptions } from "jsonwebtoken";
 import HttpException from "./http-error";
 import { HttpStatus } from "./http-status";
-import { UserRole } from "@prisma/client";
-
 
 export interface UserPayload {
   id: string;
-  role: UserRole;
+  role: string;
   hostelId?: string;
 }
 
 declare global {
   namespace Express {
     interface Request {
-      user: UserPayload;
+      user?: UserPayload;
     }
   }
 }
@@ -76,7 +74,7 @@ export const setInvalidToken = (): string => {
   } as SignOptions);
 };
 
-export const authorizeRole = (allowedRoles: UserRole[]) => {
+export const authorizeRole = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const user = req.user;
 

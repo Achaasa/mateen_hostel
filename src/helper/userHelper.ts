@@ -1,8 +1,8 @@
 import prisma from "../utils/prisma";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
-import { ErrorResponse } from "../utils/types";
-import { Hostel, User } from "@prisma/client";
+import type { Hostel, Prisma, User } from "@prisma/client";
+import { Role } from "@prisma/client";
 import { updateUserSchema, userSchema } from "../zodSchema/userSchema";
 import { hashPassword } from "../utils/bcrypt";
 import cloudinary from "../utils/cloudinary";
@@ -13,12 +13,135 @@ import { UserPayload } from "../utils/jsonwebtoken";
 import { formatPrismaError } from "../utils/formatPrisma";
 import { generateAdminWelcomeEmail } from "../services/generateAdminEmail";
 import { generateResetPasswordEmail } from "../services/generateResetPasswword";
+
+interface UserPicture {
+  readonly imageUrl?: string;
+  readonly imageKey?: string;
+}
+
+interface CreateUserPayload extends Partial<User> {
+  readonly name?: string;
+  readonly phoneNumber?: string;
+}
+
+const userInclude = {
+  adminProfile: {
+    include: {
+      hostel: true,
+    },
+  },
+  staffProfile: {
+    include: {
+      hostel: true,
+    },
+  },
+  residentProfile: {
+    include: {
+      hostel: true,
+    },
+  },
+} satisfies Prisma.UserInclude;
+
+type UserWithProfiles = Prisma.UserGetPayload<{ include: typeof userInclude }>;
+
+interface UserWithHostel extends User {
+  readonly hostel: Hostel | null;
+}
+
+type SafeUser = Omit<UserWithHostel, "password">;
+
+function mapUserWithHostel(user: UserWithProfiles): UserWithHostel {
+  const hostel =
+    user.adminProfile?.hostel ??
+    user.staffProfile?.hostel ??
+    user.residentProfile?.hostel ??
+    null;
+  const { adminProfile, staffProfile, residentProfile, ...rest } = user;
+  return {
+    ...rest,
+    hostel,
+  };
+}
+
+function sanitizeUser(user: UserWithHostel): SafeUser {
+  const { password, ...rest } = user;
+  return rest;
+}
+
+function ensureActiveUser(user: UserWithProfiles | null): UserWithProfiles {
+  if (!user || user.deletedAt) {
+    throw new HttpException(HttpStatus.NOT_FOUND, "User not found");
+  }
+  return user;
+}
+
+async function ensureEmailAvailable(email: string): Promise<void> {
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      email,
+      deletedAt: null,
+    },
+  });
+  if (existingUser) {
+    throw new HttpException(HttpStatus.CONFLICT, "Email already exists");
+  }
+}
+
+function resolveAvatar(picture?: UserPicture, fallback?: string | null): string | undefined {
+  if (picture?.imageUrl && picture.imageUrl.trim().length > 0) {
+    return picture.imageUrl;
+  }
+  if (fallback && fallback.trim().length > 0) {
+    return fallback;
+  }
+  return undefined;
+}
+
+function splitManagerName(name: string): { firstName: string; lastName: string } {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return { firstName: "Manager", lastName: "" };
+  }
+  const [firstName, ...rest] = trimmed.split(" ");
+  const lastName = rest.join(" ") || firstName;
+  return { firstName, lastName };
+}
+
+async function buildUserUpdateData(
+  userData: Partial<User> & { phoneNumber?: string | null },
+  picture?: UserPicture,
+): Promise<Prisma.UserUpdateInput> {
+  const data: Prisma.UserUpdateInput = {};
+  if (userData.firstName !== undefined) data.firstName = userData.firstName;
+  if (userData.lastName !== undefined) data.lastName = userData.lastName;
+  if (userData.email !== undefined) data.email = userData.email;
+  if (userData.phone !== undefined) data.phone = userData.phone;
+  else if (userData.phoneNumber !== undefined) data.phone = userData.phoneNumber;
+  if (userData.gender !== undefined) data.gender = userData.gender;
+  if (userData.accountStatus !== undefined) data.accountStatus = userData.accountStatus;
+  if (userData.avatar !== undefined) data.avatar = userData.avatar;
+  if (userData.imageUrl !== undefined) data.imageUrl = userData.imageUrl;
+  if (userData.imageKey !== undefined) data.imageKey = userData.imageKey;
+  if (picture?.imageUrl) {
+    data.avatar = picture.imageUrl;
+    data.imageUrl = picture.imageUrl;
+  }
+  if (picture?.imageKey) {
+    data.imageKey = picture.imageKey;
+  }
+  if (userData.password) {
+    data.password = await hashPassword(userData.password);
+    data.changedPassword = true;
+  }
+  return data;
+}
+
 export const createUser = async (
-  UserData: User,
-  picture: { imageUrl: string; imageKey: string },
+  userData: CreateUserPayload,
+  picture?: UserPicture,
 ) => {
   try {
-    const validateUser = userSchema.safeParse(UserData);
+    const validateUser = userSchema.safeParse(userData);
     if (!validateUser.success) {
       const errors = validateUser.error.issues.map(
         ({ message, path }) => `${path}: ${message}`,
@@ -26,29 +149,78 @@ export const createUser = async (
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
 
-    const { email } = UserData;
+    const { email, password } = userData;
+    if (!email || !password) {
+      throw new HttpException(HttpStatus.BAD_REQUEST, "Email and password are required");
+    }
+    const baseName = [userData.firstName, userData.lastName].filter(Boolean).join(" ") || userData.name || "";
+    const derivedNames = splitManagerName(baseName);
+    const resolvedFirstName = userData.firstName ?? derivedNames.firstName;
+    const resolvedLastName = userData.lastName ?? derivedNames.lastName;
+    const normalizedPhone = userData.phone ?? userData.phoneNumber ?? null;
+    const avatar = resolveAvatar(picture, userData.avatar);
     // Check for existing non-deleted user
     const findUser = await prisma.user.findFirst({
       where: {
         email,
-        delFlag: false,
+        deletedAt: null,
       },
     });
     if (findUser) {
       throw new HttpException(HttpStatus.CONFLICT, "Email already exists");
     }
 
-    const hashedPassword = await hashPassword(UserData.password);
+    const hashedPassword = await hashPassword(password);
+    const userRecord: Prisma.UserCreateInput = {
+      email,
+      password: hashedPassword,
+      firstName: resolvedFirstName,
+      lastName: resolvedLastName,
+      role: userData.role ?? Role.admin,
+      gender: userData.gender ?? null,
+      phone: normalizedPhone,
+    };
+
+    // Attach role-specific profiles
+    if (userData.role === Role.staff) {
+      userRecord.staffProfile = {
+        create: {
+          hostelId: userData.hostelId ?? undefined,
+        },
+      };
+    } else if (userData.role === Role.resident) {
+      userRecord.residentProfile = {
+        create: {
+          hostelId: userData.hostelId ?? undefined,
+        },
+      };
+    } else if (userData.role === Role.super_admin) {
+      // Super admins do not belong to any hostel; create a profile without hostel linkage
+      userRecord.superAdminProfile = {
+        create: {
+          phoneNumber: normalizedPhone ?? undefined,
+        },
+      };
+    }
+
+    if (avatar) {
+      userRecord.avatar = avatar;
+    }
+    const resolvedImageUrl = picture?.imageUrl ?? userData.imageUrl ?? undefined;
+    if (resolvedImageUrl) {
+      userRecord.imageUrl = resolvedImageUrl;
+    }
+    const resolvedImageKey = picture?.imageKey ?? userData.imageKey ?? undefined;
+    if (resolvedImageKey) {
+      userRecord.imageKey = resolvedImageKey;
+    }
+    if (userData.accountStatus) {
+      userRecord.accountStatus = userData.accountStatus;
+    }
     const newUser = await prisma.user.create({
-      data: {
-        ...UserData,
-        password: hashedPassword,
-        imageKey: picture.imageKey,
-        imageUrl: picture.imageUrl,
-        delFlag: false, // Explicitly set delFlag to false for new users
-      },
+      data: userRecord,
     });
-    const { password, ...restOfUser } = newUser;
+    const { password: storedPassword, ...restOfUser } = newUser;
     return restOfUser as User;
   } catch (error) {
     throw formatPrismaError(error);
@@ -59,11 +231,11 @@ export const getUsers = async () => {
   try {
     const users = await prisma.user.findMany({
       where: {
-        delFlag: false, // Only get non-deleted users
+        deletedAt: null, 
       },
-      include: { hostel: true },
+      include: userInclude,
     });
-    return users as User[];
+    return users.map(mapUserWithHostel);
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -71,15 +243,15 @@ export const getUsers = async () => {
 
 export const getUserById = async (id: string) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id, delFlag: false }, // Only get non-deleted users
-      include: { hostel: true },
+    const user = await prisma.user.findFirst({
+      where: { id, deletedAt: null }, // Only get non-deleted users
+      include: userInclude,
     });
     if (!user) {
       throw new HttpException(HttpStatus.NOT_FOUND, "User not found.");
     }
 
-    return user;
+    return mapUserWithHostel(user);
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -90,11 +262,14 @@ export const getUserByEmail = async (email: string) => {
     const user = await prisma.user.findFirst({
       where: {
         email,
-        delFlag: false, // Only get non-deleted users
+        deletedAt: null, // Only get non-deleted users
       },
-      include: { hostel: true },
+      include: userInclude,
     });
-    return user;
+    if (!user) {
+      return null;
+    }
+    return mapUserWithHostel(user);
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -107,10 +282,10 @@ export const deleteUser = async (id: string) => {
       throw new HttpException(HttpStatus.NOT_FOUND, "User does not exist");
     }
 
-    // Instead of deleting, update the delFlag to true
+    // Instead of deleting, mark the user as soft deleted
     await prisma.user.update({
       where: { id },
-      data: { delFlag: true },
+      data: { deletedAt: new Date() },
     });
 
     return { message: "User soft deleted successfully" };
@@ -137,32 +312,14 @@ export const updateUser = async (
       throw new HttpException(HttpStatus.NOT_FOUND, "User not found");
     }
 
-    if (picture && picture.imageKey && picture.imageUrl) {
-      // Delete the existing photo from Cloudinary if it exists
-      if (findUser.imageKey) {
-        await cloudinary.uploader.destroy(findUser.imageKey);
-      }
-
-      // Update tutorData with new picture details
-      UserData.imageKey = picture.imageKey;
-      UserData.imageUrl = picture.imageUrl;
+    if (picture?.imageKey && findUser.imageKey) {
+      await cloudinary.uploader.destroy(findUser.imageKey);
     }
 
-    if (UserData.password) {
-      const hashedpassword = await hashPassword(UserData.password);
-      if (!hashedpassword) {
-        throw new HttpException(
-          HttpStatus.INTERNAL_SERVER_ERROR,
-          "Error Hashing Password",
-        );
-      }
-      UserData.password = hashedpassword;
-      UserData.changedPassword = true;
-    }
-    const { role, ...restOfUser } = UserData;
+    const data = await buildUserUpdateData(UserData, picture);
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: { ...restOfUser },
+      data,
     });
     const { password, ...restOfUpdate } = updatedUser;
     return restOfUpdate as User;
@@ -180,7 +337,7 @@ export const verifyAndcreateHostelUser = async (hostelId: string) => {
     // 2. Check if the hostel manager email already exists
     const { email, isVerified } = hostel;
     const findUser = await prisma.user.findFirst({
-      where: { email, delFlag: false },
+      where: { email, deletedAt: null },
     });
     if (findUser || isVerified) {
       throw new HttpException(
@@ -189,25 +346,31 @@ export const verifyAndcreateHostelUser = async (hostelId: string) => {
       );
     }
 
-    const verifyHostel = await prisma.hostel.update({
+    await prisma.hostel.update({
       where: { id: hostelId },
       data: { isVerified: true },
     });
 
     // 3. Generate a password for the user
     const generatedPassword = generatePassword();
+    const hashedPassword = await hashPassword(generatedPassword);
+    const managerNames = splitManagerName(hostel.manager);
 
     // 4. Create the user account
     const newUser = await prisma.user.create({
       data: {
         email,
-        name: hostel.manager, // Using manager's name as the user's name
-        password: await hashPassword(generatedPassword), // Hash the generated password
-        phoneNumber: hostel.phone,
-        role: "ADMIN",
-        imageKey: "",
-        imageUrl: "", // Assign the correct role here
-        hostelId: hostel.id,
+        password: hashedPassword,
+        firstName: managerNames.firstName,
+        lastName: managerNames.lastName,
+        phone: hostel.phone,
+        role: Role.admin,
+        adminProfile: {
+          create: {
+            hostelId: hostel.id,
+            position: "Manager",
+          },
+        },
       },
     });
 
@@ -265,20 +428,22 @@ export const getAllUsersForHostel = async (hostelId: string) => {
   try {
     const Users = await prisma.user.findMany({
       where: {
-        hostelId,
-        delFlag: false, // Only get non-deleted users
-      },
-      include: {
         hostel: {
-          where: {
-            delFlag: false, // Only include non-deleted hostels
+          is: {
+            id: hostelId,
+            deletedAt: null,
           },
         },
+        deletedAt: null,
+      },
+      include: {
+        hostel: true,
       },
     });
+
     return Users;
   } catch (error) {
-    throw formatPrismaError(error);
+    throw error;
   }
 };
 
@@ -288,7 +453,7 @@ export const resetPassword = async (email: string) => {
   }
   try {
     const user = await prisma.user.findFirst({
-      where: { email, delFlag: false },
+      where: { email, deletedAt: null },
     });
 
     if (!user) {

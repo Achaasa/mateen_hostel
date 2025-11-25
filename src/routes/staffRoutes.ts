@@ -11,7 +11,7 @@ const StaffRouter = Router();
 StaffRouter.post(
   "/add",
   authenticateJWT, // Ensure user is authenticated first
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]), // Ensure user has required roles
+  authorizeRole(["super_admin", "admin"]), // Ensure user has required roles
   upload.single("photo"), // Process file upload AFTER validation
   validateHostelAccess, // Ensure user has access to the hostel
   validatePayload("Staff"), // ✅ Validate payload before file upload
@@ -23,7 +23,7 @@ StaffRouter.post(
 StaffRouter.get(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["super_admin"]),
   validateHostelAccess,
 
   StaffController.getAllStaffsController
@@ -33,7 +33,7 @@ StaffRouter.get(
 StaffRouter.get(
   "/get/:staffId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   StaffController.getStaffByIdController
@@ -45,7 +45,7 @@ StaffRouter.put(
   validatePayload("Staff"),
   upload.single("photo"),
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
    // Optional: Assuming you have a validation schema for updating a Staff
   StaffController.updateStaffController
@@ -55,7 +55,7 @@ StaffRouter.put(
 StaffRouter.delete(
   "/delete/:staffId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   StaffController.deleteStaffController
@@ -64,7 +64,7 @@ StaffRouter.delete(
 StaffRouter.get(
   "/get/hostel/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   StaffController.staffForHostel

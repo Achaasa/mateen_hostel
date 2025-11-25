@@ -1,358 +1,426 @@
-generator erd {
-  provider = "prisma-erd-generator"
-}
-
+// -------------------------------------------------------
+// GENERATORS & DATABASE
+// -------------------------------------------------------
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
+// -------------------------------------------------------
+// ENUMS
+// -------------------------------------------------------
+enum Role {
+  super_admin
+  admin
+  staff
+  resident
+}
+
+enum Gender {
+  male
+  female
+  other
+}
+
+enum AccountStatus {
+  active
+  suspended
+  pending
+}
+
+enum ResidentStatus {
+  active
+  checked_out
+  banned
+}
+
+enum RoomType {
+  single
+  double
+  suite
+  quad
+}
+
+enum RoomStatus {
+  available
+  occupied
+  maintenance
+}
+
+enum RoomGender {
+  male
+  female
+  mix
+}
+
+enum PaymentStatus {
+  pending
+  confirmed
+  cancelled
+}
+
+enum PaymentMethod {
+  cash
+  card
+  bank
+  momo
+  ussd
+  qr_code
+  visa
+  master_card
+  online
+}
+
+enum VisitorStatus {
+  active
+  checked_out
+}
+
+enum HostelState {
+  published
+  unpublished
+}
+
+// -------------------------------------------------------
+// USER & ROLE PROFILES
+// -------------------------------------------------------
+model User {
+  id       String  @id @default(cuid())
+  email    String  @unique
+  phone    String? @unique
+  password String
+  hostelId String?
+  hostel   Hostel? @relation(fields: [hostelId], references: [id])
+
+  firstName String
+  lastName  String
+  gender    Gender?
+  avatar    String?
+  imageUrl  String?
+  imageKey  String?
+
+  role          Role
+  accountStatus AccountStatus @default(active)
+  changedPassword Boolean @default(false)
+
+  adminProfile    AdminProfile?
+  staffProfile    StaffProfile?
+  residentProfile ResidentProfile?
+  superAdminProfile SuperAdminProfile?
+  leaves          Leave[]
+
+  lastLoginAt  DateTime?
+  refreshToken String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([role])
+}
+
+model AdminProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  hostelId String?
+  position String?
+
+  hostel Hostel? @relation(fields: [hostelId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SuperAdminProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  department        String?
+  title             String?
+  role              String?
+  middleName        String?
+  dateOfBirth       DateTime?
+  nationality       String?
+  religion          String?
+  maritalStatus     String?
+  ghanaCardNumber   String?
+  phoneNumber       String?
+  residence         String?
+  qualification     String?
+  dateOfAppointment DateTime?
+  passportUrl       String?
+  passportKey       String?
+  deletedAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StaffProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  hostelId   String?
+  department String?
+  title      String?
+  role       String?
+  middleName String?
+  dateOfBirth DateTime?
+  nationality String?
+  religion    String?
+  maritalStatus String?
+  ghanaCardNumber String?
+  phoneNumber     String?
+  residence       String?
+  qualification   String?
+  block           String?
+  dateOfAppointment DateTime?
+  passportUrl     String?
+  passportKey     String?
+  deletedAt       DateTime?
+
+  hostel Hostel? @relation(fields: [hostelId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ResidentProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  hostelId     String?
+  roomId       String?
+  studentId    String?
+  course       String?
+  roomNumber   String?
+  status       ResidentStatus @default(active)
+  checkInDate  DateTime?
+  checkOutDate DateTime?
+
+  hostel              Hostel?              @relation(fields: [hostelId], references: [id])
+  room                Room?                @relation(fields: [roomId], references: [id])
+  payments            Payment[]
+  visitors            Visitor[]
+  calendarYears       CalendarYear[]
+  historicalResidents HistoricalResident[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// -------------------------------------------------------
+// HOSTEL & RELATED MODELS
+// -------------------------------------------------------
 model Hostel {
-  id              String               @id @default(uuid())
-  name            String
-  description     String?
-  address         String
-  manager         String
-  email           String
-  phone           String
-  ghCard          String
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-  isVerified      Boolean              @default(false)
-  delFlag         Boolean              @default(false)
-  state           HostelState          @default(UNPUBLISHED)
-  location        Location
-  logoKey         String?
-  logoUrl         String?
-  Amenities       Amenities[]
-  CalendarYear    CalendarYear[]
-  historyResident HistoricalResident[]
-  HostelImages    HostelImages[]
-  resident        Resident[]
-  Rooms           Room[]
-  Staffs          Staff[]
-  User            User[]
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  address     String
+  manager     String
+  email       String
+  phone       String
+  ghCard      String
+  state       HostelState @default(unpublished)
+  isVerified  Boolean     @default(false)
+  logoKey     String?
+  logoUrl     String?
+  location    String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?
+
+  users            User[]
+  adminProfiles    AdminProfile[]
+  staffProfiles    StaffProfile[]
+  residentProfiles ResidentProfile[]
+  rooms            Room[]
+  amenities        Amenities[]
+  calendarYears    CalendarYear[]
+  hostelImages     HostelImage[]
+
+  @@index([location])
 }
 
 model Room {
-  id                   String               @id @default(uuid())
+  id                   String     @id @default(cuid())
   number               String
-  block                String?
   floor                String?
-  maxCap               Int
-  hostelId             String
-  price                Float
-  description          String
+  block                String?
   type                 RoomType
   status               RoomStatus
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-  delFlag              Boolean              @default(false)
   gender               RoomGender
-  currentResidentCount Int                  @default(0)
-  HistoricalResident   HistoricalResident[]
-  Payments             Payment[]
-  Resident             Resident[]
-  hostel               Hostel               @relation(fields: [hostelId], references: [id], onDelete: Cascade)
-  RoomImage            RoomImage[]
-  Amenities            Amenities[]          @relation("RoomAmenities")
+  maxCap               Int
+  currentResidentCount Int        @default(0)
+  price                Float
+  description          String?
+  hostelId             String
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  deletedAt            DateTime?
+
+  hostel              Hostel               @relation(fields: [hostelId], references: [id])
+  residents           ResidentProfile[]
+  historicalResidents HistoricalResident[]
+  payments            Payment[]
+  roomImages          RoomImage[]
+  amenities           Amenities[]          @relation("RoomAmenities")
+
+  @@unique([number, hostelId])
+  @@index([status])
 }
 
-model Staff {
-  id                String        @id @default(uuid())
-  hostelId          String
-  firstName         String
-  middleName        String?
-  lastName          String
-  dateOfBirth       DateTime
-  nationality       String
-  gender            Gender
-  maritalStatus     MaritalStatus
-  ghanaCardNumber   String
-  phoneNumber       String
-  religion          Religion
-  email             String        @unique
-  residence         String
-  block             String
-  dateOfAppointment DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  passportUrl       String
-  passportKey       String
-  delFlag           Boolean       @default(false)
-  role              String
-  qualification     String
-  hostel            Hostel        @relation(fields: [hostelId], references: [id], onDelete: Cascade)
-  type              StaffType     @default(OTHERS)
-}
-
+// -------------------------------------------------------
+// AMENITIES
+// -------------------------------------------------------
 model Amenities {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   name      String
   price     Float
+  hostelId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  hostelId  String
-  hostel    Hostel   @relation(fields: [hostelId], references: [id], onDelete: Cascade)
-  rooms     Room[]   @relation("RoomAmenities")
+
+  hostel Hostel @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+  rooms  Room[] @relation("RoomAmenities")
 }
 
-model Resident {
-  id                    String       @id @default(uuid())
-  name                  String
-  studentId             String
-  course                String
-  phone                 String
-  email                 String       @unique
-  emergencyContactName  String
-  emergencyContactPhone String
-  relationship          String
-  roomId                String?
-  gender                Gender
-  roomAssigned          Boolean      @default(false)
-  createdAt             DateTime     @default(now())
-  updatedAt             DateTime     @updatedAt
-  amountPaid            Float        @default(0)
-  balanceOwed           Float?
-  roomPrice             Float?
-  delFlag               Boolean      @default(false)
-  calendarYearId        String
-  hostelId              String?
-  payments              Payment[]
-  CalendarYear          CalendarYear @relation(fields: [calendarYearId], references: [id])
-  Hostel                Hostel?      @relation(fields: [hostelId], references: [id])
-  room                  Room?        @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  Visitor               Visitor[]
-  accessCode            String?
-}
-
-model Payment {
-  id                   String              @id @default(uuid())
-  amount               Float
-  date                 DateTime            @default(now())
-  residentId           String?
-  status               String?
-  roomId               String?
-  reference            String              @unique
-  method               String?
-  updatedAt            DateTime            @updatedAt
-  delFlag              Boolean             @default(false)
-  calendarYearId       String
-  historicalResidentId String?
-  CalendarYear         CalendarYear        @relation(fields: [calendarYearId], references: [id])
-  HistoricalResident   HistoricalResident? @relation(fields: [historicalResidentId], references: [id])
-  resident             Resident?           @relation(fields: [residentId], references: [id])
-  room                 Room?               @relation(fields: [roomId], references: [id])
-}
-
-model Visitor {
-  id         String        @id @default(uuid())
-  name       String
-  email      String
-  phone      String
-  residentId String
-  timeIn     DateTime      @default(now())
-  timeOut    DateTime?
-  status     VisitorStatus
-  updatedAt  DateTime      @updatedAt
-  resident   Resident      @relation(fields: [residentId], references: [id], onDelete: Cascade)
-}
-
-model User {
-  id              String   @id @default(uuid())
-  name            String
-  email           String
-  password        String
-  phoneNumber     String
-  role            UserRole
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  imageUrl        String
-  imageKey        String
-  delFlag         Boolean  @default(false)
-  hostelId        String?
-  changedPassword Boolean  @default(false)
-  hostel          Hostel?  @relation(fields: [hostelId], references: [id])
-  leaves          Leave[]
-}
-
-model Leave {
-  id          String      @id @default(uuid())
-  userId      String
-  startDate   DateTime
-  endDate     DateTime
-  reason      String
-  status      LeaveStatus @default(PENDING)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  delFlag     Boolean     @default(false)
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
+// -------------------------------------------------------
+// ROOM IMAGE
+// -------------------------------------------------------
 model RoomImage {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   roomId    String
   imageUrl  String
   imageKey  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  delFlag   Boolean  @default(false)
-  room      Room     @relation(fields: [roomId], references: [id])
+
+  room Room @relation(fields: [roomId], references: [id])
 }
 
+// -------------------------------------------------------
+// CALENDAR YEAR
+// -------------------------------------------------------
 model CalendarYear {
-  id                 String               @id @default(uuid())
-  name               String               @unique
-  startDate          DateTime
-  endDate            DateTime?
-  isActive           Boolean              @default(false)
-  hostelId           String
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  hostel             Hostel               @relation(fields: [hostelId], references: [id])
-  HistoricalResident HistoricalResident[]
-  Payments           Payment[]
-  Residents          Resident[]
+  id        String    @id @default(cuid())
+  name      String    @unique
+  startDate DateTime
+  endDate   DateTime?
+  isActive  Boolean   @default(false)
+  hostelId  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  hostel              Hostel               @relation(fields: [hostelId], references: [id])
+  payments            Payment[]
+  historicalResidents HistoricalResident[]
+  residents           ResidentProfile[]
 }
 
+// -------------------------------------------------------
+// PAYMENTS
+// -------------------------------------------------------
+model Payment {
+  id                   String         @id @default(cuid())
+  amount               Float
+  method               PaymentMethod?
+  status               PaymentStatus?
+  reference            String         @unique
+  residentProfileId    String?
+  roomId               String?
+  calendarYearId       String
+  historicalResidentId String?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  deletedAt            DateTime?
+  amountPaid           Float?
+  balanceOwed          Float?
+
+  residentProfile    ResidentProfile?    @relation(fields: [residentProfileId], references: [id])
+  room               Room?               @relation(fields: [roomId], references: [id])
+  calendarYear       CalendarYear        @relation(fields: [calendarYearId], references: [id])
+  historicalResident HistoricalResident? @relation(fields: [historicalResidentId], references: [id])
+}
+
+// -------------------------------------------------------
+// VISITORS
+// -------------------------------------------------------
+model Visitor {
+  id         String        @id @default(cuid())
+  name       String
+  email      String
+  phone      String
+  status     VisitorStatus
+  residentId String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  resident ResidentProfile @relation(fields: [residentId], references: [id])
+}
+
+// -------------------------------------------------------
+// HISTORICAL RESIDENTS
+// -------------------------------------------------------
 model HistoricalResident {
-  id             String       @id @default(uuid())
+  id             String   @id @default(cuid())
   residentId     String
   roomId         String
   calendarYearId String
   amountPaid     Float
   roomPrice      Float
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  hostelId       String?
-  residentCourse String
-  residentEmail  String
-  residentName   String
-  residentPhone  String
-  CalendarYear   CalendarYear @relation(fields: [calendarYearId], references: [id])
-  Hostel         Hostel?      @relation(fields: [hostelId], references: [id])
-  room           Room         @relation(fields: [roomId], references: [id])
-  payments       Payment[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  resident     ResidentProfile @relation(fields: [residentId], references: [id])
+  room         Room            @relation(fields: [roomId], references: [id])
+  calendarYear CalendarYear    @relation(fields: [calendarYearId], references: [id])
+  payments     Payment[]
 }
 
-model HostelImages {
-  id        String   @id @default(uuid())
+// -------------------------------------------------------
+// HOSTEL IMAGE
+// -------------------------------------------------------
+model HostelImage {
+  id        String   @id @default(cuid())
   hostelId  String
   imageUrl  String
   imageKey  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  delFlag   Boolean  @default(false)
-  hostel    Hostel   @relation(fields: [hostelId], references: [id])
+
+  hostel Hostel @relation(fields: [hostelId], references: [id])
 }
 
-enum UserRole {
-  ADMIN
-  SUPER_ADMIN
-}
-
-enum VisitorStatus {
-  ACTIVE
-  CHECKED_OUT
-}
-
-enum PaymentStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
-}
-
-enum Location {
-  AHAFO
-  ASHANTI
-  BONO
-  BONO_EAST
-  CENTRAL
-  EASTERN
-  GREATER_ACCRA
-  NORTH_EAST
-  NORTHERN
-  OTI
-  SAVANNAH
-  UPPER_EAST
-  UPPER_WEST
-  VOLTA
-  WESTERN
-  WESTERN_NORTH
-}
-
-enum Religion {
-  CHRISTIAN
-  MUSLIM
-  TRADITIONALIST
-}
-
-enum RoomStatus {
-  AVAILABLE
-  OCCUPIED
-  MAINTENANCE
-}
-
-enum RoomType {
-  SINGLE
-  DOUBLE
-  SUITE
-  QUAD
-}
-
-enum Gender {
-  MALE
-  FEMALE
-  OTHER
-}
-
-enum paymentMethod {
-  CASH
-  CARD
-  BANK
-  MOMO
-  USSD
-  QR_CODE
-  VISA
-  MASTER_CARD
-  ONLINE
-}
-
-enum StaffStatus {
-  ACTIVE
-  INACTIVE
-}
-
-enum MaritalStatus {
-  SINGLE
-  MARRIED
-  DIVORCED
-  WIDOWED
-}
-
-enum RoomGender {
-  MALE
-  FEMALE
-  MIX
-}
-
-enum HostelState {
-  PUBLISHED
-  UNPUBLISHED
-}
-
-enum StaffType {
-  ADMIN
-  OTHERS
-}
-
+// -------------------------------------------------------
+// LEAVE SYSTEM
+// -------------------------------------------------------
 enum LeaveStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  CANCELLED
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+model Leave {
+  id        String      @id @default(cuid())
+  userId    String
+  startDate DateTime
+  endDate   DateTime
+  reason    String
+  status    LeaveStatus @default(pending)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  deletedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id])
 }

@@ -1,7 +1,7 @@
 import prisma from "../utils/prisma";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
-import { Hostel, HostelState } from "@prisma/client";
+import { Hostel, HostelState, RoomStatus } from "@prisma/client";
 import { hostelSchema, updateHostelSchema } from "../zodSchema/hostelSchema";
 import cloudinary from "../utils/cloudinary";
 import { formatPrismaError } from "../utils/formatPrisma";
@@ -24,7 +24,7 @@ export const addHostel = async (
     const findHostel = await prisma.hostel.findFirst({
       where: {
         email: hostelData.email,
-        delFlag: false,
+        deletedAt: null,
       },
     });
     if (findHostel) {
@@ -39,7 +39,6 @@ export const addHostel = async (
         ...hostelData,
         logoUrl: logoInfo?.logoUrl,
         logoKey: logoInfo?.logoKey,
-        delFlag: false,
       },
     });
 
@@ -57,7 +56,7 @@ export const addHostel = async (
         imageKey: picture.imageKey,
         hostelId: createdHostel.id,
       }));
-      await prisma.hostelImages.createMany({ data: hostelImages });
+      await prisma.hostelImage.createMany({ data: hostelImages });
     }
 
     return createdHostel;
@@ -71,17 +70,22 @@ export const getAllHostels = async () => {
   try {
     const hostels = await prisma.hostel.findMany({
       where: {
-        delFlag: false, // Only get non-deleted hostels
+        deletedAt: null,
       },
       include: {
-        Rooms: {
-          include: { Amenities: true, RoomImage: true },
+        rooms: {
+          include: { amenities: true, roomImages: true },
         },
-        Staffs: true,
-        User: true,
-        Amenities: true,
-        HostelImages: true,
-        CalendarYear: {
+        staffProfiles: {
+          include: { user: true },
+        },
+        adminProfiles: {
+          include: { user: true },
+        },
+        residentProfiles: true,
+        amenities: true,
+        hostelImages: true,
+        calendarYears: {
           where: { isActive: true },
           select: {
             id: true,
@@ -105,14 +109,18 @@ export const getHostelById = async (hostelId: string) => {
     const hostel = await prisma.hostel.findUnique({
       where: {
         id: hostelId,
-        delFlag: false, // Only get non-deleted hostels
+        deletedAt: null,
       },
       include: {
-        Rooms: true,
-        Staffs: true,
-        User: true,
-        HostelImages: true,
-        CalendarYear: {
+        rooms: true,
+        staffProfiles: {
+          include: { user: true },
+        },
+        adminProfiles: {
+          include: { user: true },
+        },
+        hostelImages: true,
+        calendarYears: {
           where: { isActive: true },
           select: {
             id: true,
@@ -138,17 +146,16 @@ export const deleteHostel = async (hostelId: string) => {
   try {
     const findHostel = await prisma.hostel.findUnique({
       where: { id: hostelId },
-      include: { HostelImages: true },
+      include: { hostelImages: true },
     });
 
     if (!findHostel) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
     }
 
-    //  update the delFlag to true
     await prisma.hostel.update({
       where: { id: hostelId },
-      data: { delFlag: true },
+      data: { deletedAt: new Date() },
     });
 
     return { message: "Hostel soft deleted successfully" };
@@ -175,7 +182,7 @@ export const updateHostel = async (
 
     const findHostel = await prisma.hostel.findUnique({
       where: { id: hostelId },
-      include: { HostelImages: true },
+      include: { hostelImages: true },
     });
 
     if (!findHostel) {
@@ -194,7 +201,7 @@ export const updateHostel = async (
     // Handle photos update only if new pictures are provided
     if (pictures.length > 0) {
       // Delete old images from Cloudinary
-      for (const image of findHostel.HostelImages || []) {
+      for (const image of findHostel.hostelImages || []) {
         if (image.imageKey) {
           try {
             await cloudinary.uploader.destroy(image.imageKey);
@@ -209,7 +216,7 @@ export const updateHostel = async (
       }
 
       // Delete image records from database
-      await prisma.hostelImages.deleteMany({
+      await prisma.hostelImage.deleteMany({
         where: { hostelId },
       });
 
@@ -219,7 +226,7 @@ export const updateHostel = async (
         imageKey: picture.imageKey,
         hostelId,
       }));
-      await prisma.hostelImages.createMany({ data: hostelImages });
+      await prisma.hostelImage.createMany({ data: hostelImages });
     }
 
     const updatedHostel = await prisma.hostel.update({
@@ -239,7 +246,7 @@ export const getUnverifiedHostel = async () => {
     const unverifiedHostel = await prisma.hostel.findMany({
       where: {
         isVerified: false,
-        delFlag: false, // Only get non-deleted hostels
+        deletedAt: null,
       },
     });
     return unverifiedHostel;
@@ -254,7 +261,7 @@ export const publishHostel = async (hostelId: string) => {
     const hostel = await prisma.hostel.findUnique({
       where: {
         id: hostelId,
-        delFlag: false, // Only get non-deleted hostels
+        deletedAt: null,
       },
     });
     if (!hostel) {
@@ -274,7 +281,7 @@ export const publishHostel = async (hostelId: string) => {
     }
     await prisma.hostel.update({
       where: { id: hostelId },
-      data: { state: HostelState.PUBLISHED },
+      data: { state: HostelState.published },
     });
   } catch (error) {
     console.error("Publish Hostel Error:", error); //
@@ -287,7 +294,7 @@ export const unPublishHostel = async (hostelId: string) => {
     const hostel = await prisma.hostel.findUnique({
       where: {
         id: hostelId,
-        delFlag: false, // Only get non-deleted hostels
+        deletedAt: null,
       },
     });
     if (!hostel) {
@@ -295,7 +302,7 @@ export const unPublishHostel = async (hostelId: string) => {
     }
     await prisma.hostel.update({
       where: { id: hostelId },
-      data: { state: HostelState.UNPUBLISHED },
+      data: { state: HostelState.unpublished },
     });
   } catch (error) {
     console.error("Unpublish Hostel Error:", error);

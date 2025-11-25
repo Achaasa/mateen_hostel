@@ -29,7 +29,7 @@ hostelRoute.get(
 hostelRoute.get(
   "/unverified",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["super_admin"]),
   hostelController.unverifiedHostel,
 );
 
@@ -37,7 +37,7 @@ hostelRoute.get(
 hostelRoute.get(
   "/get/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   hostelController.getHostelByIdController,
 );
@@ -47,7 +47,7 @@ hostelRoute.put(
   "/update/:hostelId",
   validatePayload("Hostel"),
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   upload.fields([
     { name: "logo", maxCount: 1 },
@@ -59,7 +59,7 @@ hostelRoute.put(
 hostelRoute.put(
   "/publish/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   hostelController.publishHostel,
 );
@@ -68,7 +68,7 @@ hostelRoute.put(
 hostelRoute.put(
   "/unpublish/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   hostelController.unPublishHostel,
 );
@@ -76,13 +76,13 @@ hostelRoute.put(
 hostelRoute.delete(
   "/delete/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["super_admin"]),
   hostelController.deleteHostelController,
 );
 hostelRoute.post(
   "/verify/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["super_admin"]),
 
   verifyAndCreateHostelUser,
 );

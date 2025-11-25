@@ -4,7 +4,7 @@ import morgan from "morgan";
 import cors from "cors";
 import mainRouter from "./routes";
 import prisma from "./utils/prisma";
-import { createAdminUser } from "./controller/adminPanel";
+import { createSuperAdminUser } from "./controller/adminPanel";
 import { ErrorResponse } from "./utils/types";
 import HttpException from "./utils/http-error";
 import { HttpStatus } from "./utils/http-status";
@@ -54,7 +54,7 @@ app.use((error: any, req: Request, res: Response, next: NextFunction) => {
 
 const startServer = async () => {
   try {
-    await createAdminUser(); // Call the function to create the admin user
+    await createSuperAdminUser(); // Call the function to create the admin user
     app.listen(port, () => {
       console.log(`[server]: Server is running at http://localhost:${port}`);
     });

@@ -2,7 +2,6 @@ import { NextFunction, Request, Response } from "express";
 import * as residentHelper from "../helper/residentHelper"; // Assuming your helper functions are in this file
 import { HttpStatus } from "../utils/http-status";
 import HttpException from "../utils/http-error";
-import { Resident } from "@prisma/client";
 import {
   ResidentRequestDto,
   UpdateResidentRequestDto,
@@ -15,7 +14,7 @@ export const registerResidentController = async (
   req: Request,
   res: Response,
 ) => {
-  const residentData: Resident = req.body satisfies ResidentRequestDto; // Get resident data from the request body
+  const residentData: ResidentRequestDto = req.body as ResidentRequestDto; // Get resident data from the request body
 
   try {
     const newResident = await residentHelper.register(residentData);
@@ -87,7 +86,7 @@ export const getResidentByEmailController = async (
 // Update a Resident
 export const updateResidentController = async (req: Request, res: Response) => {
   const { residentId } = req.params;
-  const residentData: Resident = req.body satisfies UpdateResidentRequestDto;
+  const residentData: UpdateResidentRequestDto = req.body as UpdateResidentRequestDto;
 
   try {
     const updatedResident = await residentHelper.updateResident(
@@ -172,7 +171,7 @@ export const addResidentFromHostelController = async (
   req: Request,
   res: Response,
 ) => {
-  const residentData: Resident = req.body satisfies ResidentRequestDto; // Get resident data from the request body
+  const residentData: ResidentRequestDto = req.body as ResidentRequestDto; // Get resident data from the request body
 
   try {
     const newResident = await residentHelper.addResidentFromHostel(

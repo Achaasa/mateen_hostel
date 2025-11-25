@@ -2,7 +2,6 @@ import { Request, Response, NextFunction, response } from "express";
 import * as roomHelper from "../helper/roomHelper"; // Assuming you have your room service functions in this file
 import { HttpStatus } from "../utils/http-status";
 import HttpException from "../utils/http-error";
-import { Room } from "@prisma/client";
 import {
   confirmPayment,
   getAllPayments,
@@ -45,10 +44,10 @@ export const handlePaymentConfirmation = async (
 ) => {
   try {
     const { reference } = req.query;
-    const resident = await confirmPayment(reference as string);
+    const result = await confirmPayment(reference as string);
     res.status(200).json({
       message: "Payment confirmed.",
-      data: resident,
+      data: result,
     });
   } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
@@ -63,10 +62,10 @@ export const TopUpPaymentController = async (
 ) => {
   try {
     const { reference } = req.query;
-    const resident = await TopUpPayment(reference as string);
+    const result = await TopUpPayment(reference as string);
     res.status(200).json({
       message: "Payment confirmed.",
-      data: resident,
+      data: result,
     });
   } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used

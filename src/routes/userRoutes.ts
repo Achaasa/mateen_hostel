@@ -24,7 +24,7 @@ userRouter.post(
   "/signup",
   upload.single("photo"),
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validatePayload("User"), // Assuming you have validation logic for user payload
 
   signUpUser,
@@ -34,7 +34,7 @@ userRouter.post(
 userRouter.get(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["super_admin"]),
   getAllUsers,
 ); // Only accessible by SuperAdmin
 
@@ -42,7 +42,7 @@ userRouter.get(
 userRouter.get(
   "/email",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   getUserByEmail,
 );
 
@@ -50,7 +50,7 @@ userRouter.get(
 userRouter.get(
   "/get/:userId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   getUserById,
@@ -72,7 +72,7 @@ userRouter.put(
 userRouter.delete(
   "/delete/:userId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   deleteUser,
@@ -89,7 +89,7 @@ userRouter.post("/logout", authenticateJWT, logout);
 userRouter.get(
   "/get/:hostel/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
 
   usersForHostel,

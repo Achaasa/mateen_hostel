@@ -2,7 +2,14 @@ import prisma from "../utils/prisma";
 import { HttpStatus } from "../utils/http-status";
 import HttpException from "../utils/http-error";
 import { formatPrismaError } from "../utils/formatPrisma";
-import { Room, Resident, Payment } from "@prisma/client";
+import {
+  HostelState,
+  Payment,
+  PaymentStatus,
+  ResidentProfile,
+  Room,
+  RoomStatus,
+} from "@prisma/client";
 import Decimal from "decimal.js";
 
 interface HostelAnalytics {
@@ -102,16 +109,20 @@ interface CalendarYearReport {
   occupancyGrowth?: number; // Compared to previous year
 }
 
-const VALID_PAYMENT_STATUSES = ["success", "CONFIRMED"] as const;
+const VALID_PAYMENT_STATUSES: PaymentStatus[] = [PaymentStatus.confirmed];
+
+type ResidentProfileWithPayments = ResidentProfile & {
+  payments: Payment[];
+};
 
 // Helper: Room metrics
 const calculateRoomMetrics = (rooms: Room[]) => {
   const totalRooms = rooms.length;
   const activeRooms = rooms.filter(
-    (room) => room.status !== "MAINTENANCE",
+    (room) => room.status !== RoomStatus.maintenance,
   ).length;
   const occupiedRooms = rooms.filter(
-    (room) => room.status === "OCCUPIED",
+    (room) => room.status === RoomStatus.occupied,
   ).length;
   const occupancyRate =
     activeRooms > 0
@@ -137,14 +148,14 @@ const calculateRoomMetrics = (rooms: Room[]) => {
     activeRooms,
     occupiedRooms,
     occupancyRate,
-    expectedIncome: new Decimal(expectedIncome).toFixed(2),
+    expectedIncome: Number(new Decimal(expectedIncome).toFixed(2)),
     averageRoomPrice: Number(averageRoomPrice),
   };
 };
 
 // Helper: Resident metrics
 const calculateResidentMetrics = (
-  residents: (Resident & { payments: Payment[] })[],
+  residents: ResidentProfileWithPayments[],
   allPayments: Payment[],
 ) => {
   let totalRevenue = new Decimal(0);
@@ -155,58 +166,36 @@ const calculateResidentMetrics = (
 
   // Calculate metrics from residents
   residents.forEach((resident) => {
-    const confirmedPayments = (resident.payments || []).filter((payment) =>
-      VALID_PAYMENT_STATUSES.includes(
-        payment.status as (typeof VALID_PAYMENT_STATUSES)[number],
-      ),
+    const confirmedPayments = (resident.payments || []).filter(
+      (payment) =>
+        payment.status !== null &&
+        VALID_PAYMENT_STATUSES.includes(payment.status),
     );
     totalPayments += confirmedPayments.length;
-    totalPaymentAmount = totalPaymentAmount.plus(
-      confirmedPayments.reduce(
-        (sum, payment) => new Decimal(sum).plus(payment.amount ?? 0).toNumber(),
-        0,
-      ),
-    );
-    totalRevenue = totalRevenue.plus(resident.amountPaid ?? 0);
-
-    // Debt calculation: include balanceOwed if resident paid >= 70% but < 100% of roomPrice
-    if (
-      resident.roomPrice &&
-      resident.amountPaid &&
-      resident.balanceOwed &&
-      resident.balanceOwed > 0
-    ) {
-      const paymentPercentage = new Decimal(resident.amountPaid)
-        .div(resident.roomPrice)
-        .mul(100);
-      if (paymentPercentage.gte(70) && paymentPercentage.lt(100)) {
-        totalDebt = totalDebt.plus(resident.balanceOwed);
+    confirmedPayments.forEach((payment) => {
+      totalPaymentAmount = totalPaymentAmount.plus(payment.amount ?? 0);
+      totalRevenue = totalRevenue.plus(payment.amount ?? 0);
+      if (payment.balanceOwed && payment.balanceOwed > 0) {
+        totalDebt = totalDebt.plus(payment.balanceOwed);
         totalDebtors += 1;
       }
-    }
+    });
   });
 
-  // Include payments with historicalResidentId or null residentId
-  const historicalOrNullPayments = allPayments.filter(
+  // Include payments with historicalResidentId or no residentProfileId
+  const historicalOrStandalonePayments = allPayments.filter(
     (payment) =>
-      (payment.historicalResidentId || payment.residentId === null) &&
-      VALID_PAYMENT_STATUSES.includes(
-        payment.status as (typeof VALID_PAYMENT_STATUSES)[number],
-      ),
+      !payment.residentProfileId &&
+      VALID_PAYMENT_STATUSES.includes(payment.status ?? PaymentStatus.pending),
   );
-  totalPayments += historicalOrNullPayments.length;
-  totalPaymentAmount = totalPaymentAmount.plus(
-    historicalOrNullPayments.reduce(
-      (sum, payment) => new Decimal(sum).plus(payment.amount ?? 0).toNumber(),
-      0,
-    ),
-  );
-  totalRevenue = totalRevenue.plus(
-    historicalOrNullPayments.reduce(
-      (sum, payment) => new Decimal(sum).plus(payment.amount ?? 0).toNumber(),
-      0,
-    ),
-  );
+  historicalOrStandalonePayments.forEach((payment) => {
+    totalPayments += 1;
+    totalPaymentAmount = totalPaymentAmount.plus(payment.amount ?? 0);
+    totalRevenue = totalRevenue.plus(payment.amount ?? 0);
+    if (payment.balanceOwed && payment.balanceOwed > 0) {
+      totalDebt = totalDebt.plus(payment.balanceOwed);
+    }
+  });
 
   const totalResidents = residents.length;
   const debtorsPercentage =
@@ -216,32 +205,32 @@ const calculateResidentMetrics = (
         )
       : 0;
   const averageDebtPerResident =
-    totalDebtors > 0 ? totalDebt.div(totalDebtors).toFixed(2) : 0;
+    totalDebtors > 0 ? Number(totalDebt.div(totalDebtors).toFixed(2)) : 0;
 
   const averagePaymentAmount =
     totalPayments > 0
-      ? Number(new Decimal(totalPaymentAmount).div(totalPayments).toFixed(2))
+      ? Number(totalPaymentAmount.div(totalPayments).toFixed(2))
       : 0;
 
   return {
-    totalRevenue: totalRevenue.toFixed(2),
-    totalDebt: totalDebt.toFixed(2),
+    totalRevenue: Number(totalRevenue.toFixed(2)),
+    totalDebt: Number(totalDebt.toFixed(2)),
     totalPayments,
-    totalPaymentAmount: totalPaymentAmount.toFixed(2),
+    totalPaymentAmount: Number(totalPaymentAmount.toFixed(2)),
     totalResidents,
     totalDebtors,
     debtorsPercentage,
-    averageDebtPerResident: Number(averageDebtPerResident),
+    averageDebtPerResident,
     averagePaymentAmount,
   };
 };
 
 // Helper: Payment metrics
 const calculatePaymentMetrics = (payments: Payment[]) => {
-  const confirmedPayments = payments.filter((payment) =>
-    VALID_PAYMENT_STATUSES.includes(
-      payment.status as (typeof VALID_PAYMENT_STATUSES)[number],
-    ),
+  const confirmedPayments = payments.filter(
+    (payment) =>
+      payment.status !== null &&
+      VALID_PAYMENT_STATUSES.includes(payment.status),
   );
   const totalPayments = confirmedPayments.length;
   const totalPaymentAmount = confirmedPayments.reduce(
@@ -265,53 +254,59 @@ export const generateHostelAnalytics = async (
 ): Promise<HostelAnalytics> => {
   try {
     const hostel = await prisma.hostel.findUnique({
-      where: { id: hostelId, delFlag: false },
+      where: { id: hostelId, deletedAt: null },
       include: {
-        Rooms: {
-          where: { delFlag: false },
-          select: { id: true, status: true, price: true },
+        rooms: {
+          where: { deletedAt: null },
         },
-        Staffs: { where: { delFlag: false } },
-        resident: {
-          where: { delFlag: false },
-          select: {
-            id: true,
-            amountPaid: true,
-            balanceOwed: true,
-            roomPrice: true,
-            payments: true,
+        staffProfiles: true,
+        residentProfiles: {
+          include: {
+            payments: {
+              where: {
+                deletedAt: null,
+                status: { in: VALID_PAYMENT_STATUSES },
+              },
+            },
           },
         },
-        CalendarYear: { where: { isActive: true }, select: { id: true } },
+        calendarYears: { where: { isActive: true }, select: { id: true } },
       },
     });
 
     if (!hostel)
       throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
 
-    const roomIds = hostel.Rooms.map((r) => r.id);
-    const residentIds = hostel.resident.map((r) => r.id);
-    const calendarYearIds = hostel.CalendarYear.map((cy) => cy.id);
+    const roomIds = hostel.rooms.map((r) => r.id);
+    const residentIds = hostel.residentProfiles.map((r) => r.id);
+    const calendarYearIds = hostel.calendarYears.map((cy) => cy.id);
+
+    const paymentFilters = [] as {
+      residentProfileId?: { in: string[] };
+      roomId?: { in: string[] };
+      calendarYearId?: { in: string[] };
+    }[];
+    if (residentIds.length > 0) {
+      paymentFilters.push({ residentProfileId: { in: residentIds } });
+    }
+    if (roomIds.length > 0) {
+      paymentFilters.push({ roomId: { in: roomIds } });
+    }
+    if (calendarYearIds.length > 0) {
+      paymentFilters.push({ calendarYearId: { in: calendarYearIds } });
+    }
 
     const payments = await prisma.payment.findMany({
       where: {
-        delFlag: false,
-        status: { in: Array.from(VALID_PAYMENT_STATUSES) },
-        OR: [
-          { residentId: { in: residentIds.length ? residentIds : [""] } },
-          { roomId: { in: roomIds.length ? roomIds : [""] } },
-          {
-            calendarYearId: {
-              in: calendarYearIds.length ? calendarYearIds : [""],
-            },
-          },
-        ],
+        deletedAt: null,
+        status: { in: VALID_PAYMENT_STATUSES },
+        ...(paymentFilters.length > 0 ? { OR: paymentFilters } : {}),
       },
     });
 
-    const roomMetrics = calculateRoomMetrics(hostel.Rooms as Room[]);
+    const roomMetrics = calculateRoomMetrics(hostel.rooms as Room[]);
     const residentMetrics = calculateResidentMetrics(
-      hostel.resident as (Resident & { payments: Payment[] })[],
+      hostel.residentProfiles as ResidentProfileWithPayments[],
       payments,
     );
 
@@ -340,7 +335,7 @@ export const generateHostelAnalytics = async (
       totalDebtors: residentMetrics.totalDebtors,
       debtorsPercentage: residentMetrics.debtorsPercentage,
       averageDebtPerResident: residentMetrics.averageDebtPerResident,
-      totalStaff: hostel.Staffs.length,
+      totalStaff: hostel.staffProfiles.length,
       averageRoomPrice: Number(roomMetrics.averageRoomPrice),
       currentYearStats: {
         totalPayments: residentMetrics.totalPayments,
@@ -360,29 +355,26 @@ export const generateSystemAnalytics = async (): Promise<SystemAnalytics> => {
   try {
     const [hostels, allPayments, activeCalendarYears] = await Promise.all([
       prisma.hostel.findMany({
-        where: { delFlag: false },
+        where: { deletedAt: null },
         include: {
-          Rooms: {
-            where: { delFlag: false },
-            select: { id: true, status: true, price: true },
-          },
-          Staffs: { where: { delFlag: false } },
-          resident: {
-            where: { delFlag: false },
-            select: {
-              id: true,
-              amountPaid: true,
-              balanceOwed: true,
-              roomPrice: true,
-              payments: true,
+          rooms: { where: { deletedAt: null } },
+          staffProfiles: true,
+          residentProfiles: {
+            include: {
+              payments: {
+                where: {
+                  deletedAt: null,
+                  status: { in: VALID_PAYMENT_STATUSES },
+                },
+              },
             },
           },
         },
       }),
       prisma.payment.findMany({
         where: {
-          delFlag: false,
-          status: { in: Array.from(VALID_PAYMENT_STATUSES) },
+          deletedAt: null,
+          status: { in: VALID_PAYMENT_STATUSES },
         },
       }),
       prisma.calendarYear.count({
@@ -403,19 +395,20 @@ export const generateSystemAnalytics = async (): Promise<SystemAnalytics> => {
     };
 
     const allResidents = hostels.flatMap(
-      (hostel) => hostel.resident as (Resident & { payments: Payment[] })[],
+      (hostel) =>
+        hostel.residentProfiles as ResidentProfileWithPayments[],
     );
     const residentMetrics = calculateResidentMetrics(allResidents, allPayments);
 
     hostels.forEach((hostel) => {
-      const roomMetrics = calculateRoomMetrics(hostel.Rooms as Room[]);
+      const roomMetrics = calculateRoomMetrics(hostel.rooms as Room[]);
       systemMetrics.totalRooms += roomMetrics.totalRooms;
       systemMetrics.activeRooms += roomMetrics.activeRooms;
       systemMetrics.occupiedRooms += roomMetrics.occupiedRooms;
       systemMetrics.expectedIncome = systemMetrics.expectedIncome.plus(
         roomMetrics.expectedIncome,
       );
-      systemMetrics.totalStaff += hostel.Staffs.length;
+      systemMetrics.totalStaff += hostel.staffProfiles.length;
     });
 
     const paymentMetrics = calculatePaymentMetrics(allPayments);
@@ -478,7 +471,9 @@ export const generateSystemAnalytics = async (): Promise<SystemAnalytics> => {
       totalHostels: hostels.length,
       verifiedHostels: hostels.filter((h) => h.isVerified).length,
       unverifiedHostels: hostels.filter((h) => !h.isVerified).length,
-      publishedHostels: hostels.filter((h) => h.state === "PUBLISHED").length,
+      publishedHostels: hostels.filter(
+        (h) => h.state === HostelState.published,
+      ).length,
       averageOccupancyRate: occupancyRate,
       systemWideDebtPercentage: debtPercentage,
       activeCalendarYears,
@@ -494,22 +489,21 @@ export const getHostelDisbursementSummary =
   async (): Promise<HostelSummaryResponse> => {
     try {
       const hostels = await prisma.hostel.findMany({
-        where: { delFlag: false },
+        where: { deletedAt: null },
         select: { id: true, name: true, phone: true, email: true },
       });
 
       const rooms = await prisma.room.findMany({
-        where: { delFlag: false },
+        where: { deletedAt: null },
         select: { id: true, hostelId: true },
       });
-      const roomHostelMap = new Map(rooms.map((r) => [r.id, r.hostelId]));
+      const roomHostelMap = new Map(rooms.map((room) => [room.id, room.hostelId]));
 
-      const residents = await prisma.resident.findMany({
-        where: { delFlag: false },
+      const residentProfiles = await prisma.residentProfile.findMany({
         select: { id: true, hostelId: true },
       });
       const residentHostelMap = new Map(
-        residents.map((r) => [r.id, r.hostelId]),
+        residentProfiles.map((resident) => [resident.id, resident.hostelId ?? ""]),
       );
 
       const calendarYears = await prisma.calendarYear.findMany({
@@ -522,59 +516,81 @@ export const getHostelDisbursementSummary =
 
       const payments = await prisma.payment.findMany({
         where: {
-          delFlag: false,
-          status: { in: ["success", "CONFIRMED"] },
+          deletedAt: null,
+          status: { in: VALID_PAYMENT_STATUSES },
         },
         select: {
           amount: true,
           calendarYearId: true,
           roomId: true,
-          residentId: true,
+          residentProfileId: true,
           historicalResidentId: true,
         },
       });
 
+      const historicalIds = Array.from(
+        new Set(
+          payments
+            .map((payment) => payment.historicalResidentId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+
+      const historicalResidents = historicalIds.length
+        ? await prisma.historicalResident.findMany({
+            where: { id: { in: historicalIds } },
+            select: { id: true, roomId: true, residentId: true },
+          })
+        : [];
+
+      const historicalHostelMap = new Map<string, string>();
+      historicalResidents.forEach((hist) => {
+        if (hist.roomId && roomHostelMap.has(hist.roomId)) {
+          historicalHostelMap.set(hist.id, roomHostelMap.get(hist.roomId)!);
+        } else if (hist.residentId && residentHostelMap.has(hist.residentId)) {
+          historicalHostelMap.set(hist.id, residentHostelMap.get(hist.residentId)!);
+        }
+      });
+
       const hostelAmountMap = new Map<string, Decimal>();
       for (const payment of payments) {
-        let hostelId: string | undefined = undefined;
-        if (
-          payment.calendarYearId &&
-          calendarYearHostelMap.has(payment.calendarYearId)
-        ) {
-          const id = calendarYearHostelMap.get(payment.calendarYearId);
-          if (id !== null && id !== undefined) hostelId = id;
-        } else if (payment.roomId && roomHostelMap.has(payment.roomId)) {
-          const id = roomHostelMap.get(payment.roomId);
-          if (id !== null && id !== undefined) hostelId = id;
-        } else if (
-          payment.residentId &&
-          residentHostelMap.has(payment.residentId)
-        ) {
-          const id = residentHostelMap.get(payment.residentId);
-          if (id !== null && id !== undefined) hostelId = id;
+        let hostelId: string | undefined;
+
+        if (!hostelId && payment.calendarYearId) {
+          hostelId = calendarYearHostelMap.get(payment.calendarYearId);
         }
-        if (hostelId) {
-          hostelAmountMap.set(
-            hostelId,
-            (hostelAmountMap.get(hostelId) ?? new Decimal(0)).plus(
-              payment.amount ?? 0,
-            ),
-          );
+        if (!hostelId && payment.roomId) {
+          hostelId = roomHostelMap.get(payment.roomId);
         }
+        if (!hostelId && payment.residentProfileId) {
+          hostelId = residentHostelMap.get(payment.residentProfileId);
+        }
+        if (!hostelId && payment.historicalResidentId) {
+          hostelId = historicalHostelMap.get(payment.historicalResidentId);
+        }
+
+        if (!hostelId) continue;
+
+        hostelAmountMap.set(
+          hostelId,
+          (hostelAmountMap.get(hostelId) ?? new Decimal(0)).plus(
+            payment.amount ?? 0,
+          ),
+        );
       }
 
-      const disbursements: HostelSummary[] = hostels.map((h) => ({
-        hostelId: h.id,
-        name: h.name,
-        phone: h.phone,
-        email: h.email,
+      const disbursements: HostelSummary[] = hostels.map((hostel) => ({
+        hostelId: hostel.id,
+        name: hostel.name,
+        phone: hostel.phone,
+        email: hostel.email,
         amountCollected: Number(
-          (hostelAmountMap.get(h.id) ?? new Decimal(0)).toFixed(2),
+          (hostelAmountMap.get(hostel.id) ?? new Decimal(0)).toFixed(2),
         ),
       }));
 
       const totalCollected = disbursements.reduce(
-        (sum, h) => new Decimal(sum).plus(h.amountCollected).toNumber(),
+        (sum, entry) => new Decimal(sum).plus(entry.amountCollected).toNumber(),
         0,
       );
 
@@ -595,175 +611,196 @@ export const generateCalendarYearReport = async (
 ): Promise<CalendarYearReport> => {
   try {
     const calendarYear = await prisma.calendarYear.findUnique({
-      where: { 
-        id: calendarYearId,
-        hostelId: hostelId 
-      },
+      where: { id: calendarYearId, hostelId },
       include: {
-        Residents: {
-          where: { delFlag: false },
+        residents: {
           include: {
             room: true,
             payments: {
               where: {
-                delFlag: false,
-                status: { in: Array.from(VALID_PAYMENT_STATUSES) }
-              }
-            }
-          }
+                deletedAt: null,
+                status: { in: VALID_PAYMENT_STATUSES },
+                calendarYearId,
+              },
+            },
+          },
         },
-        HistoricalResident: {
+        historicalResidents: {
           include: {
             room: true,
             payments: {
               where: {
-                delFlag: false,
-                status: { in: Array.from(VALID_PAYMENT_STATUSES) }
-              }
-            }
-          }
+                deletedAt: null,
+                status: { in: VALID_PAYMENT_STATUSES },
+                calendarYearId,
+              },
+            },
+          },
         },
-        Payments: {
+        payments: {
           where: {
-            delFlag: false,
-            status: { in: Array.from(VALID_PAYMENT_STATUSES) }
-          }
-        }
-      }
+            deletedAt: null,
+            status: { in: VALID_PAYMENT_STATUSES },
+          },
+          select: {
+            amount: true,
+            method: true,
+            residentProfileId: true,
+            historicalResidentId: true,
+          },
+        },
+      },
     });
 
     if (!calendarYear) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Calendar year not found");
     }
 
-    // Get all rooms for this hostel
     const rooms = await prisma.room.findMany({
-      where: { 
-        hostelId: hostelId,
-        delFlag: false 
-      }
+      where: {
+        hostelId,
+        deletedAt: null,
+      },
     });
 
-    // Calculate financial metrics
-    const currentResidents = calendarYear.Residents;
-    const historicalResidents = calendarYear.HistoricalResident;
-    const allPayments = calendarYear.Payments;
+    const currentResidents = calendarYear.residents;
+    const historicalResidents = calendarYear.historicalResidents;
+    const standalonePayments = calendarYear.payments.filter(
+      (payment) => !payment.residentProfileId && !payment.historicalResidentId,
+    );
 
-    // Current year financial calculations
     let totalRevenue = new Decimal(0);
     let totalExpectedRevenue = new Decimal(0);
     let totalPayments = 0;
     let totalPaymentAmount = new Decimal(0);
 
-    // Process current residents
     currentResidents.forEach((resident) => {
-      const confirmedPayments = resident.payments.filter((payment) =>
-        VALID_PAYMENT_STATUSES.includes(
-          payment.status as (typeof VALID_PAYMENT_STATUSES)[number]
-        )
-      );
-      
+      const confirmedPayments = resident.payments;
       totalPayments += confirmedPayments.length;
-      totalPaymentAmount = totalPaymentAmount.plus(
-        confirmedPayments.reduce(
-          (sum, payment) => new Decimal(sum).plus(payment.amount ?? 0).toNumber(),
-          0
-        )
-      );
-      
-      totalRevenue = totalRevenue.plus(resident.amountPaid ?? 0);
-      totalExpectedRevenue = totalExpectedRevenue.plus(resident.roomPrice ?? 0);
-    });
-
-    // Process historical residents
-    historicalResidents.forEach((histResident) => {
-      const confirmedPayments = histResident.payments.filter((payment) =>
-        VALID_PAYMENT_STATUSES.includes(
-          payment.status as (typeof VALID_PAYMENT_STATUSES)[number]
-        )
-      );
-      
-      totalPayments += confirmedPayments.length;
-      totalPaymentAmount = totalPaymentAmount.plus(
-        confirmedPayments.reduce(
-          (sum, payment) => new Decimal(sum).plus(payment.amount ?? 0).toNumber(),
-          0
-        )
-      );
-      
-      totalRevenue = totalRevenue.plus(histResident.amountPaid);
-      totalExpectedRevenue = totalExpectedRevenue.plus(histResident.roomPrice);
-    });
-
-    // Process standalone payments
-    allPayments.forEach((payment) => {
-      if (!payment.residentId && !payment.historicalResidentId) {
-        totalPayments += 1;
+      confirmedPayments.forEach((payment) => {
         totalPaymentAmount = totalPaymentAmount.plus(payment.amount ?? 0);
         totalRevenue = totalRevenue.plus(payment.amount ?? 0);
-      }
+      });
+      totalExpectedRevenue = totalExpectedRevenue.plus(resident.room?.price ?? 0);
     });
 
-    // Calculate derived metrics
+    const historicalRevenueTotals: number[] = [];
+    historicalResidents.forEach((histResident) => {
+      const confirmedPayments = histResident.payments;
+      totalPayments += confirmedPayments.length;
+      const histRevenue = confirmedPayments.reduce(
+        (sum, payment) => new Decimal(sum).plus(payment.amount ?? 0),
+        new Decimal(0),
+      );
+      totalPaymentAmount = totalPaymentAmount.plus(histRevenue);
+      totalRevenue = totalRevenue.plus(histRevenue);
+      totalExpectedRevenue = totalExpectedRevenue.plus(
+        histResident.roomPrice ?? histResident.room?.price ?? 0,
+      );
+      historicalRevenueTotals.push(Number(histRevenue.toFixed(2)));
+    });
+
+    standalonePayments.forEach((payment) => {
+      totalPayments += 1;
+      totalPaymentAmount = totalPaymentAmount.plus(payment.amount ?? 0);
+      totalRevenue = totalRevenue.plus(payment.amount ?? 0);
+    });
+
     const totalResidents = currentResidents.length + historicalResidents.length;
     const collectionRate = Number(totalExpectedRevenue) > 0
-      ? Number(new Decimal(totalRevenue).div(totalExpectedRevenue).mul(100).toFixed(2))
+      ? Number(
+          totalRevenue
+            .div(totalExpectedRevenue)
+            .mul(100)
+            .toFixed(2),
+        )
       : 0;
     const averagePaymentAmount = totalPayments > 0
-      ? Number(new Decimal(totalPaymentAmount).div(totalPayments).toFixed(2))
+      ? Number(totalPaymentAmount.div(totalPayments).toFixed(2))
       : 0;
     const averageRevenuePerResident = totalResidents > 0
       ? Number(totalRevenue.div(totalResidents).toFixed(2))
       : 0;
 
-    // Calculate room metrics
     const roomMetrics = calculateRoomMetrics(rooms);
 
-    // Calculate payment methods breakdown
     const paymentMethodsMap = new Map<string, { count: number; totalAmount: Decimal }>();
-    allPayments.forEach((payment) => {
-      const method = payment.method || 'Unknown';
-      const existing = paymentMethodsMap.get(method) || { count: 0, totalAmount: new Decimal(0) };
+    [...currentResidents, ...historicalResidents].forEach((entity) => {
+      entity.payments.forEach((payment) => {
+        const method = payment.method ?? "Unknown";
+        const existing =
+          paymentMethodsMap.get(method) ??
+          { count: 0, totalAmount: new Decimal(0) };
+        paymentMethodsMap.set(method, {
+          count: existing.count + 1,
+          totalAmount: existing.totalAmount.plus(payment.amount ?? 0),
+        });
+      });
+    });
+    standalonePayments.forEach((payment) => {
+      const method = payment.method ?? "Unknown";
+      const existing =
+        paymentMethodsMap.get(method) ?? { count: 0, totalAmount: new Decimal(0) };
       paymentMethodsMap.set(method, {
         count: existing.count + 1,
-        totalAmount: existing.totalAmount.plus(payment.amount ?? 0)
+        totalAmount: existing.totalAmount.plus(payment.amount ?? 0),
       });
     });
 
-    const paymentMethods = Array.from(paymentMethodsMap.entries()).map(([method, data]) => ({
-      method,
-      count: data.count,
-      totalAmount: Number(data.totalAmount.toFixed(2))
-    }));
+    const paymentMethods = Array.from(paymentMethodsMap.entries()).map(
+      ([method, data]) => ({
+        method,
+        count: data.count,
+        totalAmount: Number(data.totalAmount.toFixed(2)),
+      }),
+    );
 
-    // Generate monthly breakdown for active calendar years
-    let monthlyStats: CalendarYearReport['monthlyStats'] = undefined;
+    let monthlyStats: CalendarYearReport["monthlyStats"] = undefined;
     if (calendarYear.isActive) {
       monthlyStats = await generateMonthlyBreakdown(calendarYearId, hostelId);
     }
 
-    // Calculate growth metrics (compare with previous year if available)
     const previousYear = await prisma.calendarYear.findFirst({
       where: {
-        hostelId: hostelId,
+        hostelId,
         isActive: false,
-        endDate: { lt: calendarYear.startDate }
+        endDate: { lt: calendarYear.startDate },
       },
-      orderBy: { endDate: 'desc' }
+      orderBy: { endDate: "desc" },
     });
 
-    let revenueGrowth: number | undefined = undefined;
-    let occupancyGrowth: number | undefined = undefined;
+    let revenueGrowth: number | undefined;
+    let occupancyGrowth: number | undefined;
 
     if (previousYear) {
-      const previousYearReport = await generateCalendarYearReport(hostelId, previousYear.id);
-      revenueGrowth = previousYearReport.totalRevenue > 0
-        ? Number(new Decimal(totalRevenue).div(previousYearReport.totalRevenue).minus(1).mul(100).toFixed(2))
-        : undefined;
-      occupancyGrowth = previousYearReport.occupancyRate > 0
-        ? Number(new Decimal(roomMetrics.occupancyRate).div(previousYearReport.occupancyRate).minus(1).mul(100).toFixed(2))
-        : undefined;
+      const previousYearReport = await generateCalendarYearReport(
+        hostelId,
+        previousYear.id,
+      );
+      if (previousYearReport.totalRevenue > 0) {
+        revenueGrowth = Number(
+          totalRevenue
+            .div(previousYearReport.totalRevenue)
+            .minus(1)
+            .mul(100)
+            .toFixed(2),
+        );
+      }
+      if (previousYearReport.occupancyRate > 0) {
+        occupancyGrowth = Number(
+          new Decimal(roomMetrics.occupancyRate)
+            .div(previousYearReport.occupancyRate)
+            .minus(1)
+            .mul(100)
+            .toFixed(2),
+        );
+      }
     }
+
+    const historicalRevenue = historicalRevenueTotals.reduce(
+      (sum, value) => new Decimal(sum).plus(value).toNumber(),
+      0,
+    );
 
     return {
       calendarYearId: calendarYear.id,
@@ -771,40 +808,25 @@ export const generateCalendarYearReport = async (
       startDate: calendarYear.startDate,
       endDate: calendarYear.endDate,
       isActive: calendarYear.isActive,
-      
-      // Financial Metrics
       totalRevenue: Number(totalRevenue.toFixed(2)),
       totalExpectedRevenue: Number(totalExpectedRevenue.toFixed(2)),
       totalPayments,
       averagePaymentAmount,
       collectionRate,
-      
-      // Resident Metrics
       totalResidents,
       averageRevenuePerResident,
-      
-      // Room Metrics
       totalRooms: roomMetrics.totalRooms,
       activeRooms: roomMetrics.activeRooms,
       occupiedRooms: roomMetrics.occupiedRooms,
       occupancyRate: roomMetrics.occupancyRate,
       averageRoomPrice: roomMetrics.averageRoomPrice,
-      
-      // Historical Data
       historicalResidents: historicalResidents.length,
-      historicalRevenue: historicalResidents.reduce((sum, hist) => sum + hist.amountPaid, 0),
-      
-      // Payment Analysis
+      historicalRevenue,
       paymentMethods,
-      
-      // Monthly Breakdown
       monthlyStats,
-      
-      // Performance Indicators
       revenueGrowth,
-      occupancyGrowth
+      occupancyGrowth,
     };
-
   } catch (error) {
     console.error("Error generating calendar year report:", error);
     throw formatPrismaError(error);
@@ -819,13 +841,13 @@ const generateMonthlyBreakdown = async (
   try {
     const payments = await prisma.payment.findMany({
       where: {
-        calendarYearId: calendarYearId,
-        delFlag: false,
-        status: { in: Array.from(VALID_PAYMENT_STATUSES) },
+        calendarYearId,
+        deletedAt: null,
+        status: { in: VALID_PAYMENT_STATUSES },
       },
       select: {
         amount: true,
-        date: true,
+        createdAt: true,
       },
     });
 
@@ -834,7 +856,6 @@ const generateMonthlyBreakdown = async (
       { revenue: Decimal; payments: number; newResidents: number }
     >();
 
-    // Initialize all months
     const months = [
       "January",
       "February",
@@ -858,11 +879,8 @@ const generateMonthlyBreakdown = async (
       });
     });
 
-    // Aggregate payment data by month
     payments.forEach((payment) => {
-      const month = new Date(payment.date).toLocaleString("en-US", {
-        month: "long",
-      });
+      const month = payment.createdAt.toLocaleString("en-US", { month: "long" });
       const existing = monthlyMap.get(month) || {
         revenue: new Decimal(0),
         payments: 0,
@@ -871,7 +889,7 @@ const generateMonthlyBreakdown = async (
       monthlyMap.set(month, {
         revenue: existing.revenue.plus(payment.amount ?? 0),
         payments: existing.payments + 1,
-        newResidents: existing.newResidents, // This would need additional logic to track new residents
+        newResidents: existing.newResidents,
       });
     });
 

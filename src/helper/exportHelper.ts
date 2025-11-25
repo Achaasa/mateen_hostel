@@ -1,24 +1,25 @@
 import prisma from "../utils/prisma";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
-import { Amenities, Resident, Room, Visitor, Payment } from "@prisma/client";
 import { parse } from "json2csv";
 import { formatPrismaError } from "../utils/formatPrisma";
 export const amenitiesCsv = async (hostelId: string) => {
   try {
     const amenities = await prisma.amenities.findMany({
-      where: { hostelId }, // Add your conditions to filter data
+      where: {
+        hostelId,
+        hostel: { deletedAt: null },
+      },
       include: {
-        hostel: true, // Include related room data,
+        hostel: true,
         rooms: true,
       },
     });
 
-    // Process the residents data using the spread operator
-    const modifiedAmenities = amenities.map((amenities) => ({
-      ...amenities, // Spread all fields from the resident object
-      room: amenities.rooms ? amenities.rooms : "No Room", // Handle related room data,
-      delFlag: undefined, // Remove the delFlag field
+    const modifiedAmenities = amenities.map((amenity) => ({
+      ...amenity,
+      rooms: amenity.rooms ?? [],
+      deletedAt: undefined,
     }));
 
     // Convert the modified data into CSV
@@ -31,18 +32,21 @@ export const amenitiesCsv = async (hostelId: string) => {
 };
 export const residentCsv = async (hostelId: string) => {
   try {
-    const residents = await prisma.resident.findMany({
-      where: { delFlag: false, room: { hostelId } }, // Add your conditions to filter data
+    const residents = await prisma.residentProfile.findMany({
+      where: {
+        OR: [{ hostelId }, { room: { hostelId } }],
+      },
       include: {
-        room: true, // Include related room data
+        room: true,
+        user: true,
       },
     });
 
-    // Process the residents data using the spread operator
     const modifiedAmenities = residents.map((resident) => ({
-      ...resident, // Spread all fields from the resident object
-      room: resident.room ? resident.room : "No Room", // Handle related room data,
-      delFlag: undefined, // Remove the delFlag field
+      ...resident,
+      room: resident.room ?? null,
+      user: resident.user ?? null,
+      deletedAt: undefined,
     }));
 
     // Convert the modified data into CSV
@@ -57,22 +61,19 @@ export const roomCsv = async (hostelId: string) => {
   try {
     const rooms = await prisma.room.findMany({
       where: {
-        delFlag: false,
         hostelId,
-        hostel: {
-          delFlag: false, // Only get rooms for non-deleted hostels
-        },
+        deletedAt: null,
+        hostel: { deletedAt: null },
       },
       include: {
         hostel: true,
       },
     });
 
-    // Process the rooms data using the spread operator
     const modifiedRooms = rooms.map((room) => ({
-      ...room, // Spread all fields from the room object
-      hostel: room.hostel ? room.hostel : "No Hostel", // Handle related hostel data,
-      delFlag: undefined, // Remove the delFlag field
+      ...room,
+      hostel: room.hostel ?? null,
+      deletedAt: undefined,
     }));
 
     // Convert the modified data into CSV
@@ -86,15 +87,25 @@ export const roomCsv = async (hostelId: string) => {
 export const visitorCsv = async (hostelId: string) => {
   try {
     const visitors = await prisma.visitor.findMany({
-      where: { resident: { room: { hostelId } } },
-      include: { resident: true },
+      where: {
+        resident: {
+          OR: [{ hostelId }, { room: { hostelId } }],
+        },
+      },
+      include: {
+        resident: {
+          include: {
+            user: true,
+            room: true,
+          },
+        },
+      },
     });
 
-    // Process the visitors data using the spread operator
     const modifiedVisitors = visitors.map((visitor) => ({
-      ...visitor, // Spread all fields from the visitor object
-      resident: visitor.resident ? visitor.resident : "No Resident", // Handle related resident data,
-      delFlag: undefined, // Remove the delFlag field
+      ...visitor,
+      resident: visitor.resident ?? null,
+      deletedAt: undefined,
     }));
 
     // Convert the modified data into CSV
@@ -108,15 +119,36 @@ export const visitorCsv = async (hostelId: string) => {
 export const paymentCsv = async (hostelId: string) => {
   try {
     const payments = await prisma.payment.findMany({
-      where: { resident: { room: { hostelId } } },
-      include: { resident: true },
+      where: {
+        deletedAt: null,
+        OR: [
+          { residentProfile: { hostelId } },
+          { room: { hostelId } },
+          { calendarYear: { hostelId } },
+          { historicalResident: { room: { hostelId } } },
+        ],
+      },
+      include: {
+        residentProfile: {
+          include: {
+            user: true,
+            room: true,
+          },
+        },
+        room: true,
+        calendarYear: true,
+        historicalResident: {
+          include: {
+            room: true,
+          },
+        },
+      },
     });
 
-    // Process the payments data using the spread operator
     const modifiedPayments = payments.map((payment) => ({
-      ...payment, // Spread all fields from the payment object
-      resident: payment.resident ? payment.resident : "No Resident", // Handle related resident data,
-      delFlag: undefined, // Remove the delFlag field
+      ...payment,
+      residentProfile: payment.residentProfile ?? null,
+      deletedAt: undefined,
     }));
 
     // Convert the modified data into CSV
@@ -129,18 +161,27 @@ export const paymentCsv = async (hostelId: string) => {
 };
 export const StaffCsv = async (hostelId: string) => {
   try {
-    const Staffs = await prisma.staff.findMany({
-      where: { hostelId },
-      include: { hostel: true },
+    const staffProfiles = await prisma.staffProfile.findMany({
+      where: {
+        OR: [{ hostelId }, { hostel: { id: hostelId } }],
+      },
+      include: {
+        hostel: true,
+        user: true,
+      },
     });
-    // Process the payments data using the spread operator
-    const modifiedStaffs = Staffs.map((Staff) => ({
-      ...Staff,
-      delFlag: undefined, // Remove the delFlag field
+    const modifiedStaffs = staffProfiles.map((staff) => ({
+      ...staff,
+      hostel: staff.hostel ?? null,
+      user: staff.user ?? null,
+      deletedAt: undefined,
     }));
 
     // Convert the modified data into CSV
     const csv = parse(modifiedStaffs);
     return csv;
-  } catch (error) {}
+  } catch (error) {
+    console.error("error generating staff csv:", error);
+    throw formatPrismaError(error);
+  }
 };

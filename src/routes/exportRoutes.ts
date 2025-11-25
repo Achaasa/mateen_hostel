@@ -9,7 +9,7 @@ const exportRouter = Router();
 exportRouter.get(
   "/residents/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   exportController.exportResidentsCsv,
 );
@@ -17,7 +17,7 @@ exportRouter.get(
 exportRouter.get(
   "/amenities/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   exportController.exportAmenitiesCsv,
 );
@@ -25,7 +25,7 @@ exportRouter.get(
 exportRouter.get(
   "/rooms/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   exportController.exportRoomCsv,
 );
@@ -33,7 +33,7 @@ exportRouter.get(
 exportRouter.get(
   "/visitors/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   exportController.exportVisitorCsv,
 );
@@ -41,7 +41,7 @@ exportRouter.get(
 exportRouter.get(
   "/payments/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   exportController.exportPaymentCsv,
 );
@@ -49,7 +49,7 @@ exportRouter.get(
 exportRouter.get(
   "/staffs/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   exportController.exportStaffCsv,
 );

@@ -21,7 +21,7 @@ export const handlePaystackWebhook: RequestHandler = async (req, res) => {
 
       const payment = await prisma.payment.findUnique({
         where: { reference },
-        include: { resident: true },
+        include: { residentProfile: true },
       });
 
       if (!payment) {

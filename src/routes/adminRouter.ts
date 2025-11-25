@@ -3,7 +3,7 @@ import { clearDatabase } from "../controller/adminPanel";
 import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
 const adminRouter = Router();
 adminRouter.use(authenticateJWT);
-adminRouter.use(authorizeRole(["SUPER_ADMIN"]));
+adminRouter.use(authorizeRole(["super_admin"]));
 adminRouter.post(
   "/clear-database",
 

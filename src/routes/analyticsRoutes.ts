@@ -9,24 +9,24 @@ const analyticsRouter = Router();
 analyticsRouter.get(
   "/get/hostel/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   analyticsController.getHostelAnalytics,
 );
 
-// Get system-wide analytics (SUPER_ADMIN only)
+// Get system-wide analytics (super_admin only)
 analyticsRouter.get(
   "/get/system",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["super_admin"]),
   analyticsController.getSystemAnalytics,
 );
 
-// Get disbursement summary (SUPER_ADMIN only)
+// Get disbursement summary (super_admin only)
 analyticsRouter.get(
   "/get/disbursement-summary",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["super_admin"]),
   analyticsController.getHostelDisbursementSummaryController,
 );
 
@@ -34,7 +34,7 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/calendar-year/:hostelId/:calendarYearId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   analyticsController.generateCalendarYearReportController,
 );

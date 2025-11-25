@@ -1,13 +1,10 @@
+import { Prisma } from "@prisma/client";
 import prisma from "../utils/prisma";
 import { HttpStatus } from "../utils/http-status";
 import HttpException from "../utils/http-error";
 import { formatPrismaError } from "../utils/formatPrisma";
-import { Room, Resident, Payment } from "@prisma/client";
+// Note: Avoid importing generated model types directly to keep this file decoupled from generation timing
 import paystack from "../utils/paystack";
-import { ErrorResponse } from "../utils/types";
-import { generateAlphanumericCode } from "../utils/codeGenerator";
-import { generateCodeEmail } from "../services/generatePaymentCode";
-import { sendEmail } from "../utils/nodeMailer";
 // import Decimal from "decimal.js";
 
 interface OrphanedPaymentResolution {
@@ -19,6 +16,23 @@ interface OrphanedPaymentResolution {
     | "deleted";
   details: string;
 }
+
+interface PaymentRecord {
+  id: string;
+  amount: number;
+  method: string | null;
+  status: string | null;
+  reference: string;
+  residentProfileId: string | null;
+  roomId: string | null;
+  calendarYearId: string;
+  historicalResidentId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+  amountPaid?: number | null;
+  balanceOwed?: number | null;
+}
 // Payment Processing Functions
 
 export const initializePayment = async (
@@ -27,15 +41,15 @@ export const initializePayment = async (
   initialPayment: number,
 ) => {
   try {
-    return await prisma.$transaction(async (tx) => {
-      const resident = await tx.resident.findUnique({
-        where: { id: residentId, delFlag: false },
+    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const residentProfile = await tx.residentProfile.findUnique({
+        where: { id: residentId },
+        include: { user: true },
       });
-
-      if (!resident) {
+      if (!residentProfile || !residentProfile.user?.email) {
         throw new HttpException(
-          HttpStatus.NOT_FOUND,
-          "Active resident not found",
+          HttpStatus.BAD_REQUEST,
+          "Resident profile with a valid email is required before initializing payment. Please ensure the resident profile exists and has a valid email address.",
         );
       }
 
@@ -60,16 +74,16 @@ export const initializePayment = async (
       }
 
       const paymentResponse = await paystack.initializeTransaction(
-        resident.email,
+        residentProfile.user.email,
         initialPayment,
       );
 
-      const payment = await tx.payment.create({
+      await tx.payment.create({
         data: {
           amount: initialPayment,
-          residentId,
+          residentProfileId: residentId,
           roomId,
-          status: "PENDING",
+          status: "pending",
           reference: paymentResponse.data.reference,
           method: paymentResponse.data.payment_method,
           calendarYearId: activeCalendar.id,
@@ -87,16 +101,8 @@ export const initializePayment = async (
   }
 };
 
-export const confirmPayment = async (reference: string) => {
+export const confirmPayment = async (reference: string): Promise<{ payment: PaymentRecord } | { message: string }> => {
   try {
-    // generate alphanumeric code for access
-    const code = generateAlphanumericCode();
-    if (!code) {
-      throw new HttpException(
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        "Failed to generate access code.",
-      );
-    }
     const verificationResponse = await paystack.verifyTransaction(reference);
     if (verificationResponse.data.status !== "success") {
       throw new HttpException(
@@ -107,7 +113,7 @@ export const confirmPayment = async (reference: string) => {
 
     const paymentRecord = await prisma.payment.findUnique({
       where: { reference },
-      include: { resident: true, HistoricalResident: true },
+      include: { residentProfile: true, historicalResident: true },
     });
 
     if (!paymentRecord) {
@@ -117,7 +123,13 @@ export const confirmPayment = async (reference: string) => {
       );
     }
 
-    const { roomId, residentId, historicalResidentId } = paymentRecord;
+    const { roomId, residentProfileId, historicalResidentId } = paymentRecord as {
+      roomId: string | null;
+      residentProfileId: string | null;
+      historicalResidentId: string | null;
+      amount: number;
+      id: string;
+    };
 
     if (!roomId) {
       throw new HttpException(
@@ -126,10 +138,10 @@ export const confirmPayment = async (reference: string) => {
       );
     }
 
-    if (!residentId && !historicalResidentId) {
+    if (!residentProfileId && !historicalResidentId) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        "Payment must have either a residentId or historicalResidentId.",
+        "Payment must have either a residentProfileId or historicalResidentId.",
       );
     }
 
@@ -137,29 +149,38 @@ export const confirmPayment = async (reference: string) => {
       await prisma.payment.update({
         where: { id: paymentRecord.id },
         data: {
-          status: verificationResponse.data.status,
+          status: "confirmed",
           method: verificationResponse.data.channel,
         },
       });
       return { message: "Payment confirmed for historical resident." };
     }
 
-    const updatedResident = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const room = await tx.room.findUnique({ where: { id: roomId } });
       if (!room) {
         throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
       }
 
-      const resident = await tx.resident.findUnique({
-        where: { id: residentId! },
-        include: { room: true },
+      const residentProfile = await tx.residentProfile.findUnique({
+        where: { id: residentProfileId! },
+        include: { room: true, user: true },
       });
-      if (!resident) {
-        throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
+      if (!residentProfile) {
+        throw new HttpException(HttpStatus.NOT_FOUND, "Resident profile not found.");
       }
 
-      const totalPaid = (resident.amountPaid ?? 0) + paymentRecord.amount;
-      const roomPrice = resident.roomPrice ?? room.price;
+      // Sum previously confirmed payments for this resident profile
+      const priorPayments = await tx.payment.findMany({
+        where: { residentProfileId: residentProfileId!, status: "confirmed" },
+        select: { amount: true },
+      });
+      const prevTotal = priorPayments.reduce(
+        (sum: number, p: { amount: number | null }) => sum + (p.amount ?? 0),
+        0,
+      );
+      const totalPaid = prevTotal + paymentRecord.amount;
+      const roomPrice = room.price;
       const debt = roomPrice - totalPaid;
       let balanceOwed: number | null = null;
 
@@ -170,30 +191,23 @@ export const confirmPayment = async (reference: string) => {
         }
       }
 
-      // Update resident WITH accessCode in the SAME operation
-      const updatedResident = await tx.resident.update({
-        where: { id: residentId! },
-        data: {
-          roomAssigned: true,
-          roomId,
-          amountPaid: Number(totalPaid.toFixed(2)),
-          roomPrice: Number(roomPrice.toFixed(2)),
-          balanceOwed,
-          accessCode: code, // Set the generated access code
-        },
+      // Assign room to resident profile if needed
+      await tx.residentProfile.update({
+        where: { id: residentProfileId! },
+        data: { roomId },
       });
 
-      await tx.payment.update({
+      const updatedPayment = await tx.payment.update({
         where: { id: paymentRecord.id },
         data: {
-          status: verificationResponse.data.status,
+          status: "confirmed",
           method: verificationResponse.data.channel,
+          amountPaid: Number(totalPaid.toFixed(2)),
+          balanceOwed: balanceOwed ?? 0,
         },
       });
 
-      const currentResidentsCount = await tx.resident.count({
-        where: { roomId },
-      });
+      const currentResidentsCount = await tx.residentProfile.count({ where: { roomId } });
 
       const updatedRoom = await tx.room.update({
         where: { id: roomId },
@@ -203,23 +217,13 @@ export const confirmPayment = async (reference: string) => {
       if (updatedRoom.currentResidentCount >= updatedRoom.maxCap) {
         await tx.room.update({
           where: { id: roomId },
-          data: { status: "OCCUPIED" },
+          data: { status: "occupied" },
         });
       }
 
-      return updatedResident;
+      return { payment: updatedPayment };
     });
-    const htmlContent = generateCodeEmail(
-      updatedResident.name,
-      updatedResident.accessCode!,
-    );
-    await sendEmail(
-      updatedResident.email,
-      "🎉 Your Hostel Access Code",
-      htmlContent,
-    );
-
-    return updatedResident;
+    return result;
   } catch (error) {
     console.error("Error confirming payment:", error);
     throw formatPrismaError(error);
@@ -230,9 +234,9 @@ export const initializeTopUpPayment = async (
   roomId: string,
   residentId: string,
   initialPayment: number,
-) => {
+): Promise<string> => {
   try {
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const room = await tx.room.findUnique({
         where: { id: roomId },
         include: { hostel: true },
@@ -253,24 +257,21 @@ export const initializeTopUpPayment = async (
         );
       }
 
-      const resident = await tx.resident.findUnique({
+      const residentProfile = await tx.residentProfile.findUnique({
         where: { id: residentId },
+        include: { user: true },
       });
-
-      if (!resident) {
-        throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
-      }
-
-      const { roomPrice } = resident;
-
-      if (!roomPrice) {
-        throw new HttpException(
-          HttpStatus.BAD_REQUEST,
-          "Room price not set for the resident.",
-        );
-      }
-
-      const debtbal = roomPrice - (resident.amountPaid ?? 0);
+      // Compute current debt based on prior confirmed payments
+      const priorPayments = await tx.payment.findMany({
+        where: { residentProfileId: residentId, status: "confirmed" },
+        select: { amount: true },
+      });
+      const prevTotal = priorPayments.reduce(
+        (sum: number, p: { amount: number | null }) => sum + (p.amount ?? 0),
+        0,
+      );
+      const roomPrice = room.price;
+      const debtbal = roomPrice - prevTotal;
 
       if (initialPayment > debtbal) {
         throw new HttpException(
@@ -279,17 +280,24 @@ export const initializeTopUpPayment = async (
         );
       }
 
+      if (!residentProfile || !residentProfile.user?.email) {
+        throw new HttpException(
+          HttpStatus.BAD_REQUEST,
+          "Resident profile with a valid email is required before initializing payment. Please ensure the resident profile exists and has a valid email address.",
+        );
+      }
+
       const paymentResponse = await paystack.initializeTransaction(
-        resident.email,
+        residentProfile.user.email,
         initialPayment,
       );
 
       await tx.payment.create({
         data: {
           amount: initialPayment,
-          residentId,
+          residentProfileId: residentId,
           roomId,
-          status: "PENDING",
+          status: "pending",
           reference: paymentResponse.data.reference,
           method: paymentResponse.data.channel,
           calendarYearId: activeCalendar.id,
@@ -304,17 +312,8 @@ export const initializeTopUpPayment = async (
   }
 };
 
-export const TopUpPayment = async (reference: string) => {
+export const TopUpPayment = async (reference: string): Promise<{ payment: PaymentRecord } | { message: string }> => {
   try {
-    // Generate alphanumeric access code
-    const code = generateAlphanumericCode();
-    if (!code) {
-      throw new HttpException(
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        "Failed to generate access code.",
-      );
-    }
-
     // Verify transaction with Paystack
     const verificationResponse = await paystack.verifyTransaction(reference);
     if (verificationResponse.data.status !== "success") {
@@ -327,7 +326,7 @@ export const TopUpPayment = async (reference: string) => {
     // Fetch payment record
     const paymentRecord = await prisma.payment.findUnique({
       where: { reference },
-      include: { resident: true, HistoricalResident: true },
+      include: { residentProfile: true, historicalResident: true },
     });
 
     if (!paymentRecord) {
@@ -337,7 +336,7 @@ export const TopUpPayment = async (reference: string) => {
       );
     }
 
-    const { roomId, residentId, historicalResidentId } = paymentRecord;
+    const { roomId, residentProfileId, historicalResidentId } = paymentRecord as { roomId: string | null; residentProfileId: string | null; historicalResidentId: string | null };
 
     if (!roomId) {
       throw new HttpException(
@@ -346,10 +345,10 @@ export const TopUpPayment = async (reference: string) => {
       );
     }
 
-    if (!residentId && !historicalResidentId) {
+    if (!residentProfileId && !historicalResidentId) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        "Payment must have either a residentId or historicalResidentId.",
+        "Payment must have either a residentProfileId or historicalResidentId.",
       );
     }
 
@@ -358,7 +357,7 @@ export const TopUpPayment = async (reference: string) => {
       await prisma.payment.update({
         where: { id: paymentRecord.id },
         data: {
-          status: verificationResponse.data.status,
+          status: "confirmed",
           method: verificationResponse.data.channel,
         },
       });
@@ -366,24 +365,18 @@ export const TopUpPayment = async (reference: string) => {
     }
 
     // Transaction for current resident update
-    const updatedResident = await prisma.$transaction(async (tx) => {
-      const resident = await tx.resident.findUnique({
-        where: { id: residentId! },
-      });
-
-      if (!resident) {
-        throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const room = await tx.room.findUnique({ where: { id: roomId! } });
+      if (!room) {
+        throw new HttpException(HttpStatus.NOT_FOUND, "Room not found.");
       }
-
-      if (resident.roomPrice === null) {
-        throw new HttpException(
-          HttpStatus.BAD_REQUEST,
-          "Room price is missing for this resident.",
-        );
-      }
-
-      const roomPrice = resident.roomPrice;
-      const totalPaid = (resident.amountPaid ?? 0) + paymentRecord.amount;
+      const priorPayments = await tx.payment.findMany({ where: { residentProfileId: residentProfileId!, status: "confirmed" }, select: { amount: true } });
+      const prevTotal = priorPayments.reduce(
+        (sum: number, p: { amount: number | null }) => sum + (p.amount ?? 0),
+        0,
+      );
+      const roomPrice = room.price;
+      const totalPaid = prevTotal + paymentRecord.amount;
       const debt = roomPrice - totalPaid;
       let balanceOwed: number | null = null;
 
@@ -394,69 +387,49 @@ export const TopUpPayment = async (reference: string) => {
         }
       }
 
-      // Update resident with new payment info
-      const updatedResident = await tx.resident.update({
-        where: { id: residentId! },
-        data: {
-          roomAssigned: true,
-          amountPaid: Number(totalPaid.toFixed(2)),
-          balanceOwed,
-        },
-      });
-
       // Update payment record
-      await tx.payment.update({
+      const updatedPayment = await tx.payment.update({
         where: { id: paymentRecord.id },
         data: {
-          status: verificationResponse.data.status,
+          status: "confirmed",
           method: verificationResponse.data.channel,
+          amountPaid: Number(totalPaid.toFixed(2)),
+          balanceOwed: balanceOwed ?? 0,
         },
       });
 
-      return updatedResident;
+      return { payment: updatedPayment };
     });
 
     // Send access code via email
-    const htmlContent = generateCodeEmail(
-      updatedResident.name,
-      updatedResident.accessCode!,
-    );
-    await sendEmail(
-      updatedResident.email,
-      "🎉 Your Hostel Payments",
-      htmlContent,
-    );
-
-    return updatedResident;
+    return result;
   } catch (error) {
     console.error("Update Hostel Error:", error);
     throw formatPrismaError(error);
   }
 };
 
-export const getAllPayments = async () => {
+export const getAllPayments = async (): Promise<PaymentRecord[]> => {
   try {
     const payments = await prisma.payment.findMany();
-    return payments as Payment[];
+    return payments as unknown as PaymentRecord[];
   } catch (error) {
     console.error("error getting payments:", error);
     throw formatPrismaError(error);
   }
 };
 
-export const getPaymentsForHostel = async (hostelId: string) => {
+export const getPaymentsForHostel = async (hostelId: string): Promise<PaymentRecord[]> => {
   try {
-    const payments = await prisma.payment.findMany({
-      where: { resident: { room: { hostelId } } },
-    });
-    return payments;
+    const payments = await prisma.payment.findMany({ where: { residentProfile: { room: { hostelId } } } });
+    return payments as unknown as PaymentRecord[];
   } catch (error) {
     console.error("error getting payments for hostel:", error);
     throw formatPrismaError(error);
   }
 };
 
-export const getPaymentsById = async (paymentId: string) => {
+export const getPaymentsById = async (paymentId: string): Promise<PaymentRecord> => {
   try {
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
@@ -464,14 +437,14 @@ export const getPaymentsById = async (paymentId: string) => {
     if (!payment) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Payment not found");
     }
-    return payment as Payment;
+    return payment as unknown as PaymentRecord;
   } catch (error) {
     console.error("error getting payment:", error);
     throw formatPrismaError(error);
   }
 };
 
-export const getPaymentsByReference = async (reference: string) => {
+export const getPaymentsByReference = async (reference: string): Promise<PaymentRecord> => {
   try {
     const payment = await prisma.payment.findUnique({
       where: { reference },
@@ -479,7 +452,7 @@ export const getPaymentsByReference = async (reference: string) => {
     if (!payment) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Payment not found");
     }
-    return payment as Payment;
+    return payment as unknown as PaymentRecord;
   } catch (error) {
     console.error("error getting payment:", error);
     throw formatPrismaError(error);
@@ -492,18 +465,17 @@ export const fixOrphanedPayments = async (): Promise<
   try {
     const orphanedPayments = await prisma.payment.findMany({
       where: {
-        residentId: null,
+        residentProfileId: null,
         historicalResidentId: null,
-        delFlag: false,
       },
       include: {
         room: {
           include: {
-            Resident: true,
+            residents: true,
             hostel: true,
           },
         },
-        CalendarYear: true,
+        calendarYear: true,
       },
     });
 
@@ -511,17 +483,17 @@ export const fixOrphanedPayments = async (): Promise<
 
     for (const payment of orphanedPayments) {
       try {
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
           // Case 1: Payment has a room with a current resident
-          if (payment.room?.Resident?.[0]?.id) {
+          if (payment.room?.residents?.[0]?.id) {
             await tx.payment.update({
               where: { id: payment.id },
-              data: { residentId: payment.room.Resident[0].id },
+              data: { residentProfileId: payment.room.residents[0].id },
             });
             resolutions.push({
               paymentId: payment.id,
               resolution: "linked_to_resident",
-              details: `Linked to current resident ${payment.room.Resident[0].id}`,
+              details: `Linked to current resident ${payment.room.residents[0].id}`,
             });
             return;
           }
@@ -553,10 +525,10 @@ export const fixOrphanedPayments = async (): Promise<
           const sixMonthsAgo = new Date();
           sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-          if (payment.date < sixMonthsAgo && payment.status === "PENDING") {
+          if (payment.createdAt < sixMonthsAgo && payment.status === "pending") {
             await tx.payment.update({
               where: { id: payment.id },
-              data: { status: "INVALID" },
+              data: { status: "cancelled" },
             });
             resolutions.push({
               paymentId: payment.id,
@@ -573,9 +545,9 @@ export const fixOrphanedPayments = async (): Promise<
               amount: payment.amount,
               roomId: payment.roomId,
               calendarYearId: payment.calendarYearId,
-              date: {
-                gte: new Date(payment.date.getTime() - 5 * 60000),
-                lte: new Date(payment.date.getTime() + 5 * 60000),
+              createdAt: {
+                gte: new Date(payment.createdAt.getTime() - 5 * 60000),
+                lte: new Date(payment.createdAt.getTime() + 5 * 60000),
               },
             },
           });
@@ -583,7 +555,7 @@ export const fixOrphanedPayments = async (): Promise<
           if (possibleDuplicates.length > 0) {
             await tx.payment.update({
               where: { id: payment.id },
-              data: { delFlag: true },
+              data: { status: "cancelled" },
             });
             resolutions.push({
               paymentId: payment.id,
@@ -596,26 +568,22 @@ export const fixOrphanedPayments = async (): Promise<
           // Case 5: Cannot resolve - mark as invalid
           await tx.payment.update({
             where: { id: payment.id },
-            data: { status: "INVALID" },
-          });
-          resolutions.push({
-            paymentId: payment.id,
-            resolution: "marked_invalid",
-            details: "Could not resolve orphaned payment",
+            data: { status: "cancelled" },
           });
         });
-      } catch (error: any) {
+      } catch (error) {
+        console.error("Error resolving orphaned payment:", error);
         resolutions.push({
           paymentId: payment.id,
           resolution: "marked_invalid",
-          details: `Failed to fix: ${error.message}`,
+          details: "Failed to resolve payment automatically",
         });
       }
     }
 
     return resolutions;
   } catch (error) {
-    console.error("error fixing  orphaned payment record:", error);
+    console.error("error fixing orphaned payments:", error);
     throw formatPrismaError(error);
   }
 };

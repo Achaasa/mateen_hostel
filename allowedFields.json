@@ -246,8 +246,8 @@
   {
     "modelName": "UserRole",
     "fields": [
-      "ADMIN",
-      "SUPER_ADMIN"
+      "admin",
+      "super_admin"
     ]
   },
   {
@@ -367,7 +367,7 @@
   {
     "modelName": "StaffType",
     "fields": [
-      "ADMIN",
+      "admin",
       "OTHERS"
     ]
   },

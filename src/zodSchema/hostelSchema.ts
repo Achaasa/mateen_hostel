@@ -1,6 +1,4 @@
 import { z } from "zod";
-import { Location } from "@prisma/client";
-const locationEnum = z.enum([...(Object.values(Location) as [string, ...string[]])]);
 // Schema to create a new hostel
 export const hostelSchema = z.object({
   name: z
@@ -19,7 +17,10 @@ export const hostelSchema = z.object({
     .trim()
     .min(1, { message: "Address can't be empty" }),
 
-  location: locationEnum,
+  location: z
+    .string({ required_error: "Location is required" })
+    .trim()
+    .min(1, { message: "Location can't be empty" }),
 
   manager: z
     .string({ required_error: "Manager's name is required" })
@@ -56,7 +57,11 @@ export const updateHostelSchema = z.object({
     .min(1, { message: "Address can't be empty" })
     .optional(),
 
-  location: locationEnum.optional(),
+  location: z
+    .string({ required_error: "Location is required" })
+    .trim()
+    .min(1, { message: "Location can't be empty" })
+    .optional(),
 
   manager: z
     .string({ required_error: "Manager's name is required" })

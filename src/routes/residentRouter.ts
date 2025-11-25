@@ -23,7 +23,7 @@ const residentRouter = Router();
 residentRouter.get(
   "/debtors",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["super_admin"]),
   getAlldebtors,
 );
 
@@ -31,7 +31,7 @@ residentRouter.post("/register", registerResidentController);
 residentRouter.post(
   "/add",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validatePayload("Resident"),
   validateHostelAccess,
   addResidentFromHostelController,
@@ -39,7 +39,7 @@ residentRouter.post(
 residentRouter.get(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["super_admin"]),
   validateHostelAccess,
   getAllResidentsController,
 );
@@ -47,14 +47,14 @@ residentRouter.get(
 residentRouter.get(
   "/get/:residentId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   getResidentByIdController,
 );
 
 residentRouter.get(
   "/email/:email",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   getResidentByEmailController,
 );
@@ -62,7 +62,7 @@ residentRouter.get(
 residentRouter.put(
   "/update/:residentId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   updateResidentController,
 );
@@ -70,7 +70,7 @@ residentRouter.put(
 residentRouter.delete(
   "/delete/:residentId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   deleteResidentController,
 );
@@ -78,7 +78,7 @@ residentRouter.delete(
 residentRouter.get(
   "/hostel/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   getAllresidentsForHostel,
 );
@@ -86,7 +86,7 @@ residentRouter.get(
 residentRouter.get(
   "/debtors/hostel/:hostelId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   validateHostelAccess,
   getDebtorsForHostel,
 );
@@ -94,14 +94,14 @@ residentRouter.get(
 residentRouter.put(
   "/assign/:residentId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   assignRoomToResidentController,
 );
 
 residentRouter.get(
   "/verify",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["super_admin", "admin"]),
   verifyResidentCodeController,
 );
 export default residentRouter;

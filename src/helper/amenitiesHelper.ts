@@ -142,7 +142,7 @@ export const getAllAmenitiesForHostel = async (hostelId: string) => {
       where: {
         hostelId,
         hostel: {
-          delFlag: false, // Only get amenities for non-deleted hostels
+          deletedAt: null,
         },
       },
     });
