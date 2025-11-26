@@ -56,16 +56,15 @@ export const register = async (residentData: ResidentRequestDto) => {
 
     const hashed = await hashPassword(residentData.password);
     const user = await prisma.user.create({
-      data: {
-        email: residentData.email,
-        password: hashed,
-        firstName: residentData.firstName,
-        lastName: residentData.lastName,
-        gender: residentData.gender,
-        phone: (residentData as any).phone ?? null,
-        role: "resident",
-      },
-    });
+  data: {
+    email: residentData.email,
+    password: hashed,
+    name: `${residentData.firstName} ${residentData.lastName}`,  // Combine first and last name
+    gender: residentData.gender,
+    phone: (residentData as any).phone ?? null,
+    role: "resident",
+  },
+});
 
     const newProfile = await prisma.residentProfile.create({
       data: {

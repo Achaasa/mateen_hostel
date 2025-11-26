@@ -109,8 +109,7 @@ export const addStaff = async (staffData: StaffRequestDto, picture?: StaffPictur
       const user = await tx.user.create({
         data: {
           email: staffData.email,
-          firstName: staffData.firstName,
-          lastName: staffData.lastName,
+          name: `${staffData.firstName} ${staffData.lastName}`,
           password: hashedPassword,
           role,
           phone: staffData.phoneNumber ?? undefined,
@@ -223,8 +222,12 @@ export const updateStaff = async (
       await cloudinary.uploader.destroy(findStaff.passportKey);
     }
     const userUpdateData: Prisma.UserUpdateInput = {};
-    if (StaffData.firstName) userUpdateData.firstName = StaffData.firstName;
-    if (StaffData.lastName) userUpdateData.lastName = StaffData.lastName;
+    if (StaffData.firstName || StaffData.lastName) {
+      const currentName = findStaff.user.name?.split(' ') || [];
+      const newFirstName = StaffData.firstName || currentName[0] || '';
+      const newLastName = StaffData.lastName || currentName.slice(1).join(' ') || '';
+      userUpdateData.name = `${newFirstName} ${newLastName}`.trim();
+    }
     if (StaffData.email) userUpdateData.email = StaffData.email;
     if (StaffData.phoneNumber) userUpdateData.phone = StaffData.phoneNumber;
     if (StaffData.gender) userUpdateData.gender = normalizeGenderInput(StaffData.gender);

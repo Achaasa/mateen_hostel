@@ -97,14 +97,8 @@ function resolveAvatar(picture?: UserPicture, fallback?: string | null): string 
   return undefined;
 }
 
-function splitManagerName(name: string): { firstName: string; lastName: string } {
-  const trimmed = name.trim();
-  if (!trimmed) {
-    return { firstName: "Manager", lastName: "" };
-  }
-  const [firstName, ...rest] = trimmed.split(" ");
-  const lastName = rest.join(" ") || firstName;
-  return { firstName, lastName };
+function splitManagerName(name: string): { name: string } {
+  return { name };
 }
 
 async function buildUserUpdateData(
@@ -112,8 +106,7 @@ async function buildUserUpdateData(
   picture?: UserPicture,
 ): Promise<Prisma.UserUpdateInput> {
   const data: Prisma.UserUpdateInput = {};
-  if (userData.firstName !== undefined) data.firstName = userData.firstName;
-  if (userData.lastName !== undefined) data.lastName = userData.lastName;
+  if (userData.name !== undefined) data.name = userData.name;
   if (userData.email !== undefined) data.email = userData.email;
   if (userData.phone !== undefined) data.phone = userData.phone;
   else if (userData.phoneNumber !== undefined) data.phone = userData.phoneNumber;
@@ -149,14 +142,13 @@ export const createUser = async (
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
 
-    const { email, password } = userData;
+    const { email, password, name } = userData;
     if (!email || !password) {
       throw new HttpException(HttpStatus.BAD_REQUEST, "Email and password are required");
     }
-    const baseName = [userData.firstName, userData.lastName].filter(Boolean).join(" ") || userData.name || "";
-    const derivedNames = splitManagerName(baseName);
-    const resolvedFirstName = userData.firstName ?? derivedNames.firstName;
-    const resolvedLastName = userData.lastName ?? derivedNames.lastName;
+    if (!name) {
+      throw new HttpException(HttpStatus.BAD_REQUEST, "Name is required");
+    }
     const normalizedPhone = userData.phone ?? userData.phoneNumber ?? null;
     const avatar = resolveAvatar(picture, userData.avatar);
     // Check for existing non-deleted user
@@ -174,8 +166,7 @@ export const createUser = async (
     const userRecord: Prisma.UserCreateInput = {
       email,
       password: hashedPassword,
-      firstName: resolvedFirstName,
-      lastName: resolvedLastName,
+      name,
       role: userData.role ?? Role.admin,
       gender: userData.gender ?? null,
       phone: normalizedPhone,
@@ -361,8 +352,7 @@ export const verifyAndcreateHostelUser = async (hostelId: string) => {
       data: {
         email,
         password: hashedPassword,
-        firstName: managerNames.firstName,
-        lastName: managerNames.lastName,
+        name: managerNames.name,
         phone: hostel.phone,
         role: Role.admin,
         adminProfile: {

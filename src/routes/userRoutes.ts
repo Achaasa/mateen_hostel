@@ -19,15 +19,12 @@ import { validateHostelAccess } from "../utils/AccessControl";
 
 const userRouter = Router();
 
-// User sign up
+// User sign up (public endpoint)
 userRouter.post(
   "/signup",
   upload.single("photo"),
-  authenticateJWT,
-  authorizeRole(["super_admin", "admin"]),
-  validatePayload("User"), // Assuming you have validation logic for user payload
-
-  signUpUser,
+  validatePayload("User"),
+  signUpUser
 );
 
 // Get all users
@@ -50,7 +47,7 @@ userRouter.get(
 userRouter.get(
   "/get/:userId",
   authenticateJWT,
-  authorizeRole(["super_admin", "admin"]),
+  authorizeRole(["super_admin", "admin", "resident"]),
   validateHostelAccess,
 
   getUserById,

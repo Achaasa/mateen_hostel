@@ -7,8 +7,10 @@ import {
   Payment,
   PaymentStatus,
   ResidentProfile,
+  ResidentStatus,
   Room,
   RoomStatus,
+  RoomType,
 } from "@prisma/client";
 import Decimal from "decimal.js";
 
@@ -113,6 +115,433 @@ const VALID_PAYMENT_STATUSES: PaymentStatus[] = [PaymentStatus.confirmed];
 
 type ResidentProfileWithPayments = ResidentProfile & {
   payments: Payment[];
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+    phone: string | null;
+  } | null;
+  room: {
+    type: RoomType;
+  } | null;
+};
+
+interface ResidentStatusBreakdown {
+  active: number;
+  checkedOut: number;
+  banned: number;
+}
+
+interface ResidentDebtor {
+  residentId: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  balance: number;
+}
+
+interface ResidentTrendPoint {
+  label: string;
+  value: number;
+}
+
+interface ResidentRoomDistributionItem {
+  type: RoomType;
+  count: number;
+  percentage: number;
+}
+
+export interface ResidentAnalytics {
+  statusBreakdown: ResidentStatusBreakdown;
+  totalOutstandingBalance: number;
+  averageDebtPerResident: number;
+  topDebtors: ResidentDebtor[];
+  paymentTrend: ResidentTrendPoint[];
+  roomDistribution: ResidentRoomDistributionItem[];
+  admissionTrend: ResidentTrendPoint[];
+}
+
+interface ResidentDashboardTotals {
+  readonly totalPaid: number;
+  readonly outstandingBalance: number;
+}
+
+interface ResidentPaymentSummary {
+  readonly id: string;
+  readonly amount: number;
+  readonly status: PaymentStatus | null;
+  readonly balanceOwed: number;
+  readonly createdAt: Date | null;
+}
+
+export interface ResidentDashboardAnalytics {
+  readonly residentId: string;
+  readonly userId: string;
+  readonly hostelId: string | null;
+  readonly name: string;
+  readonly email: string;
+  readonly phone: string | null;
+  readonly room: {
+    readonly roomId: string | null;
+    readonly roomNumber: string | null;
+    readonly roomType: RoomType | null;
+  };
+  readonly stay: {
+    readonly checkInDate: Date | null;
+    readonly checkOutDate: Date | null;
+  };
+  readonly totals: ResidentDashboardTotals;
+  readonly recentPayments: ResidentPaymentSummary[];
+  readonly paymentTrend: ResidentTrendPoint[];
+}
+
+type ResidentDashboardProfile = ResidentProfile & {
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+    phone: string | null;
+  } | null;
+  room: {
+    id: string;
+    number: string | null;
+    type: RoomType | null;
+  } | null;
+  payments: Payment[];
+};
+
+interface ResidentContext {
+  residents: ResidentProfileWithPayments[];
+  payments: Payment[];
+}
+
+interface TrendRangeConfig {
+  months: number;
+  labelFormatter: (date: Date) => string;
+}
+
+const RESIDENT_STATUS_MAP: Record<ResidentStatus, keyof ResidentStatusBreakdown> = {
+  [ResidentStatus.active]: "active",
+  [ResidentStatus.checked_out]: "checkedOut",
+  [ResidentStatus.banned]: "banned",
+};
+
+const TREND_CONFIG: TrendRangeConfig = {
+  months: 6,
+  labelFormatter(date: Date): string {
+    return `${date.toLocaleString("default", { month: "short" })} ${date.getFullYear()}`;
+  },
+};
+
+const ADMISSION_TREND_CONFIG: TrendRangeConfig = {
+  months: 12,
+  labelFormatter(date: Date): string {
+    return `${date.toLocaleString("default", { month: "short" })} ${date.getFullYear()}`;
+  },
+};
+
+const MAX_RECENT_PAYMENTS = 5;
+
+const getMonthKey = (date: Date): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const buildTrendBuckets = (config: TrendRangeConfig): Map<string, ResidentTrendPoint> => {
+  const buckets = new Map<string, ResidentTrendPoint>();
+  const now = new Date();
+
+  for (let index = config.months - 1; index >= 0; index -= 1) {
+    const target = new Date(now.getFullYear(), now.getMonth() - index, 1);
+    const key = getMonthKey(target);
+    buckets.set(key, { label: config.labelFormatter(target), value: 0 });
+  }
+
+  return buckets;
+};
+
+const normalizeResidentStatus = (status: ResidentStatus | null): keyof ResidentStatusBreakdown => {
+  return RESIDENT_STATUS_MAP[status ?? ResidentStatus.active];
+};
+
+const getResidentContext = async (hostelId?: string): Promise<ResidentContext> => {
+  const residentWhereClause = hostelId
+    ? {
+        hostelId,
+      }
+    : undefined;
+
+  const residents = await prisma.residentProfile.findMany({
+    where: residentWhereClause,
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+        },
+      },
+      payments: {
+        where: {
+          deletedAt: null,
+          status: { in: VALID_PAYMENT_STATUSES },
+        },
+      },
+      room: {
+        select: {
+          type: true,
+        },
+      },
+    },
+  });
+
+  const paymentsWhereClause = hostelId
+    ? {
+        residentProfile: {
+          hostelId,
+        },
+      }
+    : undefined;
+
+  const payments = await prisma.payment.findMany({
+    where: {
+      deletedAt: null,
+      status: { in: VALID_PAYMENT_STATUSES },
+      ...paymentsWhereClause,
+    },
+  });
+
+  return { residents, payments };
+};
+
+const buildStatusBreakdown = (residents: ResidentProfileWithPayments[]): ResidentStatusBreakdown => {
+  const breakdown: ResidentStatusBreakdown = {
+    active: 0,
+    checkedOut: 0,
+    banned: 0,
+  };
+
+  residents.forEach((resident) => {
+    const key = normalizeResidentStatus(resident.status);
+    breakdown[key] += 1;
+  });
+
+  return breakdown;
+};
+
+const buildTopDebtors = (residents: ResidentProfileWithPayments[]): ResidentDebtor[] => {
+  const debts: ResidentDebtor[] = residents.map((resident) => {
+    const totalBalance = resident.payments.reduce((sum, payment) => {
+      const balance = payment.balanceOwed ?? 0;
+      return balance > 0 ? Number(new Decimal(sum).plus(balance).toFixed(2)) : sum;
+    }, 0);
+
+    return {
+      residentId: resident.id,
+      name: resident.user?.name ?? "Unknown",
+      email: resident.user?.email ?? "",
+      phone: resident.user?.phone ?? null,
+      balance: totalBalance,
+    };
+  });
+
+  return debts
+    .filter((debtor) => debtor.balance > 0)
+    .sort((left, right) => right.balance - left.balance)
+    .slice(0, 5);
+};
+
+const buildPaymentTrend = (payments: Payment[]): ResidentTrendPoint[] => {
+  const buckets = buildTrendBuckets(TREND_CONFIG);
+
+  payments.forEach((payment) => {
+    const createdAt = payment.createdAt ?? new Date();
+    const key = getMonthKey(createdAt);
+    const bucket = buckets.get(key);
+    if (bucket) {
+      bucket.value = Number(new Decimal(bucket.value).plus(payment.amount ?? 0).toFixed(2));
+    }
+  });
+
+  return Array.from(buckets.values());
+};
+
+const buildRoomDistribution = (residents: ResidentProfileWithPayments[]): ResidentRoomDistributionItem[] => {
+  const distribution = new Map<RoomType, number>();
+
+  residents.forEach((resident) => {
+    if (resident.room?.type) {
+      const count = distribution.get(resident.room.type) ?? 0;
+      distribution.set(resident.room.type, count + 1);
+    }
+  });
+
+  const total = Array.from(distribution.values()).reduce((sum, count) => sum + count, 0);
+
+  return Array.from(distribution.entries()).map(([type, count]) => ({
+    type,
+    count,
+    percentage: total > 0 ? Number(new Decimal(count).div(total).mul(100).toFixed(2)) : 0,
+  }));
+};
+
+const buildAdmissionTrend = (residents: ResidentProfileWithPayments[]): ResidentTrendPoint[] => {
+  const buckets = buildTrendBuckets(ADMISSION_TREND_CONFIG);
+
+  residents.forEach((resident) => {
+    const createdAt = resident.checkInDate ?? resident.createdAt;
+    if (!createdAt) {
+      return;
+    }
+    const key = getMonthKey(createdAt);
+    const bucket = buckets.get(key);
+    if (bucket) {
+      bucket.value += 1;
+    }
+  });
+
+  return Array.from(buckets.values());
+};
+
+export const generateResidentAnalytics = async (
+  hostelId?: string,
+): Promise<ResidentAnalytics> => {
+  try {
+    const { residents, payments } = await getResidentContext(hostelId);
+
+    const totalOutstandingBalance = residents.reduce((sum, resident) => {
+      const residentDebt = resident.payments.reduce((balanceSum, payment) => {
+        const balance = payment.balanceOwed ?? 0;
+        return Number(new Decimal(balanceSum).plus(balance > 0 ? balance : 0).toFixed(2));
+      }, 0);
+      return Number(new Decimal(sum).plus(residentDebt).toFixed(2));
+    }, 0);
+
+    const totalResidents = residents.length;
+    const averageDebtPerResident = totalResidents > 0
+      ? Number(new Decimal(totalOutstandingBalance).div(totalResidents).toFixed(2))
+      : 0;
+
+    return {
+      statusBreakdown: buildStatusBreakdown(residents),
+      totalOutstandingBalance,
+      averageDebtPerResident,
+      topDebtors: buildTopDebtors(residents),
+      paymentTrend: buildPaymentTrend(payments),
+      roomDistribution: buildRoomDistribution(residents),
+      admissionTrend: buildAdmissionTrend(residents),
+    };
+  } catch (error) {
+    console.error("Error generating resident analytics:", error);
+    throw formatPrismaError(error);
+  }
+};
+
+const getResidentDashboardProfile = async (
+  userId: string,
+): Promise<ResidentDashboardProfile> => {
+  const resident = await prisma.residentProfile.findUnique({
+    where: { userId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+        },
+      },
+      room: {
+        select: {
+          id: true,
+          number: true,
+          type: true,
+        },
+      },
+      payments: {
+        where: {
+          deletedAt: null,
+          status: { in: VALID_PAYMENT_STATUSES },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      },
+    },
+  });
+
+  if (!resident) {
+    throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found");
+  }
+
+  return resident as ResidentDashboardProfile;
+};
+
+const calculateResidentDashboardTotals = (
+  payments: Payment[],
+): ResidentDashboardTotals => {
+  const totals = payments.reduce(
+    (accumulator, payment) => {
+      const amount = payment.amount ?? 0;
+      const balance = payment.balanceOwed ?? 0;
+      const paid = Number(new Decimal(accumulator.totalPaid).plus(amount).toFixed(2));
+      const outstanding = balance > 0
+        ? Number(new Decimal(accumulator.outstandingBalance).plus(balance).toFixed(2))
+        : accumulator.outstandingBalance;
+
+      return {
+        totalPaid: paid,
+        outstandingBalance: outstanding,
+      } satisfies ResidentDashboardTotals;
+    },
+    { totalPaid: 0, outstandingBalance: 0 } satisfies ResidentDashboardTotals,
+  );
+
+  return totals;
+};
+
+const buildRecentResidentPayments = (
+  payments: Payment[],
+): ResidentPaymentSummary[] => {
+  return payments.slice(0, MAX_RECENT_PAYMENTS).map((payment) => ({
+    id: payment.id,
+    amount: payment.amount ?? 0,
+    status: payment.status ?? null,
+    balanceOwed: payment.balanceOwed ?? 0,
+    createdAt: payment.createdAt ?? null,
+  }));
+};
+
+export const generateResidentDashboardAnalytics = async (
+  userId: string,
+): Promise<ResidentDashboardAnalytics> => {
+  try {
+    const resident = await getResidentDashboardProfile(userId);
+    const totals = calculateResidentDashboardTotals(resident.payments);
+
+    return {
+      residentId: resident.id,
+      userId: resident.userId,
+      hostelId: resident.hostelId ?? null,
+      name: resident.user?.name ?? "Unknown Resident",
+      email: resident.user?.email ?? "",
+      phone: resident.user?.phone ?? null,
+      room: {
+        roomId: resident.room?.id ?? null,
+        roomNumber: resident.room?.number ?? null,
+        roomType: resident.room?.type ?? null,
+      },
+      stay: {
+        checkInDate: resident.checkInDate ?? null,
+        checkOutDate: resident.checkOutDate ?? null,
+      },
+      totals,
+      recentPayments: buildRecentResidentPayments(resident.payments),
+      paymentTrend: buildPaymentTrend(resident.payments),
+    } satisfies ResidentDashboardAnalytics;
+  } catch (error) {
+    throw formatPrismaError(error);
+  }
 };
 
 // Helper: Room metrics

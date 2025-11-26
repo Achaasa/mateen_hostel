@@ -25,8 +25,7 @@ export const createSuperAdminUser = async () => {
       // Create the super admin user together with a SuperAdminProfile
       await prisma.user.create({
         data: {
-          firstName: "Mateen Kofi",
-          lastName: "Yeboah",
+          name: "Mateen Kofi Yeboah",
           email: adminEmail,
           password: hashedPassword,
           phone: "0543983427", // Set a default or random number

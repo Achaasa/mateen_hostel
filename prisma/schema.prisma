@@ -96,8 +96,7 @@ model User {
   hostelId String?
   hostel   Hostel? @relation(fields: [hostelId], references: [id])
 
-  firstName String
-  lastName  String
+  name      String
   gender    Gender?
   avatar    String?
   imageUrl  String?

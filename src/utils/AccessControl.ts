@@ -17,6 +17,13 @@ export const validateHostelAccess = async (
     return next();
   }
 
+  if (user.role === "resident") {
+    const { userId } = req.params;
+    if (userId && userId === user.id) {
+      return next();
+    }
+  }
+
   // Extract hostelId from the request (params, body, or query)
   let requestedHostelId =
     req.params.hostelId || req.body.hostelId || req.query.hostelId;

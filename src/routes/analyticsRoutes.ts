@@ -22,6 +22,23 @@ analyticsRouter.get(
   analyticsController.getSystemAnalytics,
 );
 
+// Get resident analytics for a hostel
+analyticsRouter.get(
+  "/get/residents/:hostelId",
+  authenticateJWT,
+  authorizeRole(["super_admin", "admin"]),
+  validateHostelAccess,
+  analyticsController.getResidentAnalytics,
+);
+
+// Get analytics tailored for a specific resident dashboard
+analyticsRouter.get(
+  "/get/resident-dashboard/:userId",
+  authenticateJWT,
+  authorizeRole(["super_admin", "admin", "staff", "resident"]),
+  analyticsController.getResidentDashboardAnalytics,
+);
+
 // Get disbursement summary (super_admin only)
 analyticsRouter.get(
   "/get/disbursement-summary",
