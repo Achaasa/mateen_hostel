@@ -208,14 +208,14 @@ export const createRoom = async (
         maxCap: roomData.maxCap,
         hostelId: roomData.hostelId,
         price: totalPrice,
-        gender: roomData.gender,
+        gender: (roomData.gender as string)?.toLowerCase() as any,
         description: roomData.description,
-        type: roomData.type,
-        status: roomData.status,
+        type: (roomData.type as string)?.toLowerCase() as any,
+        status: (roomData.status as string)?.toLowerCase() as any,
         amenities: amenitiesIds?.length
           ? {
-              connect: amenitiesIds.map((id) => ({ id })),
-            }
+            connect: amenitiesIds.map((id) => ({ id })),
+          }
           : undefined, // Only connect amenities if provided
       },
     });
@@ -469,6 +469,9 @@ export const updateRoomAll = async (
       where: { id: roomId },
       data: {
         ...roomData,
+        gender: roomData.gender ? (roomData.gender as string).toLowerCase() as any : undefined,
+        type: roomData.type ? (roomData.type as string).toLowerCase() as any : undefined,
+        status: roomData.status ? (roomData.status as string).toLowerCase() as any : undefined,
         price: updatedPrice,
         amenities:
           Object.keys(updateAmenities).length > 0

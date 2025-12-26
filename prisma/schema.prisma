@@ -86,6 +86,31 @@ enum HostelState {
 }
 
 // -------------------------------------------------------
+// REQUEST ENUMS
+// -------------------------------------------------------
+
+enum RequestType {
+  maintenance
+  room_change
+  item_replacement
+  other
+}
+
+enum RequestStatus {
+  pending
+  in_progress
+  resolved
+  rejected
+}
+
+enum Priority {
+  low
+  medium
+  high
+  critical
+}
+
+// -------------------------------------------------------
 // USER & ROLE PROFILES
 // -------------------------------------------------------
 model User {
@@ -212,6 +237,9 @@ model ResidentProfile {
   visitors            Visitor[]
   calendarYears       CalendarYear[]
   historicalResidents HistoricalResident[]
+  maintenanceRequests MaintenanceRequest[]
+  feedbacks           Feedback[]
+  serviceBookings     ServiceBooking[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -246,6 +274,12 @@ model Hostel {
   amenities        Amenities[]
   calendarYears    CalendarYear[]
   hostelImages     HostelImage[]
+  maintenanceRequests MaintenanceRequest[]
+  announcements    Announcement[]
+  feedbacks        Feedback[]
+  hostelServices   HostelService[]
+
+  allowPartialPayment Boolean @default(false)
 
   @@index([location])
 }
@@ -422,4 +456,77 @@ model Leave {
   deletedAt DateTime?
 
   user User @relation(fields: [userId], references: [id])
+}
+
+// -------------------------------------------------------
+// RESIDENT FEATURES MODELS
+// -------------------------------------------------------
+
+model MaintenanceRequest {
+  id          String        @id @default(cuid())
+  residentId  String
+  hostelId    String
+  type        RequestType
+  subject     String
+  description String
+  status      RequestStatus @default(pending)
+  priority    Priority      @default(low)
+  images      String[]      // URLs to images
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  resident    ResidentProfile @relation(fields: [residentId], references: [id])
+  hostel      Hostel          @relation(fields: [hostelId], references: [id])
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  hostelId    String
+  title       String
+  content     String
+  type        String   @default("general") // e.g., event, notice, emergency
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hostel      Hostel   @relation(fields: [hostelId], references: [id])
+}
+
+model Feedback {
+  id          String   @id @default(cuid())
+  residentId  String
+  hostelId    String
+  rating      Int
+  comment     String?
+  category    String?
+  createdAt   DateTime @default(now())
+
+  resident    ResidentProfile @relation(fields: [residentId], references: [id])
+  hostel      Hostel          @relation(fields: [hostelId], references: [id])
+}
+
+model HostelService {
+  id          String   @id @default(cuid())
+  hostelId    String
+  name        String
+  description String?
+  price       Float    @default(0.0)
+  availability Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hostel      Hostel   @relation(fields: [hostelId], references: [id])
+  bookings    ServiceBooking[]
+}
+
+model ServiceBooking {
+  id          String   @id @default(cuid())
+  residentId  String
+  serviceId   String
+  bookingDate DateTime
+  status      String   @default("pending") // pending, approved, rejected
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  resident    ResidentProfile @relation(fields: [residentId], references: [id])
+  service     HostelService   @relation(fields: [serviceId], references: [id])
 }

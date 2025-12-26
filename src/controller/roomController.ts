@@ -4,21 +4,24 @@ import { HttpStatus } from "../utils/http-status";
 import HttpException from "../utils/http-error";
 import { Room } from "@prisma/client";
 import cloudinary from "../utils/cloudinary";
-import { date } from "zod";
 import { formatPrismaError } from "../utils/formatPrisma";
+import { createRoomSchema, updateRoomSchema } from "../zodSchema/roomSchema";
 
 // Add a Room
 export const addRoomController = async (req: Request, res: Response) => {
-  const roomData: Room = {
-    ...req.body,
-    price: parseFloat(req.body.price),
-    maxCap: parseInt(req.body.maxCap),
-  };
-  const amenitiesIds: string[] = req.body.amenitiesIds;
-  const photos = req.files ? req.files : [];
-  const pictures = [];
-  console.log(`the photos: ${photos}`);
   try {
+    const validatedData = createRoomSchema.safeParse(req.body);
+    if (!validatedData.success) {
+      const errors = validatedData.error.issues.map(
+        ({ message, path }) => `${path}: ${message}`
+      );
+      throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
+    }
+
+    const { amenitiesIds, ...roomData } = validatedData.data;
+    const photos = req.files ? (req.files as Express.Multer.File[]) : [];
+    const pictures = [];
+
     if (photos && Array.isArray(photos) && photos.length) {
       for (const photo of photos) {
         const uploaded = await cloudinary.uploader.upload(photo.path, {
@@ -35,7 +38,7 @@ export const addRoomController = async (req: Request, res: Response) => {
     }
 
     const newRoom = await roomHelper.createRoom(
-      roomData,
+      roomData as any,
       pictures,
       amenitiesIds
     );
@@ -247,20 +250,21 @@ export const roomsForHostel = async (
 // Update a Room
 export const updateRoomControllerAll = async (req: Request, res: Response) => {
   const { roomId } = req.params; // Room ID from the URL parameters
-  const { addAmenitiesIds, removeAmenitiesIds, ...filteredBody } = req.body;
-  const roomData: Partial<Room> = {
-    ...filteredBody,
-    price: req.body.price ? parseFloat(req.body.price) : undefined,
-    maxCap: req.body.maxCap ? parseInt(req.body.maxCap) : undefined,
-  };
-  
-  const photos = req.files as Express.Multer.File[] | undefined;
-  console.log("Cleaned Room Data:", JSON.stringify(roomData, null, 2));
-  console.log("Add Amenities:", addAmenitiesIds);
-  console.log("Remove Amenities:", removeAmenitiesIds);
-  const pictures = [];
 
   try {
+    const validatedData = updateRoomSchema.safeParse(req.body);
+    if (!validatedData.success) {
+      const errors = validatedData.error.issues.map(
+        ({ message, path }) => `${path}: ${message}`
+      );
+      throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
+    }
+
+    const { addAmenitiesIds, removeAmenitiesIds, ...roomData } = validatedData.data;
+
+    const photos = req.files as Express.Multer.File[] | undefined;
+    const pictures = [];
+
     if (photos && photos.length > 0) {
       // Loop over the photos and upload each one to Cloudinary
       for (const photo of photos) {

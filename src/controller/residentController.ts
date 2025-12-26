@@ -8,6 +8,10 @@ import {
 } from "../zodSchema/residentSchema";
 import prisma from "../utils/prisma";
 import { formatPrismaError } from "../utils/formatPrisma";
+import { CreateMaintenanceRequestDto } from "../zodSchema/requestSchema";
+import { CreateFeedbackDto } from "../zodSchema/feedbackSchema";
+import { jwtDecode } from "jwt-decode";
+import { UserPayload } from "../utils/jsonwebtoken";
 
 // Register a Resident
 export const registerResidentController = async (
@@ -223,6 +227,150 @@ export const verifyResidentCodeController = async (
     });
   } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
+  }
+};
+
+export const getResidentRoomDetailsController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const authHeader = req.header("Authorization");
+    if (!authHeader) {
+      throw new HttpException(HttpStatus.UNAUTHORIZED, "No token provided");
+    }
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      throw new HttpException(HttpStatus.UNAUTHORIZED, "Invalid token format");
+    }
+
+    // Decode token to get userId
+    const decoded = jwtDecode(token) as UserPayload;
+    if (!decoded || !decoded.id) {
+      throw new HttpException(HttpStatus.UNAUTHORIZED, "Invalid token payload");
+    }
+
+    const details = await residentHelper.getResidentRoomDetails(decoded.id);
+
+    res.status(HttpStatus.OK).json({
+      message: "Room details fetched successfully",
+      data: details,
+    });
+  } catch (error) {
+    const err = formatPrismaError(error);
+    res.status(err.status).json({ message: err.message });
+  }
+};
+
+export const createMaintenanceRequestController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const authHeader = req.header("Authorization");
+    if (!authHeader) throw new HttpException(HttpStatus.UNAUTHORIZED, "No token provided");
+    const token = authHeader.split(" ")[1];
+    const decoded = jwtDecode(token) as UserPayload;
+
+    const requestData: CreateMaintenanceRequestDto = req.body;
+    const request = await residentHelper.createMaintenanceRequest(decoded.id, requestData);
+
+    res.status(HttpStatus.CREATED).json({
+      message: "Request submitted successfully",
+      data: request,
+    });
+  } catch (error) {
+    const err = formatPrismaError(error);
+    res.status(err.status).json({ message: err.message });
+  }
+};
+
+export const getResidentRequestsController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const authHeader = req.header("Authorization");
+    if (!authHeader) throw new HttpException(HttpStatus.UNAUTHORIZED, "No token provided");
+    const token = authHeader.split(" ")[1];
+    const decoded = jwtDecode(token) as UserPayload;
+
+    const requests = await residentHelper.getResidentRequests(decoded.id);
+
+    res.status(HttpStatus.OK).json({
+      message: "Requests fetched successfully",
+      data: requests,
+    });
+  } catch (error) {
+    const err = formatPrismaError(error);
+    res.status(err.status).json({ message: err.message });
+  }
+};
+
+export const getResidentBillingController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const authHeader = req.header("Authorization");
+    if (!authHeader) throw new HttpException(HttpStatus.UNAUTHORIZED, "No token provided");
+    const token = authHeader.split(" ")[1];
+    const decoded = jwtDecode(token) as UserPayload;
+
+    const billingInfo = await residentHelper.getResidentBilling(decoded.id);
+
+    res.status(HttpStatus.OK).json({
+      message: "Billing info fetched successfully",
+      data: billingInfo,
+    });
+  } catch (error) {
+    const err = formatPrismaError(error);
+    res.status(err.status).json({ message: err.message });
+  }
+};
+
+export const getResidentAnnouncementsController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const authHeader = req.header("Authorization");
+    if (!authHeader) throw new HttpException(HttpStatus.UNAUTHORIZED, "No token provided");
+    const token = authHeader.split(" ")[1];
+    const decoded = jwtDecode(token) as UserPayload;
+
+    const announcements = await residentHelper.getResidentAnnouncements(decoded.id);
+
+    res.status(HttpStatus.OK).json({
+      message: "Announcements fetched successfully",
+      data: announcements,
+    });
+  } catch (error) {
+    const err = formatPrismaError(error);
+    res.status(err.status).json({ message: err.message });
+  }
+};
+
+export const createFeedbackController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const authHeader = req.header("Authorization");
+    if (!authHeader) throw new HttpException(HttpStatus.UNAUTHORIZED, "No token provided");
+    const token = authHeader.split(" ")[1];
+    const decoded = jwtDecode(token) as UserPayload;
+
+    const feedbackData: CreateFeedbackDto = req.body;
+    const feedback = await residentHelper.createFeedback(decoded.id, feedbackData);
+
+    res.status(HttpStatus.CREATED).json({
+      message: "Feedback submitted successfully",
+      data: feedback,
+    });
+  } catch (error) {
+    const err = formatPrismaError(error);
     res.status(err.status).json({ message: err.message });
   }
 };

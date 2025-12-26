@@ -12,6 +12,12 @@ import {
   addResidentFromHostelController,
   assignRoomToResidentController,
   verifyResidentCodeController,
+  getResidentRoomDetailsController,
+  createMaintenanceRequestController,
+  getResidentRequestsController,
+  getResidentBillingController,
+  getResidentAnnouncementsController,
+  createFeedbackController,
 } from "../controller/residentController"; // Assuming your controller file is named residentController
 import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
 import { validatePayload } from "../middleware/validate-payload";
@@ -25,6 +31,50 @@ residentRouter.get(
   authenticateJWT,
   authorizeRole(["super_admin"]),
   getAlldebtors,
+);
+
+residentRouter.get(
+  "/room",
+  authenticateJWT,
+  authorizeRole(["resident"]),
+  getResidentRoomDetailsController,
+);
+
+residentRouter.post(
+  "/requests",
+  authenticateJWT,
+  authorizeRole(["resident"]),
+  createMaintenanceRequestController,
+);
+
+residentRouter.get(
+  "/requests",
+  authenticateJWT,
+  authorizeRole(["resident"]),
+  getResidentRequestsController,
+);
+
+
+
+residentRouter.get(
+  "/billing",
+  authenticateJWT,
+  authorizeRole(["resident"]),
+  getResidentBillingController,
+);
+
+residentRouter.get(
+  "/announcements",
+  authenticateJWT,
+  authorizeRole(["resident", "admin", "super_admin"]),
+  getResidentAnnouncementsController,
+);
+
+residentRouter.post(
+  "/feedback",
+  authenticateJWT,
+  authorizeRole(["resident"]),
+  createFeedbackController,
 );
 
 residentRouter.post("/register", registerResidentController);

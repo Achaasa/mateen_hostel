@@ -1,8 +1,14 @@
 import { z } from "zod";
 
 // Enums to match Prisma schema
-export const GenderEnum = z.enum(["male", "female", "other"]);
-export const ResidentStatusEnum = z.enum(["active", "checked_out", "banned"]);
+export const GenderEnum = z.preprocess(
+  (val) => (typeof val === "string" ? val.toLowerCase() : val),
+  z.enum(["male", "female", "other"])
+);
+export const ResidentStatusEnum = z.preprocess(
+  (val) => (typeof val === "string" ? val.toLowerCase() : val),
+  z.enum(["active", "checked_out", "banned"])
+);
 
 type Gender = z.infer<typeof GenderEnum>;
 type ResidentStatus = z.infer<typeof ResidentStatusEnum>;
@@ -24,6 +30,17 @@ const baseResidentSchema = {
     .string({ required_error: "Room ID is required" })
     .trim()
     .min(1, { message: "Room ID can't be empty" })
+    .optional(),
+
+  roomNumber: z
+    .string({ required_error: "Room Number is required" })
+    .trim()
+    .optional(),
+
+  hostelId: z
+    .string({ required_error: "Hostel ID is required" })
+    .trim()
+    .min(1, { message: "Hostel ID can't be empty" })
     .optional(),
 
   gender: GenderEnum.optional(),
@@ -59,52 +76,10 @@ export const residentSchema = z.object({
     .min(8, { message: "Password must be at least 8 characters long" }),
 
   ...baseResidentSchema,
-
-  // Additional fields for resident profile
-  hostelId: z
-    .string({ required_error: "Hostel ID is required" })
-    .trim()
-    .min(1, { message: "Hostel ID can't be empty" })
-    .optional(),
 });
 
 // Schema for updating a Resident (all fields are optional)
-export const updateResidentSchema = z.object({
-  firstName: z
-    .string()
-    .trim()
-    .min(1, { message: "First name can't be empty" })
-    .optional(),
-
-  lastName: z
-    .string()
-    .trim()
-    .min(1, { message: "Last name can't be empty" })
-    .optional(),
-
-  email: z
-    .string()
-    .email({ message: "Email must be a valid email address" })
-    .min(1, { message: "Email can't be empty" })
-    .optional(),
-
-  phone: z
-    .string()
-    .min(1, { message: "Phone number can't be empty" })
-    .optional(),
-
-  password: z
-    .string()
-    .min(8, { message: "Password must be at least 8 characters long" })
-    .optional(),
-
-  ...Object.fromEntries(
-    Object.entries(baseResidentSchema).map(([key, schema]) => [
-      key,
-      schema.isOptional() ? schema : schema.optional()
-    ])
-  )
-});
+export const updateResidentSchema = residentSchema.partial();
 
 // Types to infer the data structures
 export type ResidentRequestDto = z.infer<typeof residentSchema>;

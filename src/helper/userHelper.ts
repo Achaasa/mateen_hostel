@@ -38,6 +38,7 @@ const userInclude = {
   residentProfile: {
     include: {
       hostel: true,
+      room: true,
     },
   },
 } satisfies Prisma.UserInclude;
@@ -46,6 +47,30 @@ type UserWithProfiles = Prisma.UserGetPayload<{ include: typeof userInclude }>;
 
 interface UserWithHostel extends User {
   readonly hostel: Hostel | null;
+  readonly adminProfile?: {
+    id: string;
+    hostelId: string | null;
+    position: string | null;
+    hostel: Hostel | null;
+  } | null;
+  readonly staffProfile?: {
+    id: string;
+    hostelId: string | null;
+    hostel: Hostel | null;
+  } | null;
+  readonly residentProfile?: {
+    id: string;
+    hostelId: string | null;
+    roomId: string | null;
+    studentId: string | null;
+    course: string | null;
+    roomNumber: string | null;
+    status: string;
+    checkInDate: Date | null;
+    checkOutDate: Date | null;
+    hostel: Hostel | null;
+    room: any | null;
+  } | null;
 }
 
 type SafeUser = Omit<UserWithHostel, "password">;
@@ -56,10 +81,43 @@ function mapUserWithHostel(user: UserWithProfiles): UserWithHostel {
     user.staffProfile?.hostel ??
     user.residentProfile?.hostel ??
     null;
-  const { adminProfile, staffProfile, residentProfile, ...rest } = user;
+  
+  // Map profile data while excluding sensitive or unnecessary fields
+  const adminProfile = user.adminProfile ? {
+    id: user.adminProfile.id,
+    hostelId: user.adminProfile.hostelId,
+    position: user.adminProfile.position,
+    hostel: user.adminProfile.hostel,
+  } : null;
+
+  const staffProfile = user.staffProfile ? {
+    id: user.staffProfile.id,
+    hostelId: user.staffProfile.hostelId,
+    hostel: user.staffProfile.hostel,
+  } : null;
+
+  const residentProfile = user.residentProfile ? {
+    id: user.residentProfile.id,
+    hostelId: user.residentProfile.hostelId,
+    roomId: user.residentProfile.roomId,
+    studentId: user.residentProfile.studentId,
+    course: user.residentProfile.course,
+    roomNumber: user.residentProfile.roomNumber,
+    status: user.residentProfile.status,
+    checkInDate: user.residentProfile.checkInDate,
+    checkOutDate: user.residentProfile.checkOutDate,
+    hostel: user.residentProfile.hostel,
+    room: user.residentProfile.room,
+  } : null;
+
+  const { adminProfile: _, staffProfile: __, residentProfile: ___, ...rest } = user;
+  
   return {
     ...rest,
     hostel,
+    adminProfile,
+    staffProfile,
+    residentProfile,
   };
 }
 

@@ -4,6 +4,11 @@ import { HttpStatus } from "./http-status";
 import HttpException from "./http-error";
 
 export const formatPrismaError = (error: unknown): HttpException => {
+  // If it's already an HttpException, return it as is
+  if (error instanceof HttpException) {
+    return error;
+  }
+
   // Handle Prisma known errors
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     const cleanMessage = (message: string) =>
