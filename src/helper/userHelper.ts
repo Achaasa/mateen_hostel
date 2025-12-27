@@ -25,6 +25,7 @@ interface CreateUserPayload extends Partial<User> {
 }
 
 const userInclude = {
+  hostel: true,
   adminProfile: {
     include: {
       hostel: true,
@@ -41,6 +42,7 @@ const userInclude = {
       room: true,
     },
   },
+  superAdminProfile: true,
 } satisfies Prisma.UserInclude;
 
 type UserWithProfiles = Prisma.UserGetPayload<{ include: typeof userInclude }>;
@@ -71,9 +73,13 @@ interface UserWithHostel extends User {
     hostel: Hostel | null;
     room: any | null;
   } | null;
+  readonly superAdminProfile?: {
+    id: string;
+    phoneNumber: string | null;
+  } | null;
 }
 
-type SafeUser = Omit<UserWithHostel, "password">;
+export type SafeUser = Omit<UserWithHostel, "password">;
 
 function mapUserWithHostel(user: UserWithProfiles): UserWithHostel {
   const hostel =
@@ -81,7 +87,7 @@ function mapUserWithHostel(user: UserWithProfiles): UserWithHostel {
     user.staffProfile?.hostel ??
     user.residentProfile?.hostel ??
     null;
-  
+
   // Map profile data while excluding sensitive or unnecessary fields
   const adminProfile = user.adminProfile ? {
     id: user.adminProfile.id,
@@ -110,18 +116,24 @@ function mapUserWithHostel(user: UserWithProfiles): UserWithHostel {
     room: user.residentProfile.room,
   } : null;
 
-  const { adminProfile: _, staffProfile: __, residentProfile: ___, ...rest } = user;
-  
+  const superAdminProfile = user.superAdminProfile ? {
+    id: user.superAdminProfile.id,
+    phoneNumber: user.superAdminProfile.phoneNumber,
+  } : null;
+
+  const { adminProfile: _, staffProfile: __, residentProfile: ___, superAdminProfile: ____, ...rest } = user;
+
   return {
     ...rest,
     hostel,
     adminProfile,
     staffProfile,
     residentProfile,
+    superAdminProfile,
   };
 }
 
-function sanitizeUser(user: UserWithHostel): SafeUser {
+export function sanitizeUser(user: UserWithHostel): SafeUser {
   const { password, ...rest } = user;
   return rest;
 }
@@ -168,8 +180,8 @@ async function buildUserUpdateData(
   if (userData.email !== undefined) data.email = userData.email;
   if (userData.phone !== undefined) data.phone = userData.phone;
   else if (userData.phoneNumber !== undefined) data.phone = userData.phoneNumber;
-  if (userData.gender !== undefined) data.gender = userData.gender;
-  if (userData.accountStatus !== undefined) data.accountStatus = userData.accountStatus;
+  if (userData.gender !== undefined) data.gender = (userData.gender as string)?.toLowerCase() as any;
+  if (userData.accountStatus !== undefined) data.accountStatus = (userData.accountStatus as string)?.toLowerCase() as any;
   if (userData.avatar !== undefined) data.avatar = userData.avatar;
   if (userData.imageUrl !== undefined) data.imageUrl = userData.imageUrl;
   if (userData.imageKey !== undefined) data.imageKey = userData.imageKey;
@@ -200,8 +212,9 @@ export const createUser = async (
       throw new HttpException(HttpStatus.BAD_REQUEST, errors.join(". "));
     }
 
-    const { email, password, name } = userData;
-    if (!email || !password) {
+    const normalizedEmail = userData.email?.trim().toLowerCase();
+    const { password, name } = userData;
+    if (!normalizedEmail || !password) {
       throw new HttpException(HttpStatus.BAD_REQUEST, "Email and password are required");
     }
     if (!name) {
@@ -212,7 +225,7 @@ export const createUser = async (
     // Check for existing non-deleted user
     const findUser = await prisma.user.findFirst({
       where: {
-        email,
+        email: normalizedEmail,
         deletedAt: null,
       },
     });
@@ -222,7 +235,7 @@ export const createUser = async (
 
     const hashedPassword = await hashPassword(password);
     const userRecord: Prisma.UserCreateInput = {
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       name,
       role: userData.role ?? Role.admin,
@@ -280,11 +293,11 @@ export const getUsers = async () => {
   try {
     const users = await prisma.user.findMany({
       where: {
-        deletedAt: null, 
+        deletedAt: null,
       },
       include: userInclude,
     });
-    return users.map(mapUserWithHostel);
+    return users.map(mapUserWithHostel).map(sanitizeUser);
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -300,7 +313,7 @@ export const getUserById = async (id: string) => {
       throw new HttpException(HttpStatus.NOT_FOUND, "User not found.");
     }
 
-    return mapUserWithHostel(user);
+    return sanitizeUser(mapUserWithHostel(user));
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -308,10 +321,35 @@ export const getUserById = async (id: string) => {
 
 export const getUserByEmail = async (email: string) => {
   try {
+    const normalizedEmail = email.trim().toLowerCase();
     const user = await prisma.user.findFirst({
       where: {
-        email,
+        email: normalizedEmail,
         deletedAt: null, // Only get non-deleted users
+      },
+      include: userInclude,
+    });
+    if (!user) {
+      return null;
+    }
+    return sanitizeUser(mapUserWithHostel(user));
+  } catch (error) {
+    throw formatPrismaError(error);
+  }
+};
+
+/**
+ * Retrieves a user by email INCLUDING the password.
+ * This should ONLY be used for internal authentication logic (e.g., login verification).
+ * DO NOT return the result of this function directly in an API response.
+ */
+export const getUserByEmailWithPassword = async (email: string) => {
+  try {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await prisma.user.findFirst({
+      where: {
+        email: normalizedEmail,
+        deletedAt: null,
       },
       include: userInclude,
     });
@@ -373,6 +411,7 @@ export const updateUser = async (
     const { password, ...restOfUpdate } = updatedUser;
     return restOfUpdate as User;
   } catch (error) {
+    console.error("Update User Error (Helper):", error);
     throw formatPrismaError(error);
   }
 };

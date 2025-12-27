@@ -130,7 +130,8 @@ export const addStaff = async (staffData: StaffRequestDto, picture?: StaffPictur
         console.error("Failed to send welcome email:", emailError);
       }
     }
-    return createdStaff;
+    const { password: _, ...safeUser } = createdStaff.user;
+    return { ...createdStaff, user: safeUser };
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -152,7 +153,10 @@ export const getAllStaffs = async () => {
         hostel: true,
       },
     });
-    return staffs;
+    return staffs.map(staff => {
+      const { password: _, ...safeUser } = staff.user;
+      return { ...staff, user: safeUser };
+    });
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -176,7 +180,8 @@ export const getStaffById = async (StaffId: string) => {
     if (!Staff) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Staff not found");
     }
-    return Staff;
+    const { password: _, ...safeUser } = Staff.user as any;
+    return { ...Staff, user: safeUser };
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -243,7 +248,8 @@ export const updateStaff = async (
       },
       include: { user: true, hostel: true },
     });
-    return updatedStaff;
+    const { password: _, ...safeUser } = updatedStaff.user;
+    return { ...updatedStaff, user: safeUser };
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -255,7 +261,10 @@ export const getAllStaffForHostel = async (hostelId: string) => {
       where: { hostelId, deletedAt: null },
       include: { user: true },
     });
-    return staffs;
+    return staffs.map(staff => {
+      const { password: _, ...safeUser } = staff.user;
+      return { ...staff, user: safeUser };
+    });
   } catch (error) {
     throw formatPrismaError(error);
   }

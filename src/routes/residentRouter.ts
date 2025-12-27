@@ -18,7 +18,9 @@ import {
   getResidentBillingController,
   getResidentAnnouncementsController,
   createFeedbackController,
-} from "../controller/residentController"; // Assuming your controller file is named residentController
+  getAllocationLetterController,
+  getPaymentReceiptController,
+} from "../controller/residentController";
 import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
 import { validatePayload } from "../middleware/validate-payload";
 import { validateHostelAccess } from "../utils/AccessControl";
@@ -75,6 +77,20 @@ residentRouter.post(
   authenticateJWT,
   authorizeRole(["resident"]),
   createFeedbackController,
+);
+
+residentRouter.get(
+  "/allocation-details",
+  authenticateJWT,
+  authorizeRole(["resident"]),
+  getAllocationLetterController,
+);
+
+residentRouter.get(
+  "/receipt/:paymentId",
+  authenticateJWT,
+  authorizeRole(["resident"]),
+  getPaymentReceiptController,
 );
 
 residentRouter.post("/register", registerResidentController);

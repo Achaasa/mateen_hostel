@@ -374,3 +374,44 @@ export const createFeedbackController = async (
     res.status(err.status).json({ message: err.message });
   }
 };
+
+export const getAllocationLetterController = async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.header("Authorization");
+    if (!authHeader) throw new HttpException(HttpStatus.UNAUTHORIZED, "No token provided");
+    const token = authHeader.split(" ")[1];
+    const decoded = jwtDecode(token) as UserPayload;
+
+    const data = await residentHelper.getAllocationDetails(decoded.id);
+
+    res.status(HttpStatus.OK).json({
+      message: "Allocation details fetched successfully",
+      data,
+    });
+  } catch (error) {
+    const err = formatPrismaError(error);
+    res.status(err.status).json({ message: err.message });
+  }
+};
+
+export const getPaymentReceiptController = async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.header("Authorization");
+    if (!authHeader) throw new HttpException(HttpStatus.UNAUTHORIZED, "No token provided");
+    const token = authHeader.split(" ")[1];
+    const decoded = jwtDecode(token) as UserPayload;
+
+    const { paymentId } = req.params;
+    if (!paymentId) throw new HttpException(HttpStatus.BAD_REQUEST, "Payment ID is required");
+
+    const data = await residentHelper.getPaymentReceiptData(decoded.id, paymentId);
+
+    res.status(HttpStatus.OK).json({
+      message: "Payment receipt fetched successfully",
+      data,
+    });
+  } catch (error) {
+    const err = formatPrismaError(error);
+    res.status(err.status).json({ message: err.message });
+  }
+};

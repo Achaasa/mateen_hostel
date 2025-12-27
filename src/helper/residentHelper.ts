@@ -56,10 +56,11 @@ export const register = async (residentData: ResidentRequestDto) => {
       );
     }
 
+    const normalizedEmail = residentData.email.trim().toLowerCase();
     const hashed = await hashPassword(residentData.password);
     const user = await prisma.user.create({
       data: {
-        email: residentData.email,
+        email: normalizedEmail,
         password: hashed,
         name: `${residentData.firstName} ${residentData.lastName}`,  // Combine first and last name
         gender: residentData.gender,
@@ -82,7 +83,8 @@ export const register = async (residentData: ResidentRequestDto) => {
       include: { room: true, user: true },
     });
 
-    return newProfile;
+    const { password: _, ...safeUser } = user;
+    return { ...newProfile, user: safeUser };
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -93,7 +95,10 @@ export const getAllResident = async () => {
     const residents = await prisma.residentProfile.findMany({
       include: { room: { include: { hostel: true } }, user: true },
     });
-    return residents;
+    return residents.map((resident) => {
+      const { password: _, ...safeUser } = resident.user as any;
+      return { ...resident, user: safeUser };
+    });
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -109,7 +114,8 @@ export const getResidentById = async (residentId: string) => {
     if (!resident) {
       throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found.");
     }
-    return resident;
+    const { password: _, ...safeUser } = resident.user as any;
+    return { ...resident, user: safeUser };
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -557,6 +563,84 @@ export const createFeedback = async (userId: string, data: CreateFeedbackDto) =>
     });
 
     return feedback;
+  } catch (error) {
+    throw formatPrismaError(error);
+  }
+};
+
+export const getAllocationDetails = async (userId: string) => {
+  try {
+    const resident = await prisma.residentProfile.findUnique({
+      where: { userId },
+      include: {
+        user: true,
+        hostel: true,
+        room: true,
+      },
+    });
+
+    if (!resident || !resident.hostel || !resident.room) {
+      throw new HttpException(
+        HttpStatus.NOT_FOUND,
+        "Resident allocation records not found. Ensure you are assigned to a room.",
+      );
+    }
+
+    return {
+      residentName: resident.user.name,
+      studentId: resident.studentId,
+      hostelName: resident.hostel.name,
+      hostelAddress: resident.hostel.address,
+      roomNumber: resident.room.number,
+      roomType: resident.room.type,
+      checkInDate: resident.checkInDate,
+      checkOutDate: resident.checkOutDate,
+      rulesUrl: resident.hostel.rulesUrl,
+    };
+  } catch (error) {
+    throw formatPrismaError(error);
+  }
+};
+
+export const getPaymentReceiptData = async (userId: string, paymentId: string) => {
+  try {
+    const resident = await prisma.residentProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!resident) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Resident not found");
+    }
+
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: {
+        residentProfile: {
+          include: {
+            user: true,
+            hostel: true,
+            room: true,
+          },
+        },
+      },
+    });
+
+    if (!payment || payment.residentProfileId !== resident.id) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Payment record not found or unauthorized");
+    }
+
+    return {
+      receiptNumber: payment.reference,
+      date: payment.createdAt,
+      residentName: payment.residentProfile?.user.name,
+      amount: payment.amount,
+      amountPaid: payment.amountPaid,
+      balanceOwed: payment.balanceOwed,
+      method: payment.method,
+      hostelName: payment.residentProfile?.hostel?.name,
+      roomNumber: payment.residentProfile?.room?.number,
+      status: payment.status,
+    };
   } catch (error) {
     throw formatPrismaError(error);
   }

@@ -141,7 +141,23 @@ export const formatPrismaError = (error: unknown): HttpException => {
 
   // Handle generic errors
   if (error instanceof Error) {
+    if (error.name === "TimeoutError" || error.message.includes("Timeout")) {
+      return new HttpException(HttpStatus.REQUEST_TIMEOUT, "The request timed out. Please check your connection.");
+    }
     return new HttpException(HttpStatus.INTERNAL_SERVER_ERROR, error.message);
+  }
+
+  // Handle plain object errors (often from external SDKs like Cloudinary)
+  if (typeof error === "object" && error !== null) {
+    const errObj = error as any;
+    const message = errObj.message || errObj.error?.message || "An unexpected error occurred.";
+    const status = errObj.http_code || errObj.status || HttpStatus.INTERNAL_SERVER_ERROR;
+
+    if (message.includes("Timeout") || status === 499 || status === 408) {
+      return new HttpException(HttpStatus.REQUEST_TIMEOUT, "Gateway or Network Timeout. Please try again.");
+    }
+
+    return new HttpException(status, message);
   }
 
   // Fallback for unknown errors

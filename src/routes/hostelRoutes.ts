@@ -79,6 +79,16 @@ hostelRoute.delete(
   authorizeRole(["super_admin"]),
   hostelController.deleteHostelController,
 );
+
+// Update hostel rules
+hostelRoute.put(
+  "/rules/:hostelId",
+  authenticateJWT,
+  authorizeRole(["super_admin", "admin"]),
+  validateHostelAccess,
+  upload.single("rules"),
+  hostelController.updateHostelRulesController,
+);
 hostelRoute.post(
   "/verify/:hostelId",
   authenticateJWT,

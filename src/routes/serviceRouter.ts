@@ -20,7 +20,7 @@ serviceRouter.post(
 
 // Public/Resident routes
 serviceRouter.get(
-    "/list/:hostelId",
+    "/list/:hostelId?",
     authenticateJWT,
     getHostelServicesController,
 );

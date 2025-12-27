@@ -224,3 +224,36 @@ export const unPublishHostel = async (req: Request, res: Response) => {
     res.status(err.status).json({ message: err.message });
   }
 };
+
+export const updateHostelRulesController = async (req: Request, res: Response) => {
+  const { hostelId } = req.params;
+  const file = req.file;
+
+  try {
+    if (!file) {
+      throw new HttpException(HttpStatus.BAD_REQUEST, "No rules file provided");
+    }
+
+    const uploaded = await cloudinary.uploader.upload(file.path, {
+      folder: "hostel/rules/",
+      resource_type: "auto", // Allow PDF, images, etc.
+    });
+
+    if (!uploaded) {
+      throw new HttpException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload rules");
+    }
+
+    const updatedHostel = await hostelHelper.updateHostelRules(hostelId, {
+      rulesUrl: uploaded.secure_url,
+      rulesKey: uploaded.public_id,
+    });
+
+    res.status(HttpStatus.OK).json({
+      message: "Hostel rules updated successfully",
+      data: updatedHostel,
+    });
+  } catch (error) {
+    const err = formatPrismaError(error);
+    res.status(err.status).json({ message: err.message });
+  }
+};

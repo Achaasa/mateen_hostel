@@ -309,3 +309,35 @@ export const unPublishHostel = async (hostelId: string) => {
     throw formatPrismaError(error);
   }
 };
+
+export const updateHostelRules = async (
+  hostelId: string,
+  rulesInfo: { rulesUrl: string; rulesKey: string }
+) => {
+  try {
+    const findHostel = await prisma.hostel.findUnique({
+      where: { id: hostelId },
+    });
+
+    if (!findHostel) {
+      throw new HttpException(HttpStatus.NOT_FOUND, "Hostel not found");
+    }
+
+    if (findHostel.rulesKey) {
+      await cloudinary.uploader.destroy(findHostel.rulesKey);
+    }
+
+    const updatedHostel = await prisma.hostel.update({
+      where: { id: hostelId },
+      data: {
+        rulesUrl: rulesInfo.rulesUrl,
+        rulesKey: rulesInfo.rulesKey,
+      },
+    });
+
+    return updatedHostel;
+  } catch (error) {
+    console.error("Update Hostel Rules Error:", error);
+    throw formatPrismaError(error);
+  }
+};

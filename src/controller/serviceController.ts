@@ -29,8 +29,15 @@ export const createHostelServiceController = async (req: Request, res: Response)
 
 export const getHostelServicesController = async (req: Request, res: Response) => {
     try {
-        const { hostelId } = req.params;
-        // or from query
+        let { hostelId } = req.params;
+        const user = (req as any).user as UserPayload;
+
+        // If user is a resident, always force their hostelId
+        if (user?.role === "resident" && user.hostelId) {
+            hostelId = user.hostelId;
+        } else if (!hostelId && user?.hostelId) {
+            hostelId = user.hostelId;
+        }
 
         if (!hostelId) {
             throw new HttpException(HttpStatus.BAD_REQUEST, "Hostel ID is required");

@@ -129,6 +129,7 @@ export const updateUser = async (
       .status(HttpStatus.OK)
       .json({ message: "User updated successfully", user: updatedUser });
   } catch (error) {
+    console.error("Update User Error (Controller):", error);
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
   }
@@ -238,8 +239,19 @@ export const userLogIn = async (
       return;
     }
 
-    const user = await userHelper.getUserByEmail(email);
-    if (!user || !user.password) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await userHelper.getUserByEmailWithPassword(normalizedEmail);
+
+    if (!user) {
+      console.log(`[Login] User not found: ${normalizedEmail}`);
+      res.status(HttpStatus.UNAUTHORIZED).json({
+        message: "Invalid credentials",
+      });
+      return;
+    }
+
+    if (!user.password) {
+      console.log(`[Login] User found but has NO password hash: ${normalizedEmail}`);
       res.status(HttpStatus.UNAUTHORIZED).json({
         message: "Invalid credentials",
       });
@@ -248,6 +260,7 @@ export const userLogIn = async (
 
     const isMatch = await compare(password, user.password);
     if (!isMatch) {
+      console.log(`[Login] Password mismatch for user: ${normalizedEmail}`);
       res.status(HttpStatus.UNAUTHORIZED).json({
         message: "Invalid credentials",
       });
@@ -287,8 +300,7 @@ export const getUserProfile = async (
     const decoded = jwtDecode(token) as UserPayload;
     const user = await userHelper.getUserById(decoded?.id);
     if (user) {
-      const { password, ...restofUser } = user;
-      res.status(HttpStatus.OK).json({ restofUser });
+      res.status(HttpStatus.OK).json({ user });
     } else {
       res.status(HttpStatus.NOT_FOUND).json({ message: "User not found" });
     }

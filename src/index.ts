@@ -13,14 +13,13 @@ dotenv.config();
 
 const app: Express = express();
 const port = process.env.PORT || 2020;
-app.use((req, res, next) => {
-  (req as any).rawBody = "";
-  req.on("data", (chunk: Buffer) => {
-    (req as any).rawBody += chunk.toString();
-  });
-  next();
-});
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req: any, res, buf) => {
+      req.rawBody = buf.toString();
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true })); // Ensure form-data is parsed properly
 
 app.use(morgan("dev"));
