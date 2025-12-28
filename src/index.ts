@@ -51,12 +51,19 @@ app.use((error: any, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
+export default app;
+
 const startServer = async () => {
   try {
     await createSuperAdminUser(); // Call the function to create the admin user
-    app.listen(port, () => {
-      console.log(`[server]: Server is running at http://localhost:${port}`);
-    });
+    if (process.env.NODE_ENV !== "production") {
+      app.listen(port, () => {
+        console.log(`[server]: Server is running at http://localhost:${port}`);
+      });
+    } else {
+      // On Vercel, we call this to ensure the admin is created on the first request or deployment
+      await createSuperAdminUser();
+    }
   } catch (error) {
     const err = error as ErrorResponse;
     throw new HttpException(
@@ -68,4 +75,10 @@ const startServer = async () => {
   }
 };
 
-startServer(); // Start the server
+// Only call startServer if this file is run directly (not as a module on Vercel)
+if (require.main === module) {
+  startServer();
+} else {
+  // On Vercel, ensures admin is created
+  createSuperAdminUser().catch(console.error);
+}

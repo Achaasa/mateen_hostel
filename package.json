@@ -10,6 +10,7 @@
     "dev": "nodemon src/index.ts",
     "migrate": "npx prisma migrate dev --name init && pnpm extra:fields",
     "generate": "npx prisma generate",
+    "vercel-build": "npx prisma generate",
     "extra:fields": "ts-node extractFields.ts",
     "prepare": "husky"
   },
